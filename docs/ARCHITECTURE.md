@@ -1,263 +1,340 @@
 # Jarvis Architecture
-## System Design Reference
+## Hermes-Centric System Design Reference
 
-## 1. Core Principle
+## 1. Non-negotiable hierarchy
 
-Jarvis is an orchestration layer above Hermes Agent.
+**Hermes Agent is the king of the system.**
+
+Hermes is the user-facing autonomous agent, conversation owner, tool executor, task manager, subagent coordinator, and operational authority within the configured policy boundary.
+
+**OmniRoute is not the boss, planner, agent, or user interface. OmniRoute is the model-power layer.**
+
+Its job is to provide Hermes with access to models through a stable model-routing interface. Hermes decides what to do. OmniRoute helps Hermes think by supplying the appropriate model/provider.
+
+```text
+                         USER
+                           |
+                 voice / chat / gateway
+                           |
+                           v
+                 +-------------------+
+                 |   HERMES AGENT    |
+                 |      KING         |
+                 |                   |
+                 | conversation      |
+                 | intent             |
+                 | memory             |
+                 | planning           |
+                 | tools              |
+                 | terminal           |
+                 | files              |
+                 | GitHub             |
+                 | subagents          |
+                 | verification       |
+                 | recovery           |
+                 | scheduling         |
+                 | policy/approval    |
+                 +---------+---------+
+                           |
+                    model inference
+                           |
+                           v
+                 +-------------------+
+                 |     OMNIROUTE     |
+                 |  POWER LAYER ONLY |
+                 |                   |
+                 | model catalog     |
+                 | provider routing  |
+                 | fallback          |
+                 | latency/cost      |
+                 | availability      |
+                 +---------+---------+
+                           |
+                  models / providers
+                           |
+                           v
+             Claude / GPT / Qwen / Gemini /
+             DeepSeek / other configured models
+```
+
+## 2. Authority boundaries
+
+### Hermes owns
+
+- User communication
+- Conversation state
+- Voice session state
+- Intent understanding
+- Planning and decomposition
+- Tool selection
+- Terminal and filesystem operations
+- Git and GitHub operations
+- Subagent creation and supervision
+- Task state and checkpoints
+- Verification
+- Recovery and retries
+- Memory usage and learning workflows
+- Scheduling/background work
+- Permission and approval decisions
+- Final user-facing answer
+
+### OmniRoute owns
+
+- Model/provider connectivity
+- Model discovery/catalog where configured
+- Routing requests to the selected model/provider
+- Provider fallback where configured
+- Model availability handling
+- Routing telemetry
+- Cost/latency/quality routing signals
+
+### OmniRoute MUST NOT own
+
+- The conversation with the user
+- The task lifecycle
+- Hermes memory
+- Hermes tool permissions
+- Project ownership
+- GitHub authority
+- Final task decisions
+- Autonomous planning outside a Hermes request
+- User-facing personality or voice session control
+
+## 3. Request flow
+
+```text
+User speaks/types
+       |
+       v
+Hermes receives request
+       |
+       +--> recall context/memory
+       |
+       +--> reason / plan
+       |
+       +--> choose tools and agents
+       |
+       +--> request model inference
+                  |
+                  v
+              OmniRoute
+                  |
+                  +--> select/forward model
+                  |
+                  v
+                Model
+                  |
+                  v
+              OmniRoute
+                  |
+                  v
+              Hermes
+       |
+       +--> interpret result
+       +--> execute tools
+       +--> verify
+       +--> recover if needed
+       |
+       v
+Hermes responds to user
+```
+
+OmniRoute is therefore a dependency of Hermes inference, not a peer authority.
+
+## 4. Autonomous execution loop
+
+```text
+USER REQUEST
+     |
+     v
+HERMES
+     |
+     +--> RECALL
+     +--> PLAN
+     +--> AUTHORIZE
+     +--> DISPATCH
+     +--> EXECUTE
+     +--> OBSERVE
+     +--> VERIFY
+     |
+     +---- PASS ----> COMPLETE
+     |
+     +---- FAIL ----> DIAGNOSE
+                         |
+                         v
+                    CHANGE STRATEGY
+                         |
+                         v
+                       RETRY
+                         |
+                         v
+                      VERIFY
+```
+
+Hermes remains in control throughout this loop. A model returned by OmniRoute never becomes the system controller.
+
+## 5. Model-power contract
+
+Hermes should communicate with OmniRoute through an OpenAI-compatible model interface or the supported Hermes provider abstraction.
+
+Conceptually:
+
+```text
+Hermes
+  POST /v1/chat/completions
+        |
+        v
+OmniRoute
+        |
+        +--> route to model/provider
+        +--> stream model output
+        +--> return model response
+        |
+        v
+Hermes
+```
+
+The exact provider protocol may change, but the ownership rule does not.
+
+## 6. Voice architecture
+
+Voice is another interface to Hermes, not a separate assistant.
+
+```text
+Microphone
+   |
+   v
+Voice Gateway / STT
+   |
+   v
+HERMES
+   |
+   +--> OmniRoute --> Model
+   |
+   +--> tools / agents / memory
+   |
+   v
+Streaming response
+   |
+   v
+TTS
+   |
+   v
+User speaker
+```
+
+Wake word, continuous listening, interruption, turn detection, TTS and session management belong to the Hermes-facing voice layer. OmniRoute only supplies model inference when Hermes needs it.
+
+## 7. Agent OS placement
+
+The Agent OS layer is Hermes infrastructure. It extends Hermes with durable state, trust, task management, scheduling, traces, memory and coordination primitives.
 
 ```text
 User
  |
-Interface
+Voice / Chat
  |
-Jarvis Core
+v
+HERMES AGENT
  |
-+-- Intent
-+-- Memory
-+-- Planner
-+-- Policy
-+-- Task Manager
-+-- Agent Orchestrator
-+-- Verification
-+-- Recovery
-+-- Learning
+ +-- Agent OS primitives
+ |    +-- Identity
+ |    +-- Memory
+ |    +-- Trust
+ |    +-- Spec
+ |    +-- Trace
+ |    +-- Scheduler
+ |    +-- Agent Registry
+ |    +-- Task Manager
+ |    +-- Event Bus
  |
-+-- Hermes execution/tool layer
+ +-- Tools / terminal / files / GitHub / browser
  |
-+-- OmniRoute model routing
+v
+OMNIROUTE
  |
-+-- GitHub
-+-- Browser
-+-- Server
-+-- Notifications
+v
+Models
 ```
 
-## 2. Execution Loop
+The Agent OS must never be implemented as a second competing assistant above Hermes.
+
+## 8. Server computer
+
+The server is Hermes' execution environment.
 
 ```text
-REQUEST
-  |
-CLASSIFY
-  |
-RECALL
-  |
-PLAN
-  |
-AUTHORIZE
-  |
-DISPATCH
-  |
-EXECUTE
-  |
-OBSERVE
-  |
-VERIFY
-  |
-+-- PASS -> COMPLETE
-|
-+-- FAIL -> DIAGNOSE
-             |
-             CHANGE STRATEGY
-             |
-             RETRY
-             |
-             VERIFY
+Phone / Laptop
+      |
+      | user control
+      v
+HERMES
+      |
+      +--> tools
+      +--> terminal
+      +--> filesystem
+      +--> GitHub
+      +--> databases
+      +--> background jobs
+      |
+      v
+/data/jarvis persistent runtime
 ```
 
-## 3. Autonomous Task State Machine
+The client is a control surface. Hermes is the agent operating the server computer.
+
+## 9. Data ownership
+
+| Domain | Owner |
+|---|---|
+| User conversation | Hermes |
+| Task state | Hermes / Agent OS |
+| Memory | Hermes / Agent OS |
+| Tool permissions | Hermes policy layer |
+| GitHub workflow | Hermes |
+| Project workspace | Hermes execution runtime |
+| Voice session | Hermes voice layer |
+| Model selection request | Hermes |
+| Model/provider routing | OmniRoute |
+| Provider telemetry | OmniRoute |
+| Model response | OmniRoute returns it to Hermes |
+
+## 10. Failure semantics
+
+If OmniRoute is unavailable:
 
 ```text
-queued
-  |
-planning
-  |
-authorized
-  |
-running
-  |
-verifying
-  |
-completed
-
-running -> blocked
-running -> failed
-failed -> recovering
-recovering -> running
-blocked -> awaiting_approval
-awaiting_approval -> authorized
-any active state -> cancelled
+OmniRoute failure
+      |
+      v
+Hermes detects inference failure
+      |
+      +--> retry
+      +--> use configured fallback provider/path
+      +--> pause task if inference is unavailable
+      +--> preserve durable task state
+      |
+      v
+Hermes reports status to user
 ```
 
-## 4. Agent Contracts
+OmniRoute failure must not destroy Hermes state, task state, memory, files, Git state or voice session state.
 
-Agents should return structured artifacts.
+## 11. Architectural rule
 
-Example:
+The system must always preserve this sentence:
 
-```yaml
-status: completed
-summary: ...
-artifacts:
-  - path: architecture.md
-verification:
-  passed: true
-  evidence:
-    - architecture reviewed
-risks:
-  - ...
-lessons:
-  - ...
-```
-
-## 5. Data Domains
-
-### Operational database
-
-Task state, agents, events, approvals, verification, audit.
-
-### Memory database
-
-Facts, preferences, project knowledge, experiences.
-
-### Artifact store
-
-Documents, reports, patches, logs, test results.
-
-### Skill store
-
-Procedural knowledge.
-
-### Routing telemetry
-
-Model/provider performance.
-
-## 6. Security Boundary
-
-Treat the following as trust boundaries:
-
-- User input.
-- Web content.
-- Git repositories.
-- External skills.
-- Agent-generated commands.
-- Model outputs.
-- Third-party APIs.
-
-No external content should automatically gain permission to execute privileged operations.
-
-## 7. Reliability
-
-Every autonomous action should be:
-
-- observable
-- bounded
-- recoverable where possible
-- verifiable
-- auditable
-
-## 8. Server Administration Model
-
-The agent controls only what the execution identity permits.
-
-Use:
-
-```text
-Jarvis
-  |
-Policy
-  |
-Capability
-  |
-Execution identity
-  |
-Operating system
-```
-
-Never bypass the policy layer for convenience.
-
-## 9. Knowledge Lifecycle
-
-```text
-Experience
-  |
-Evaluate
-  |
-Lesson
-  |
-Score
-  |
-Store
-  |
-Retrieve
-  |
-Reuse
-  |
-Evaluate again
-```
-
-Successful lessons can become skills.
-
-## 10. Model Routing Lifecycle
-
-```text
-Task
- |
-Classify
- |
-Candidate models
- |
-Historical telemetry
- |
-Score
- |
-Select
- |
-Execute
- |
-Evaluate
- |
-Update telemetry
-```
-
-## 11. Observability
-
-Use correlation IDs:
-
-```text
-request_id
-task_id
-step_id
-agent_id
-attempt_id
-event_id
-```
-
-A user should be able to trace:
-
-`"Why did Jarvis say this task failed?"`
-
-to the exact agent, tool, command, error, retry, and verification result.
-
-## 12. Architectural Rule
-
-Do not optimize for maximum autonomy first.
+> **Hermes is the king. OmniRoute powers the king. Models power OmniRoute's routing targets. The user communicates with Hermes, never with OmniRoute directly.**
 
 Optimize in this order:
 
 ```text
-Correctness
- ->
-Verification
- ->
-Recovery
- ->
-Persistence
- ->
-Security
- ->
-Autonomy
- ->
-Optimization
+Hermes correctness
+ -> verification
+ -> recovery
+ -> persistence
+ -> security
+ -> autonomy
+ -> model routing optimization
+ -> latency/cost optimization
 ```
-
-That ordering is essential for a trustworthy Jarvis.
