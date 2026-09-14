@@ -1,241 +1,172 @@
-# Android Client Architecture
+# Hermes Android App
 
 ## Purpose
 
-The project has **two Android APKs** that are different user interfaces for the same Hermes Agent backend.
+Hermes Android is **one APK** with two integrated interfaces:
 
-They are not two assistants.
+1. **Agent Chat** — the full visual agent workspace.
+2. **Voice Mode** — the Google-Assistant-style voice interface.
+
+They are not two assistants. Both are views of the same Hermes identity, session, memory and task state.
 
 ```text
                          USER
                            |
-              +------------+------------+
-              |                         |
-              v                         v
-     +----------------+        +-------------------+
-     | HERMES VOICE   |        | HERMES AGENT CHAT |
-     | APK            |        | APK               |
-     | Google-Assistant|       | Agentic workspace |
-     | style           |       |                   |
-     +--------+-------+        +---------+---------+
-              |                          |
-              +------------+-------------+
-                           |
-                     HTTPS / WebSocket
-                           |
-                           v
-                 +-------------------+
-                 |   HERMES AGENT    |
-                 |       KING        |
+                 +---------+---------+
+                 |   HERMES ANDROID |
+                 |      ONE APK     |
                  +---------+---------+
                            |
-                           v
-                      OMNIROUTE
-                    model power layer
+             +-------------+-------------+
+             |                           |
+       AGENT CHAT                    VOICE MODE
+       WORKSPACE                    ASSISTANT UI
+             |                           |
+             +-------------+-------------+
                            |
-                           v
-                         MODELS
+                     Hermes Gateway
+                           |
+                     HERMES AGENT
+                         KING
+                           |
+              +------------+------------+
+              |                         |
+           Agent OS                 OmniRoute
+                                      |
+                                    Models
 ```
 
-## APK 1: Hermes Voice
+## UI/UX specification
 
-A voice-first assistant intended to feel like a phone assistant.
+The complete frontend specification is now in:
 
-Primary behavior:
+`docs/android-clients/ANDROID_UI_UX.md`
 
-- Wake word / assistant invocation where Android permits it
-- Continuous conversational voice sessions
-- Streaming STT
-- Streaming Hermes responses
-- Streaming TTS
-- Barge-in and interruption
-- Very small visual UI
-- Lock-screen / system-assistant integration where supported
-- Quick spoken commands
-- Spoken progress updates for long-running tasks
-- Text fallback when voice is unavailable
+It defines the visual system, information architecture, screens, navigation, composer, voice states, task cards, plan timeline, permission UX, device-action overlay, memory, skills, settings, responsive layouts, accessibility, motion, testing and implementation order.
 
-The app should request the Android **assistant role** where appropriate. Android exposes `ROLE_ASSISTANT` and `VoiceInteractionService` specifically for system voice-interaction use cases.
-
-The selected `VoiceInteractionService` can be kept running by Android for hotwording and voice interactions, so the always-running component must remain lightweight. Heavy UI and active sessions belong in the associated voice session service.
-
-## APK 2: Hermes Agent Chat
-
-A full agentic workspace for users who want to see and control work.
-
-Primary behavior:
-
-- Chat with Hermes
-- Streaming text responses
-- Markdown/code rendering
-- Tool-call visibility
-- Task progress
-- Background job status
-- Agent/subagent status
-- Terminal output viewer
-- File browser/editor
-- Git/GitHub activity
-- Pull request and CI status
-- Approvals for sensitive actions
-- Artifacts and generated files
-- Memory and project context controls
-- Voice input/output as an optional secondary interface
-
-This APK is the **control center** for Hermes rather than a simple chatbot.
+The visual direction is Claude-inspired but original: warm editorial typography, low chrome, rounded surfaces and generous whitespace. Hermes adds visible autonomous-agent state so device actions are never silent. fileciteturn117file0L4-L10 fileciteturn117file4L8-L16
 
 ## Shared backend
 
-Both APKs use the same Hermes identity, conversation/task state and backend.
-
-They must not create separate AI brains.
-
 ```text
-Voice APK ----+
+Android APK
+  ├── Chat UI
+  └── Voice UI
+        |
+        v
+  Hermes Gateway
+        |
+        v
+    Hermes Agent
+        |
+   +----+----+
+   |         |
+ Agent OS  OmniRoute
               |
-Chat APK -----+----> Hermes Gateway
-                         |
-                         v
-                     Hermes Agent
-                         |
-              +----------+----------+
-              |                     |
-            Tools              OmniRoute
-                                  |
-                                Models
+            Models
 ```
 
-A conversation started in the voice APK can be continued in the chat APK. A task started in chat can be monitored through voice.
+The Android client calls Hermes only. OmniRoute is internal model infrastructure and is never exposed directly to the APK. The existing architecture defines Hermes as the backend authority. fileciteturn119file0
 
-## Shared identity
-
-The client authenticates as a user device/session. Hermes owns the authoritative identity and task state.
-
-Recommended identifiers:
-
-- `USER_ID`
-- `DEVICE_ID`
-- `CLIENT_ID`: `voice_android` or `agent_android`
-- `SESSION_ID`
-- `VOICE_SESSION_ID` for active voice sessions
-- `TASK_ID` for durable tasks
-
-## Shared API
-
-Both APKs should use one versioned Hermes API.
-
-Suggested channels:
+## Session continuity
 
 ```text
-HTTPS
-  - authentication
-  - conversations
-  - task state
-  - files/artifacts
-  - approvals
-  - project metadata
-
-WebSocket
-  - realtime text streaming
-  - voice session events
-  - task events
-  - tool progress
-  - connection state
+Voice
+  -> start TASK-123
+  -> open Chat
+  -> inspect TASK-123
+  -> approve action
+  -> return to Voice
+  -> receive result
 ```
 
-Do not expose OmniRoute directly to either APK.
+There is no manual conversation copying. The server owns authoritative session and task state.
 
-The Android clients call Hermes. Hermes calls OmniRoute when model inference is required.
+## Main UX
 
-## Voice APK latency target
+### Home
 
-For a normal short request:
+Sparse greeting, Quick Actions and floating composer.
 
-```text
-wake/invoke
-   -> VAD
-   -> streaming STT
-   -> Hermes
-   -> OmniRoute
-   -> model
-   -> Hermes
-   -> streaming TTS
-   -> speaker
-```
+Quick Actions:
 
-Target first playable spoken audio: <= 5 seconds.
-Hard maximum target: <= 10 seconds under normal backend availability.
+- Read screen
+- Automate task
+- Check memory
+- New skill
 
-The client must not wait for the complete model response before playback begins.
+The Hermes feature specification defines these actions for Home. fileciteturn117file5L12-L16
 
-## Android platform constraints
+### Chat
 
-Android places restrictions on background microphone and foreground-service startup. The implementation must follow the current Android permission and foreground-service rules instead of assuming an ordinary background service can always capture audio.
+- Streaming responses
+- Markdown/code
+- Attachments
+- Collapsible tool activity
+- Screen-context previews
+- Task cards
+- Plan Timeline
+- Inline permission cards
 
-For Android 14+ microphone foreground services, the app needs the appropriate microphone foreground-service declaration/permission and `RECORD_AUDIO`, and background-start restrictions apply. The selected `VoiceInteractionService` has special platform treatment for assistant scenarios.
+### Voice
 
-Therefore:
+Full-screen states:
 
-1. Prefer `VoiceInteractionService` for the true assistant integration.
-2. Keep the global voice-interaction component lightweight.
-3. Move active interaction work to the voice session/service.
-4. Use foreground-service mechanisms only where the platform policy permits them.
-5. Never attempt to bypass Android privacy restrictions.
+`connecting → listening → thinking → speaking → acting → ended`
+
+Voice uses the same Hermes session as Chat.
+
+### Agent workspace
+
+Drawer sections:
+
+- Chats
+- Projects
+- Tasks
+- Skills
+- Memory
+- Pinned
+- Recents
+
+Settings sections:
+
+- Account
+- Appearance
+- Voice
+- Skills
+- Device Permissions
+- Memory
+- Backend
+- Notifications
+- Privacy
+- Sharing
+
+## Android implementation
+
+Recommended frontend stack:
+
+- Kotlin
+- Jetpack Compose
+- Material 3
+- Material 3 Adaptive for large windows
+- Navigation Compose
+- Kotlin platform services for AccessibilityService and voice integration
+
+Android's current guidance recommends adaptive layouts for different window sizes, and Material 3 provides the current Compose design foundation. citeturn0search2turn0search10
 
 ## Security
 
-The APKs must never contain:
+The APK must never contain:
 
 - OmniRoute provider secrets
-- Model-provider API keys
-- GitHub personal access tokens
+- Model provider API keys
+- GitHub tokens
 - Server shell credentials
 - Database credentials
 - Storage encryption keys
 
-The Android apps authenticate to Hermes using short-lived credentials/session tokens. Secrets stay server-side.
-
-## Offline behavior
-
-Voice APK:
-
-- Detect offline state
-- Stop pretending a request is executing
-- Preserve unsent input locally when safe
-- Reconnect automatically
-- Resume the Hermes session when possible
-
-Chat APK:
-
-- Cache recent conversation/task metadata
-- Queue safe UI operations only when explicitly designed for offline use
-- Never fabricate task completion while disconnected
-
-## Accessibility and UX
-
-Voice APK should be usable with minimal visual interaction.
-
-Chat APK should provide:
-
-- large readable text
-- accessible controls
-- clear approval prompts
-- visible running/stopped/error states
-- explicit recording indicator
-- explicit microphone permission state
-- clear connection state
-
-## Non-goals
-
-These APKs are not separate model clients.
-
-They do not:
-
-- call OmniRoute directly
-- choose provider secrets
-- own Hermes memory
-- execute arbitrary server commands locally
-- become independent autonomous agents
+Secrets remain server-side.
 
 ## Canonical rule
 
-> **Two APKs, one Hermes Agent. The Voice APK is the voice interface. The Agent Chat APK is the visual agent workspace. Hermes remains the king. OmniRoute only powers Hermes with models.**
+> **One APK, one Hermes Agent. Chat and Voice are interfaces to the same Hermes session. Hermes remains the king. OmniRoute only powers Hermes with models.**
