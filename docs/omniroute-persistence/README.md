@@ -4,13 +4,40 @@
 
 This folder is the implementation blueprint for making OmniRoute configuration, provider connections, model routing state, credentials metadata, runtime settings, logs, and application state survive Hugging Face Space restarts and rebuilds reliably.
 
+## Architectural position
+
+**OmniRoute is a subordinate infrastructure service for Hermes Agent. Hermes is the system authority.**
+
+```text
+User
+  |
+  v
+HERMES AGENT
+  |
+  | model inference request
+  v
+OMNIROUTE
+  |
+  +--> models/providers
+  |
+  v
+HERMES AGENT
+  |
+  +--> tools / agents / memory / GitHub / server
+  |
+  v
+User
+```
+
+OmniRoute does not own the user conversation, Hermes memory, task lifecycle, tool permissions, GitHub authority, voice session, or final answer. Its purpose is to power Hermes with model/provider access, routing, fallback and routing telemetry.
+
 Target deployment:
 
 - Hugging Face Docker Space
 - Read-write Storage Bucket mounted at `/data`
-- OmniRoute running as part of the OpenCode/Hermes gateway image
+- OmniRoute running as the model gateway used by Hermes
 - OmniRoute `DATA_DIR` explicitly redirected to persistent storage
-- SQLite used as the primary transactional state store
+- SQLite used as the primary transactional state store where supported
 
 ## Problem
 
@@ -36,11 +63,32 @@ OmniRoute
 
 Hugging Face documents that normal Docker Space disk is ephemeral and that an attached Storage Bucket can provide persistent storage at runtime. OmniRoute documents `DATA_DIR` as the root for SQLite, backups, and data files. See `REFERENCES.md` for current source links.
 
+## Hermes integration rule
+
+Hermes should treat OmniRoute as a model provider/gateway. Hermes remains the public endpoint and the autonomous agent.
+
+```text
+Hermes
+  -> model request
+OmniRoute
+  -> route
+Model/provider
+  -> response
+OmniRoute
+  -> response
+Hermes
+  -> user
+```
+
+If OmniRoute is unavailable, Hermes must preserve its own durable state and execute any work that does not require model inference. Recovery and user communication remain Hermes responsibilities.
+
 ## Non-goals
 
 This program does not put secrets into Git. Hugging Face Space Secrets remain the authority for master encryption keys, JWT secrets, API authorization secrets, and other sensitive environment values.
 
 A persistent bucket is not a disaster-recovery system by itself. Backups and restore verification are therefore first-class requirements.
+
+This program does not turn OmniRoute into another autonomous agent or user-facing assistant.
 
 ## Documents
 
