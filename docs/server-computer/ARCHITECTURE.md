@@ -2,6 +2,8 @@
 
 ## 1. System topology
 
+**Hermes Agent is the king. The server computer exists to give Hermes the execution environment it needs. OmniRoute only powers Hermes with model inference.**
+
 ```text
 ┌─────────────────────────────────────────────────────────┐
 │ Client surfaces                                         │
@@ -10,34 +12,33 @@
 └──────────────────────────┬──────────────────────────────┘
                            │ HTTPS / WebSocket
 ┌──────────────────────────▼──────────────────────────────┐
-│ Realtime Gateway                                        │
+│ Hermes Voice / Gateway                                  │
 │ auth • sessions • VAD/STT/TTS • reconnect • streaming  │
 └──────────────────────────┬──────────────────────────────┘
                            │
 ┌──────────────────────────▼──────────────────────────────┐
-│ Jarvis Core / Agent OS                                  │
-│ identity • policy • specs • scheduler • task manager   │
-│ memory • traces • event bus • agent registry            │
+│ HERMES AGENT                                            │
+│                    SYSTEM KING                          │
+│ conversation • planning • tools • memory • tasks       │
+│ GitHub • terminal • browser • subagents • verification │
+│ recovery • scheduling • approvals • final responses     │
 └──────────────────────────┬──────────────────────────────┘
-                           │
-┌──────────────────────────▼──────────────────────────────┐
-│ Hermes Agent Harness                                    │
-│ tools • terminal • browser • skills • subagents        │
-│ cron • sessions • memory • execution                   │
-└──────────────────────────┬──────────────────────────────┘
-                           │ model requests
+                           │ model requests only
 ┌──────────────────────────▼──────────────────────────────┐
 │ OmniRoute                                               │
+│               MODEL POWER LAYER                         │
 │ routing • provider abstraction • model selection       │
 └──────────────────────────┬──────────────────────────────┘
                            │
                      Models / APIs
 
-Tools and state connect back to:
+Hermes tools and state connect to:
 /data/jarvis + GitHub + databases + approved external services
 ```
 
 ## 2. Agent OS primitives
+
+Agent OS is Hermes infrastructure, not a competing agent above Hermes.
 
 ### Spec
 Machine-readable task contract: objective, constraints, inputs, expected outputs, verification, deadline, approval requirements.
@@ -52,12 +53,14 @@ Policy engine determining whether an action is allowed.
 Durable facts, lessons, project knowledge, and task checkpoints.
 
 ### Pipe
-Typed communication between gateway, agents, workers, schedulers, and integrations.
+Typed communication between Hermes components, workers, schedulers, and integrations.
 
 ## 3. Trust hierarchy
 
 ```text
 Owner Policy
+    ↓
+Hermes Policy
     ↓
 Project Policy
     ↓
@@ -70,7 +73,7 @@ Tool Permission
 Actual Action
 ```
 
-A lower layer cannot grant itself authority that a higher layer denied.
+OmniRoute is outside this authority chain as an inference dependency. A model gateway cannot grant itself tool or project permissions.
 
 ## 4. Project workspace
 
@@ -95,13 +98,14 @@ SQLite files that matter must live under durable storage and must be closed clea
 ## 6. State separation
 
 ```text
-Session history      → conversation continuity
+Session history      → Hermes conversation continuity
 Hermes memory        → compact reusable facts/preferences
-Jarvis task state    → checkpoints and execution state
+Hermes task state    → checkpoints and execution state
 Project files        → Git working tree
 Artifacts            → generated outputs
 Secrets              → secret manager / Space Secrets
 Logs and traces      → durable logs with retention
+OmniRoute state      → OmniRoute persistence boundary
 ```
 
 Do not merge these categories into one giant memory file.
@@ -122,6 +126,10 @@ Recommended events:
 - approval.granted
 - approval.denied
 - task.retrying
+- model.requested
+- model.completed
+- model.failed
+- model.fallback
 - task.verification.started
 - task.verification.passed
 - task.verification.failed
@@ -158,6 +166,8 @@ Artifact/state verification
 Mark complete
 ```
 
+Hermes owns this pipeline. OmniRoute only supplies model inference when Hermes needs reasoning.
+
 ## 9. Recovery pipeline
 
 ```text
@@ -168,6 +178,7 @@ Classify
  ├─ dependency → wait/recheck
  ├─ code → diagnose/change/test
  ├─ environment → repair/rebuild
+ ├─ model gateway → retry/fallback/checkpoint
  ├─ permission → request approval
  └─ unknown → capture evidence + escalate
 ```
@@ -176,15 +187,16 @@ Repeated failure must trigger a strategy change, not infinite identical retries.
 
 ## 10. Voice integration
 
-Voice is an interface layer, never a separate task runtime.
+Voice is an interface to Hermes, never a separate task runtime.
 
 ```text
 Wake phrase
  → continuous capture
  → VAD / turn detection
  → streaming STT
- → Jarvis task/session
- → streaming model output
+ → HERMES session/task
+ → OmniRoute → model
+ → HERMES interprets/acts
  → sentence buffer
  → Kokoro TTS
  → audio playback
