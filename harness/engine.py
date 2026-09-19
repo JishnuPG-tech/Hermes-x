@@ -278,7 +278,23 @@ class HarnessEngine:
         transition_task(task, TaskStatus.COMPLETED)
         self.db.save_task(task)
 
-        # Record verified task summary in Obsidian
+        # Record verified task summary in Notion (primary) and Obsidian
+        try:
+            from harness.knowledge.notion_connector import NotionConnector
+            from harness.knowledge.models import WriteIntent
+            import uuid
+            notion_conn = NotionConnector()
+            if notion_conn.is_configured:
+                await notion_conn.write(WriteIntent(
+                    intent_id=f"w_{uuid.uuid4().hex[:8]}",
+                    source="notion",
+                    document_id="",
+                    title=f"Task: {task.objective[:50]}",
+                    content=f"## Objective\n{task.objective}\n\n## Outcome\nAll {len(subtasks)} subtasks successfully verified and completed.\n\n- Task ID: `{task.task_id}`\n- Workspace: `{task.workspace_path}`",
+                ))
+        except Exception as e:
+            print(f"[HarnessEngine] Warning: could not sync task note to Notion: {e}")
+
         try:
             artifacts = [f"Workspace: {task.workspace_path}"]
             self.obsidian.record_task_summary(
