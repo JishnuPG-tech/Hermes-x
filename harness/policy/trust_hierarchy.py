@@ -93,6 +93,47 @@ class TrustHierarchyEngine:
                 chat_id=chat_id,
             )
 
+        # ── Layer 2: Hermes Policy (Global Agent Autonomy & System Safety) ──
+        # Protects OS integrity, prevents touching raw root / OS critical dirs
+        restricted_system_paths = [
+            "/etc/shadow", "/etc/passwd", "/etc/sudoers", "/boot", "/proc", "/sys",
+            "c:\\windows\\system32", "c:/windows/system32", "c:\\windows"
+        ]
+        target_path = str(arguments.get("path") or arguments.get("filepath") or arguments.get("target") or arguments.get("command") or "").lower()
+        for rp in restricted_system_paths:
+            if rp in target_path:
+                return self._record_and_return(
+                    decision=Decision.DENY,
+                    level=level,
+                    risk=RiskLevel.CRITICAL,
+                    reason=f"[Hermes Policy] Operation touches protected system path '{rp}': access prohibited by agent safety boundary",
+                    requires_approval=False,
+                    approval_scope=None,
+                    now=now,
+                    tool_name=tool_name,
+                    arguments=arguments,
+                    task_id=task_id,
+                    chat_id=chat_id,
+                )
+
+        # ── Layer 3: Project Policy (Workspace Boundary & Jail Enforcement) ─
+        # Ensures operations with path arguments don't escape workspace with directory traversal
+        raw_path = str(arguments.get("path") or arguments.get("filepath") or arguments.get("target") or "")
+        if raw_path and ("../" in raw_path or "..\\" in raw_path):
+            return self._record_and_return(
+                decision=Decision.DENY,
+                level=level,
+                risk=RiskLevel.HIGH,
+                reason=f"[Project Policy] Directory traversal attempt detected in path '{raw_path}' for project '{project_id}': path escape prohibited",
+                requires_approval=False,
+                approval_scope=None,
+                now=now,
+                tool_name=tool_name,
+                arguments=arguments,
+                task_id=task_id,
+                chat_id=chat_id,
+            )
+
         # ── Layer 4: Task Policy (TaskContract tool constraint) ─────────
         if task_allowed_tools is not None:
             if tool_name not in task_allowed_tools and tool_name not in ("list_directory", "read_file"):

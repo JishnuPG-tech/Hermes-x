@@ -338,6 +338,60 @@ AGENT_TOOLS = [
                 "required": ["url"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_click",
+            "description": "Click on an interactive element (button, link, input) on the current browser page matching a CSS selector.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "selector": {
+                        "type": "string",
+                        "description": "CSS selector or text selector to click, e.g. '#submit-btn' or 'button:has-text(\"Login\")'."
+                    }
+                },
+                "required": ["selector"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_type",
+            "description": "Fill or type text into a form input or textarea matching a CSS selector.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "selector": {
+                        "type": "string",
+                        "description": "CSS selector for the input element, e.g. 'input[name=\"email\"]'."
+                    },
+                    "text": {
+                        "type": "string",
+                        "description": "Text content to type into the field."
+                    }
+                },
+                "required": ["selector", "text"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_screenshot",
+            "description": "Capture a screenshot of the active browser viewport for visual verification.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "output_path": {
+                        "type": "string",
+                        "description": "Optional file path to save the screenshot image PNG."
+                    }
+                }
+            }
+        }
     }
 ]
 
@@ -597,6 +651,34 @@ async def execute_tool_call(name: str, args: Dict[str, Any], chat_id: str) -> st
                 for l in res.links[:8]:
                     lines.append(f"- [{l['text']}]({l['href']})")
             return "\n".join(lines)
+
+        elif name == "browser_click":
+            sel = args.get("selector", "")
+            from harness.browser.browser_manager import get_browser_manager
+            b_mgr = get_browser_manager()
+            res = await b_mgr.click(selector=sel)
+            if res.get("status") == "success":
+                return f"Successfully clicked element '{sel}'. Current URL: `{res.get('current_url')}` (Title: {res.get('title')})"
+            return f"Browser click failed: {res.get('message')}"
+
+        elif name == "browser_type":
+            sel = args.get("selector", "")
+            val = args.get("text", "")
+            from harness.browser.browser_manager import get_browser_manager
+            b_mgr = get_browser_manager()
+            res = await b_mgr.type(selector=sel, text=val)
+            if res.get("status") == "success":
+                return f"Successfully typed text into '{sel}'."
+            return f"Browser type failed: {res.get('message')}"
+
+        elif name == "browser_screenshot":
+            out_p = args.get("output_path")
+            from harness.browser.browser_manager import get_browser_manager
+            b_mgr = get_browser_manager()
+            res = await b_mgr.screenshot(output_path=out_p)
+            if res.get("status") == "success":
+                return f"Captured viewport screenshot: `{res.get('file_path')}` (Page: {res.get('current_url')})"
+            return f"Screenshot capture failed: {res.get('message')}"
 
         else:
             return f"Error: Unknown tool '{name}'."

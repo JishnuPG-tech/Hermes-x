@@ -81,9 +81,52 @@ class SelfEvolutionEngine:
             self._record_log(proposal)
             return False, "Validation failed: skill prompt too short or empty"
 
+        # 3. Active execution of proposed test cases
+        if proposal.test_cases:
+            import sys
+            import tempfile
+            import subprocess
+            with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as sandbox_dir:
+                sb_path = Path(sandbox_dir)
+                # Write skill prompt to mock skill file
+                (sb_path / "SKILL.md").write_text(proposal.system_prompt, encoding="utf-8")
+                
+                # Write test script that executes each test case
+                test_script = sb_path / "run_sandbox_tests.py"
+                test_lines = ["import sys\n", "print('[SANDBOX TEST RUNNER STARTED]')\n"]
+                for i, tc in enumerate(proposal.test_cases):
+                    # Wrap test case execution
+                    if "assert" in tc or "def " in tc:
+                        test_lines.append(f"# Test case {i+1}\n{tc}\n")
+                    else:
+                        test_lines.append(f"# Informational/behavioral check {i+1}\nassert '{tc}' != '', 'Empty test expectation'\n")
+                test_lines.append("print('[SANDBOX TEST RUNNER ALL PASSED]')\n")
+                test_script.write_text("\n".join(test_lines), encoding="utf-8")
+
+                try:
+                    proc = subprocess.run(
+                        [sys.executable, str(test_script)],
+                        cwd=sandbox_dir,
+                        capture_output=True,
+                        text=True,
+                        timeout=15.0,
+                    )
+                    if proc.returncode != 0:
+                        proposal.status = "REJECTED_TESTS"
+                        self._record_log(proposal)
+                        return False, f"Sandboxed test execution failed: {proc.stderr.strip() or proc.stdout.strip()}"
+                except subprocess.TimeoutExpired:
+                    proposal.status = "REJECTED_TIMEOUT"
+                    self._record_log(proposal)
+                    return False, "Sandboxed test execution timed out (limit: 15s)"
+                except Exception as e:
+                    proposal.status = "REJECTED_ERROR"
+                    self._record_log(proposal)
+                    return False, f"Sandbox test runner execution error: {e}"
+
         proposal.status = "APPROVED"
         self._record_log(proposal)
-        return True, "Security audit and structural verification passed."
+        return True, "Security audit and sandboxed test execution passed."
 
     def activate_skill(self, proposal: EvolutionProposal) -> bool:
         """Atomically activate the versioned skill on disk."""

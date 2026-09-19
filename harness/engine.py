@@ -168,7 +168,7 @@ class HarnessEngine:
                 worker_results = await coordinator.execute_parallel_workers(
                     task=task,
                     ready_subtasks=ready_subtasks,
-                    worker_func=self._execute_subtask,
+                    worker_func=self._execute_worker,
                 )
 
                 # Check if any subtask requested owner approval
@@ -186,16 +186,20 @@ class HarnessEngine:
                 self.db.save_task(task)
                 await self.event_bus.emit(task.task_id, "task.failed", "harness", "error", {"error": str(e)})
 
-    async def _execute_subtask(self, task: Task, subtask: Subtask) -> bool:
+    async def _execute_worker(self, task: Task, subtask: Subtask, role: SpecialistRole) -> bool:
+        """Explicit worker executor invoked by TeamCoordinator with specialist role."""
+        return await self._execute_subtask(task, subtask, role=role)
+
+    async def _execute_subtask(self, task: Task, subtask: Subtask, role: Optional[SpecialistRole] = None) -> bool:
         """Execute a single subtask with role persona, policy guard, verification, and recovery."""
         subtask.status = TaskStatus.RUNNING
         self.db.save_subtasks([subtask])
-        role = get_role(subtask.role)
+        worker_role = role or get_role(subtask.role)
 
         await self.event_bus.emit(
             task.task_id,
             "subtask.started",
-            role.name,
+            worker_role.name,
             "running",
             {"subtask_id": subtask.subtask_id, "title": subtask.title},
         )
@@ -206,7 +210,7 @@ class HarnessEngine:
             subtask_id=subtask.subtask_id,
             step_index=step_index,
             action_type="execution",
-            action_name=f"{role.name}:{subtask.title}",
+            action_name=f"{worker_role.name}:{subtask.title}",
         )
 
         # 1. Verification command check if present
@@ -217,7 +221,7 @@ class HarnessEngine:
                 tool_name="bash_exec",
                 arguments={"command": subtask.verification_command},
                 task_id=task.task_id,
-                worker_role=role.name,
+                worker_role=worker_role.name,
                 task_allowed_tools=task.allowed_tools,
             )
             if eval_res.requires_approval:
