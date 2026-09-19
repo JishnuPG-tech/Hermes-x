@@ -321,6 +321,23 @@ AGENT_TOOLS = [
                 "required": ["query"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_navigate",
+            "description": "Navigate to any web page URL, inspect HTTP status, read title, and extract readable text and hyperlinks.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "description": "The full HTTP/HTTPS URL to navigate to."
+                    }
+                },
+                "required": ["url"]
+            }
+        }
     }
 ]
 
@@ -557,6 +574,28 @@ async def execute_tool_call(name: str, args: Dict[str, Any], chat_id: str) -> st
                 lines.append(f"- [{doc.source.upper()}] **{doc.title}** (`{doc.id}`) - Score: {round(r.score, 2)}")
                 if doc.content:
                     lines.append(f"  {doc.content.replace(chr(10), ' ')[:140]}...")
+            return "\n".join(lines)
+
+        elif name == "browser_navigate":
+            url = args.get("url", "").strip()
+            if not url.startswith("http://") and not url.startswith("https://"):
+                url = "https://" + url
+            from harness.browser.browser_manager import get_browser_manager
+            b_mgr = get_browser_manager()
+            res = await b_mgr.navigate(url)
+            from harness.security.prompt_isolation import wrap_untrusted_content
+            wrapped_text = wrap_untrusted_content(res.text_content, source_type="web_page", source_id=url)
+            lines = [
+                f"### Web Browser Navigation: {res.title}",
+                f"- **URL**: `{res.url}`",
+                f"- **HTTP Status**: `{res.status_code}`",
+                f"- **Latency**: `{res.latency_ms}ms`",
+                f"\n**Page Content:**\n{wrapped_text[:4000]}",
+            ]
+            if res.links:
+                lines.append("\n**Top Links Found:**")
+                for l in res.links[:8]:
+                    lines.append(f"- [{l['text']}]({l['href']})")
             return "\n".join(lines)
 
         else:

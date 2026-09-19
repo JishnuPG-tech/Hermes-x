@@ -85,6 +85,8 @@ class VoiceGateway:
         session = self.sessions.get_or_create_session(sid)
         cancel_event = self.tts.register_session(sid)
         turn_detector = SilenceTurnDetector()
+        from harness.voice.wake_word import WakeWordDetector
+        wake_detector = WakeWordDetector()
         audio_in_buffer = bytearray()
         active_turn_task: Optional[asyncio.Task] = None
 
@@ -113,6 +115,18 @@ class VoiceGateway:
                 if "bytes" in message and message["bytes"]:
                     # Binary PCM/Audio frame
                     raw_bytes = message["bytes"]
+                    # Wake-word detection
+                    if wake_detector.process_pcm16_chunk(raw_bytes):
+                        logger.info("Wake-word 'Hermes' detected in session %s", sid)
+                        await self._send_json(
+                            websocket,
+                            AssistantStateMessage(
+                                session_id=sid,
+                                state="listening",
+                                current_task_id=None,
+                                metrics=VoiceTimingMetrics(wake_detected_at=time.time()),
+                            ).model_dump(),
+                        )
                     audio_in_buffer.extend(raw_bytes)
                     is_turn_end = turn_detector.process_pcm16_chunk(raw_bytes)
                     if is_turn_end and len(audio_in_buffer) > 0:

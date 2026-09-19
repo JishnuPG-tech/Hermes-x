@@ -83,5 +83,15 @@ WORKFORCE_ROLES: Dict[str, SpecialistRole] = {
 }
 
 
-def get_role(role_name: str) -> SpecialistRole:
-    return WORKFORCE_ROLES.get(role_name, WORKFORCE_ROLES["Developer"])
+def get_role(role_name: str) -> Optional[SpecialistRole]:
+    if not role_name:
+        return None
+    # Direct match
+    if role_name in WORKFORCE_ROLES:
+        return WORKFORCE_ROLES[role_name]
+    # Case-insensitive / normalized match
+    norm = role_name.lower().replace("_", "").replace(" ", "")
+    for k, v in WORKFORCE_ROLES.items():
+        if k.lower().replace("_", "").replace(" ", "") == norm:
+            return v
+    return None

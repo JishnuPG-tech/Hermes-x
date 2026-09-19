@@ -162,15 +162,22 @@ class HarnessEngine:
                     await self.event_bus.emit(task.task_id, "task.failed", "harness", "error", {"reason": "DAG deadlock: no subtasks ready to execute."})
                     break
 
-                # Execute ready subtasks (sequential for safety in v1)
-                for subtask in ready_subtasks:
-                    success = await self._execute_subtask(task, subtask)
-                    if not success:
-                        if task.status == TaskStatus.WAITING_APPROVAL:
-                            # Paused waiting for owner approval
-                            return
-                        # Check retry or failure
-                        break
+                # Execute ready subtasks concurrently via TeamCoordinator
+                from harness.orchestration.team_coordinator import TeamCoordinator
+                coordinator = TeamCoordinator(max_concurrent_workers=3)
+                worker_results = await coordinator.execute_parallel_workers(
+                    task=task,
+                    ready_subtasks=ready_subtasks,
+                    worker_func=self._execute_subtask,
+                )
+
+                # Check if any subtask requested owner approval
+                if task.status == TaskStatus.WAITING_APPROVAL:
+                    return
+
+                # If any worker failed, break cycle to allow recovery
+                if any(not r.success for r in worker_results):
+                    break
 
         except Exception as e:
             print(f"[HarnessEngine] Unhandled error in task loop {task_id}: {e}")
@@ -204,21 +211,26 @@ class HarnessEngine:
 
         # 1. Verification command check if present
         if subtask.verification_command:
-            # Check policy guard before running verification command
-            try:
-                self.policy_guard.validate_action(task, "bash_exec", {"command": subtask.verification_command})
-            except PolicyViolation as pv:
-                if pv.requires_approval:
-                    task.status = TaskStatus.WAITING_APPROVAL
-                    self.db.save_task(task)
-                    subtask.status = TaskStatus.WAITING_APPROVAL
-                    self.db.save_subtasks([subtask])
-                    await self.event_bus.emit(task.task_id, "approval.requested", "policy_guard", "pending", {"approval_id": pv.approval_req.approval_id if pv.approval_req else ""})
-                    return False
-                else:
-                    subtask.status = TaskStatus.FAILED_FINAL
-                    self.db.save_subtasks([subtask])
-                    return False
+            # Check hierarchical policy guard with worker role
+            from harness.policy.trust_hierarchy import get_trust_engine
+            eval_res = get_trust_engine().evaluate(
+                tool_name="bash_exec",
+                arguments={"command": subtask.verification_command},
+                task_id=task.task_id,
+                worker_role=role.name,
+                task_allowed_tools=task.allowed_tools,
+            )
+            if eval_res.requires_approval:
+                task.status = TaskStatus.WAITING_APPROVAL
+                self.db.save_task(task)
+                subtask.status = TaskStatus.WAITING_APPROVAL
+                self.db.save_subtasks([subtask])
+                await self.event_bus.emit(task.task_id, "approval.requested", "policy_guard", "pending", {"reason": eval_res.reason})
+                return False
+            elif eval_res.decision.value == "DENY":
+                subtask.status = TaskStatus.FAILED_FINAL
+                self.db.save_subtasks([subtask])
+                return False
 
             # Run deterministic verification
             await self.event_bus.emit(task.task_id, "verification.started", "verifier", "running", {"command": subtask.verification_command})
