@@ -215,15 +215,18 @@ class HarnessEngine:
 
         # 1. Verification command check if present
         if subtask.verification_command:
-            # Check hierarchical policy guard with worker role
-            from harness.policy.trust_hierarchy import get_trust_engine
-            eval_res = get_trust_engine().evaluate(
+            # Check hierarchical policy guard with canonical AuthorizationContext
+            from harness.policy.trust_hierarchy import get_trust_engine, AuthorizationContext
+            auth_ctx = AuthorizationContext(
                 tool_name="bash_exec",
                 arguments={"command": subtask.verification_command},
+                project_id=task.project_id or "default",
+                workspace_path=task.workspace_path,
                 task_id=task.task_id,
                 worker_role=worker_role.name,
                 task_allowed_tools=task.allowed_tools,
             )
+            eval_res = get_trust_engine().evaluate_context(auth_ctx)
             if eval_res.requires_approval:
                 task.status = TaskStatus.WAITING_APPROVAL
                 self.db.save_task(task)
@@ -267,7 +270,7 @@ class HarnessEngine:
 
         # Subtask succeeded
         subtask.status = TaskStatus.COMPLETED
-        subtask.result = f"Completed successfully by {role.name}."
+        subtask.result = f"Completed successfully by {worker_role.name}."
         self.db.save_subtasks([subtask])
 
         step.status = "success"

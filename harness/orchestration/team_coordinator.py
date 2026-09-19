@@ -57,7 +57,17 @@ class TeamCoordinator:
                 role = get_role(sub.role)
                 start_t = time.time()
                 try:
-                    success = await worker_func(task, sub, role)
+                    # Isolate worker task context and workspace
+                    import copy
+                    import os
+                    from pathlib import Path
+                    worker_task = copy.deepcopy(task)
+                    if task.workspace_path:
+                        worker_ws = Path(task.workspace_path) / f".worker_{sub.subtask_id}"
+                        worker_ws.mkdir(parents=True, exist_ok=True)
+                        worker_task.workspace_path = str(worker_ws)
+
+                    success = await worker_func(worker_task, sub, role)
                     duration = time.time() - start_t
                     return WorkerResult(
                         worker_id=f"worker_{sub.subtask_id}",

@@ -93,6 +93,7 @@ class WakeWordDetector:
                     # Cooldown to prevent multi-triggering
                     if now - self._last_trigger_time > 1.5:
                         self._last_trigger_time = now
+                        self._last_candidate_buffer = bytes(self._buffer)
                         self._reset_state()
                         return True
         else:
@@ -101,6 +102,10 @@ class WakeWordDetector:
                 self._reset_state()
 
         return False
+
+    def get_candidate_buffer(self) -> bytes:
+        """Return the most recent candidate audio PCM buffer that triggered phonetic detection."""
+        return getattr(self, "_last_candidate_buffer", b"")
 
     async def verify_keyword_async(self, audio_pcm: bytes) -> bool:
         """Stage 2: Verifies candidate audio buffer against STT keywords if STT adapter is available."""

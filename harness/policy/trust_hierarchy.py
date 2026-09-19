@@ -42,12 +42,38 @@ class PolicyEvaluationResult:
     evaluated_at: float = 0.0
 
 
+@dataclass
+class AuthorizationContext:
+    """Canonical security authorization context encompassing all layers."""
+    tool_name: str
+    arguments: Dict[str, Any]
+    owner_id: str = "primary_owner"
+    project_id: str = "default"
+    workspace_path: Optional[str] = None
+    task_id: Optional[str] = None
+    worker_role: Optional[str] = None
+    chat_id: Optional[str] = None
+    task_allowed_tools: Optional[List[str]] = None
+
+
 class TrustHierarchyEngine:
     """Evaluates requested tool actions through all 6 independent trust layers."""
 
     def __init__(self, owner_id: str = "primary_owner") -> None:
         self.owner_id = owner_id
         self.audit = get_audit_logger()
+
+    def evaluate_context(self, ctx: AuthorizationContext) -> PolicyEvaluationResult:
+        """Canonical authorization entry point evaluating all 6 trust layers."""
+        return self.evaluate(
+            tool_name=ctx.tool_name,
+            arguments=ctx.arguments,
+            project_id=ctx.project_id,
+            task_id=ctx.task_id,
+            worker_role=ctx.worker_role,
+            chat_id=ctx.chat_id,
+            task_allowed_tools=ctx.task_allowed_tools,
+        )
 
     def evaluate(
         self,

@@ -49,7 +49,8 @@ RUN pip install --no-cache-dir \
     cryptography \
     edge-tts \
     huggingface_hub \
-    playwright
+    playwright && \
+    playwright install --with-deps chromium
 
 # Copy application files
 COPY gateway /app/gateway

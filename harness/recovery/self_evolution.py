@@ -103,13 +103,24 @@ class SelfEvolutionEngine:
                 test_lines.append("print('[SANDBOX TEST RUNNER ALL PASSED]')\n")
                 test_script.write_text("\n".join(test_lines), encoding="utf-8")
 
+                # Construct hardened, restricted environment for the test runner (zero secrets, zero cloud keys)
+                sandbox_env = {
+                    "PATH": os.environ.get("PATH", ""),
+                    "SYSTEMROOT": os.environ.get("SYSTEMROOT", ""),
+                    "PYTHONPATH": sandbox_dir,
+                    "PYTHONUNBUFFERED": "1",
+                    "TMPDIR": sandbox_dir,
+                    "TEMP": sandbox_dir,
+                }
+
                 try:
                     proc = subprocess.run(
                         [sys.executable, str(test_script)],
                         cwd=sandbox_dir,
+                        env=sandbox_env,
                         capture_output=True,
                         text=True,
-                        timeout=15.0,
+                        timeout=10.0,
                     )
                     if proc.returncode != 0:
                         proposal.status = "REJECTED_TESTS"

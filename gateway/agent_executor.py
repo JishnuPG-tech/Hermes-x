@@ -396,10 +396,18 @@ AGENT_TOOLS = [
 ]
 
 async def execute_tool_call(name: str, args: Dict[str, Any], chat_id: str) -> str:
-    """Execute a tool call safely and return the result string."""
-    # Enforce strict pre-execution trust hierarchy policy
-    from harness.policy.trust_hierarchy import get_trust_engine
-    policy_eval = get_trust_engine().evaluate(tool_name=name, arguments=args, chat_id=chat_id)
+    """Execute a tool call safely through the canonical trust hierarchy authorization context."""
+    from harness.policy.trust_hierarchy import get_trust_engine, AuthorizationContext
+    auth_ctx = AuthorizationContext(
+        tool_name=name,
+        arguments=args,
+        owner_id="primary_owner",
+        project_id="chat_session",
+        workspace_path=str(DEFAULT_WORKSPACE),
+        chat_id=chat_id,
+        worker_role="HermesCore",
+    )
+    policy_eval = get_trust_engine().evaluate_context(auth_ctx)
     if policy_eval.requires_approval:
         return f"[POLICY BLOCKED] Action '{name}' requires owner approval. Reason: {policy_eval.reason}"
 
