@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Hermes - Summary Sheet</title>
+<!-- Tailwind CSS CDN with plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Font definitions: Newsreader for authentic Anthropic serif, Plus Jakarta Sans for UI text -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&amp;family=Plus+Jakarta+Sans:wght@400;450;500;600&amp;display=swap" rel="stylesheet"/>
+<script data-purpose="tailwind-config">
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            serif: ['Newsreader', 'Georgia', 'serif'],
+            sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+          },
+          colors: {
+            claude: {
+              scrim: '#0e0e0d',
+              bg: '#141413',
+              sheet: '#1c1b19',
+              card: '#242320',
+              border: '#2c2a26',
+              handle: '#42403b',
+              coral: '#d97757',
+              'coral-glow': '#d9775733',
+              'text-primary': '#faf9f5',
+              'text-secondary': '#9a9890',
+              'text-muted': '#686660',
+              line: '#312f2b',
+              activeTrack: '#c96442',
+            }
+          }
+        }
+      }
+    }
+  </script>
+<!-- BEGIN: Custom Styles -->
+<style data-purpose="custom-animations">
+    @keyframes pulse-halo {
+      0%, 100% {
+        box-shadow: 0 0 0 0 rgba(217, 119, 87, 0.45);
+        transform: scale(1);
+      }
+      50% {
+        box-shadow: 0 0 0 7px rgba(217, 119, 87, 0);
+        transform: scale(1.08);
+      }
+    }
+
+    @keyframes claude-spin {
+      from {
+        transform: rotate(0deg);
+      }
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes live-shimmer {
+      0% {
+        opacity: 0.6;
+      }
+      50% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0.6;
+      }
+    }
+
+    .pulse-dot {
+      animation: pulse-halo 2.4s infinite cubic-bezier(0.4, 0, 0.6, 1);
+    }
+
+    .starburst-spin {
+      animation: claude-spin 6.5s linear infinite;
+    }
+
+    .shimmer-text {
+      animation: live-shimmer 2s ease-in-out infinite;
+    }
+
+    /* Custom thin scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 3px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #33312c;
+      border-radius: 9999px;
+    }
+  </style>
+<!-- END: Custom Styles -->
+</head>
+<body class="bg-claude-scrim text-claude-text-primary font-sans antialiased min-h-screen flex items-center justify-center p-0 select-none">
+<!-- BEGIN: Mobile Device Frame -->
+<div class="relative w-full max-w-[430px] h-[100dvh] max-h-[932px] bg-claude-bg overflow-hidden flex flex-col shadow-2xl" data-purpose="mobile-viewport">
+<!-- BEGIN: Android System Status Bar -->
+<div class="h-10 px-5 pt-1.5 flex items-center justify-between text-xs text-claude-text-secondary z-20 shrink-0 font-medium tracking-tight" data-purpose="android-status-bar">
+<div class="flex items-center space-x-1.5 font-semibold text-[13px] text-claude-text-primary">
+<span>3:59</span>
+</div>
+<div class="flex items-center space-x-2 text-[11px]">
+<!-- Transfer speed -->
+<span class="text-[10px] tracking-tight text-claude-text-muted">14.0 KB/s</span>
+<!-- VoLTE -->
+<div class="flex items-center text-[9px] font-bold px-0.5 border border-claude-text-muted/60 rounded leading-none py-[1px]">
+          Vo<span class="text-[8px] font-normal">LTE</span>
+</div>
+<!-- 5G Signal -->
+<div class="flex items-center space-x-0.5">
+<span class="text-[9px] font-bold">5G</span>
+<svg class="w-3.5 h-3.5 fill-current" viewbox="0 0 24 24">
+<path d="M12 4c4.42 0 8 3.58 8 8 0 1.57-.46 3.03-1.24 4.26L19.83 17.3c.96-1.56 1.52-3.37 1.52-5.3 0-5.52-4.48-10-10-10-2.4 0-4.6.85-6.33 2.27l1.07 1.07C7.45 4.8 9.6 4 12 4zm-8.83.17L1.75 5.59l2.84 2.84C3.6 9.68 3 10.77 3 12c0 5.52 4.48 10 10 10 1.23 0 2.32-.6 3.57-1.59l2.84 2.84 1.41-1.41L3.17 4.17zM12 20c-4.42 0-8-3.58-8-8 0-.96.22-1.87.6-2.69l10.09 10.09c-.82.38-1.73.6-2.69.6z"></path>
+</svg>
+</div>
+<!-- Battery with 51% text -->
+<div class="flex items-center space-x-1">
+<span class="text-[11px] font-medium text-claude-text-primary">51%</span>
+<div class="w-5 h-2.5 border border-claude-text-secondary/70 rounded-sm p-[1px] flex items-center">
+<div class="bg-claude-text-primary h-full w-[51%] rounded-[1px]"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- END: Android System Status Bar -->
+<!-- BEGIN: Underneath Scrim Content (Simulated Ambient App Screen) -->
+<div class="absolute inset-0 pt-10 px-5 opacity-25 pointer-events-none filter blur-[1px]" data-purpose="background-parent-content">
+<div class="flex items-center justify-between py-3">
+<div class="space-y-1">
+<div class="w-6 h-0.5 bg-white/70"></div>
+<div class="w-4 h-0.5 bg-white/70"></div>
+</div>
+<div class="flex items-center space-x-2 text-xs text-white/50">
+<span>6 Artifacts</span>
+</div>
+</div>
+<div class="mt-4 p-4 rounded-2xl bg-white/5 border border-white/5 text-sm text-claude-text-muted">
+        Ok now how to implement the animation you have provided in my android apk...
+      </div>
+<div class="mt-4 flex items-center space-x-2 text-xs text-claude-text-muted">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+<span>Building an interactive widget ...</span>
+</div>
+</div>
+<!-- END: Underneath Scrim Content -->
+<!-- BEGIN: Bottom Sheet Modal Container -->
+<div class="relative z-30 mt-14 flex-1 flex flex-col bg-claude-sheet rounded-t-[28px] shadow-[0_-12px_48px_rgba(0,0,0,0.85)] border-t border-white/[0.08] overflow-hidden" data-purpose="summary-bottom-sheet">
+<!-- Drag Handle Indicator -->
+<div class="w-full flex justify-center pt-3 pb-1 cursor-grab">
+<div class="w-10 h-1.5 bg-claude-handle rounded-full" data-purpose="bottom-sheet-drag-handle"></div>
+</div>
+<!-- BEGIN: Modal Header -->
+<header class="px-5 py-2.5 flex items-center justify-between relative border-b border-claude-border/40">
+<!-- Close Button -->
+<button aria-label="Close summary modal" class="w-8 h-8 -ml-1.5 flex items-center justify-center rounded-full text-claude-text-secondary hover:text-claude-text-primary hover:bg-white/5 transition-colors" type="button">
+<svg class="w-5 h-5 stroke-[2]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</button>
+<!-- Centered Serif Title -->
+<h1 class="font-serif text-[21px] font-medium tracking-wide text-claude-text-primary text-center absolute left-1/2 -translate-x-1/2">
+          Summary
+        </h1>
+<!-- Right Header Action (Artifact badge indicator) -->
+<div class="flex items-center space-x-1.5 bg-claude-card px-2.5 py-1 rounded-full border border-claude-border/60 text-[11px] text-claude-text-secondary">
+<span class="w-1.5 h-1.5 rounded-full bg-claude-coral"></span>
+<span class="font-medium text-claude-text-primary">6</span>
+<span class="text-[10px] text-claude-text-muted">Steps</span>
+</div>
+</header>
+<!-- END: Modal Header -->
+<!-- BEGIN: Scrollable Step Timeline -->
+<main class="flex-1 overflow-y-auto px-6 py-5 space-y-0 text-claude-text-primary" data-purpose="timeline-scroll-area">
+<!-- Timeline Item 1 (Completed) -->
+<div class="relative flex items-start space-x-4" data-purpose="timeline-step">
+<!-- Timeline Track Dot & Connecting Stem -->
+<div class="flex flex-col items-center self-stretch shrink-0 pt-1">
+<span class="w-2.5 h-2.5 rounded-full bg-claude-text-muted"></span>
+<span class="w-[1.5px] flex-1 bg-claude-line my-1.5 min-h-[36px]"></span>
+</div>
+<!-- Step Details -->
+<div class="pb-6 pt-0.5 flex-1 pr-2">
+<h2 class="font-serif text-[17px] leading-snug text-claude-text-primary font-normal">
+              Building sample animations to illustrate motion patterns.
+            </h2>
+<div class="mt-1.5 flex items-center space-x-2 text-xs text-claude-text-muted font-sans">
+<span>Completed</span>
+<span>•</span>
+<span>2 keyframes defined</span>
+</div>
+</div>
+</div>
+<!-- Timeline Item 2 (Completed) -->
+<div class="relative flex items-start space-x-4" data-purpose="timeline-step">
+<div class="flex flex-col items-center self-stretch shrink-0 pt-1">
+<span class="w-2.5 h-2.5 rounded-full bg-claude-text-muted"></span>
+<span class="w-[1.5px] flex-1 bg-claude-line my-1.5 min-h-[38px]"></span>
+</div>
+<div class="pb-6 pt-0.5 flex-1 pr-2">
+<h2 class="font-serif text-[17px] leading-snug text-claude-text-primary font-normal">
+              Drafting an Android animation implementation guide with code examples.
+            </h2>
+<p class="mt-1.5 text-xs text-claude-text-secondary leading-relaxed font-sans">
+              Extracted standard Jetpack Compose <code class="text-claude-coral/90 bg-claude-card px-1 py-0.5 rounded text-[11px]">animateFloatAsState</code> and physics spring configuration specifications.
+            </p>
+</div>
+</div>
+<!-- Timeline Item 3 (Completed Artifact creation) -->
+<div class="relative flex items-start space-x-4" data-purpose="timeline-step">
+<div class="flex flex-col items-center self-stretch shrink-0 pt-1">
+<!-- Document icon in timeline -->
+<div class="w-3.5 h-3.5 flex items-center justify-center -ml-0.5 text-claude-text-secondary">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<span class="w-[1.5px] flex-1 bg-claude-line my-1.5 min-h-[44px]"></span>
+</div>
+<div class="pb-6 pt-0 flex-1 pr-2">
+<div class="flex items-center space-x-2">
+<span class="font-serif text-[17px] text-claude-text-primary">Creating file</span>
+<span class="text-claude-text-muted font-sans text-xs">design.md</span>
+</div>
+<!-- Artifact pill badge -->
+<div class="mt-2 inline-flex items-center space-x-1.5 bg-claude-card border border-claude-border rounded-lg px-2.5 py-1 text-xs text-claude-text-secondary">
+<svg class="w-3.5 h-3.5 text-claude-coral" fill="currentColor" viewbox="0 0 20 20">
+<path d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"></path>
+</svg>
+<span class="font-mono text-[11px] text-claude-text-primary">design.md</span>
+<span class="text-[10px] text-claude-coral font-medium pl-1">Ready</span>
+</div>
+</div>
+</div>
+<!-- Timeline Item 4 (Artifact in progress) -->
+<div class="relative flex items-start space-x-4" data-purpose="timeline-step">
+<div class="flex flex-col items-center self-stretch shrink-0 pt-1">
+<div class="w-3.5 h-3.5 flex items-center justify-center -ml-0.5 text-claude-coral">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<!-- Active colored stem -->
+<span class="w-[1.5px] flex-1 bg-gradient-to-b from-claude-line via-claude-activeTrack to-claude-coral my-1.5 min-h-[38px]"></span>
+</div>
+<div class="pb-6 pt-0 flex-1 pr-2">
+<div class="flex items-center space-x-1.5">
+<span class="font-serif text-[17px] text-claude-text-primary font-normal">Creating file</span>
+<svg class="w-3.5 h-3.5 text-claude-text-muted" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<p class="mt-1 text-xs text-claude-text-muted">Writing Kotlin animation spec &amp; gesture controller</p>
+</div>
+</div>
+<!-- Timeline Item 5 (Active Live Step - 'Thinking') -->
+<div class="relative flex items-start space-x-4" data-purpose="timeline-step-active">
+<div class="flex flex-col items-center self-stretch shrink-0 pt-1.5">
+<!-- Pulsing Active Indicator -->
+<div class="relative flex items-center justify-center">
+<div class="w-2.5 h-2.5 rounded-full bg-claude-coral pulse-dot"></div>
+</div>
+<span class="w-[1.5px] flex-1 bg-dashed border-l border-dashed border-claude-line my-1.5 min-h-[50px]"></span>
+</div>
+<div class="pb-6 pt-0 flex-1 pr-1">
+<!-- Header for current active action with spinner -->
+<div class="flex items-center space-x-2.5">
+<!-- Starburst Thinking Spinner icon (Claude signature) -->
+<svg class="w-4 h-4 text-claude-coral starburst-spin" fill="currentColor" viewbox="0 0 24 24">
+<circle cx="12" cy="3" r="1.5"></circle>
+<circle cx="12" cy="21" opacity="0.3" r="1.5"></circle>
+<circle cx="3" cy="12" opacity="0.7" r="1.5"></circle>
+<circle cx="21" cy="12" opacity="0.4" r="1.5"></circle>
+<circle cx="5.63" cy="5.63" opacity="0.9" r="1.5"></circle>
+<circle cx="18.36" cy="18.36" opacity="0.2" r="1.5"></circle>
+<circle cx="5.63" cy="18.36" opacity="0.5" r="1.5"></circle>
+<circle cx="18.36" cy="5.63" opacity="0.8" r="1.5"></circle>
+</svg>
+<!-- Live Serif Title -->
+<h2 class="font-serif italic text-[19px] tracking-wide text-claude-text-primary flex items-center">
+                Thinking<span class="inline-block w-1.5 h-4 bg-claude-coral ml-1 animate-pulse"></span>
+</h2>
+</div>
+<!-- Live thought stream bubble -->
+<div class="mt-3 p-3.5 rounded-xl bg-claude-card/80 border border-claude-border text-xs leading-relaxed text-claude-text-secondary">
+<span class="text-claude-coral font-mono text-[11px] block mb-1 uppercase tracking-wider font-semibold">Live Reasoning</span>
+<p class="shimmer-text text-[13px] leading-relaxed font-sans text-claude-text-primary/90">
+                Evaluating Compose transition specs, spring physics curves, and Claude Android starburst rotation interpolation...
+              </p>
+</div>
+</div>
+</div>
+<!-- Timeline Item 6 (Pending / Final Step) -->
+<div class="relative flex items-start space-x-4 opacity-50" data-purpose="timeline-step">
+<div class="flex flex-col items-center shrink-0 pt-1.5">
+<span class="w-2 h-2 rounded-full bg-claude-line border border-claude-handle"></span>
+</div>
+<div class="pt-0 flex-1 pr-2 pb-2">
+<h3 class="font-serif text-[16px] text-claude-text-secondary font-normal">
+              Finalizing response and instructions
+            </h3>
+</div>
+</div>
+</main>
+<!-- END: Scrollable Step Timeline -->
+<!-- BEGIN: Bottom Docked Composer Bar -->
+<footer class="bg-claude-sheet px-4 pt-2 pb-3 border-t border-claude-border/50" data-purpose="docked-composer">
+<div class="bg-claude-card rounded-[22px] p-2.5 flex flex-col space-y-2 border border-claude-border/60">
+<!-- Text Placeholder -->
+<div class="px-2 pt-0.5 text-claude-text-muted text-[15px] font-normal tracking-tight">
+            Reply to Claude...
+          </div>
+<!-- Bottom Action Buttons Row inside Composer -->
+<div class="flex items-center justify-between pt-1">
+<div class="flex items-center space-x-2">
+<!-- Add / Attachment Button -->
+<button aria-label="Add attachment" class="w-8 h-8 rounded-full bg-claude-sheet border border-claude-border flex items-center justify-center text-claude-text-secondary hover:text-claude-text-primary" type="button">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M12 4v16m8-8H4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+<!-- Model Selector Pill (Sonnet 5 Low) -->
+<button class="h-8 px-3 rounded-full bg-claude-sheet border border-claude-border flex items-center space-x-1.5 text-xs text-claude-text-primary font-medium hover:border-claude-handle transition-colors" type="button">
+<span class="font-sans font-medium text-claude-text-primary">Sonnet 5</span>
+<span class="text-[11px] text-claude-text-muted font-normal">Low</span>
+</button>
+</div>
+<!-- Right Action: Active Stop Generation Square Button -->
+<button aria-label="Stop generation" class="w-8 h-8 rounded-full bg-claude-sheet border border-claude-border/80 flex items-center justify-center text-claude-text-primary hover:bg-claude-border/30 transition-all" type="button">
+<!-- Square Stop Icon -->
+<div class="w-2.5 h-2.5 rounded-[2px] bg-claude-text-primary"></div>
+</button>
+</div>
+</div>
+</footer>
+<!-- END: Bottom Docked Composer Bar -->
+<!-- BEGIN: Android 3-Button Navigation Bar -->
+<nav class="h-10 bg-claude-sheet flex items-center justify-around px-16 text-claude-text-muted shrink-0 pb-1" data-purpose="android-system-navigation">
+<!-- Recents (Hamburger / Square) -->
+<button aria-label="Recents" class="p-2 opacity-70 hover:opacity-100" type="button">
+<svg class="w-4 h-4 stroke-[2]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</button>
+<!-- Home (Rounded Square) -->
+<button aria-label="Home" class="p-2 opacity-70 hover:opacity-100" type="button">
+<div class="w-3.5 h-3.5 rounded-[3px] border-[1.8px] border-current"></div>
+</button>
+<!-- Back (Triangle) -->
+<button aria-label="Back" class="p-2 opacity-70 hover:opacity-100" type="button">
+<svg class="w-3.5 h-3.5 stroke-[1.8]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</button>
+</nav>
+<!-- END: Android 3-Button Navigation Bar -->
+</div>
+<!-- END: Bottom Sheet Modal Container -->
+</div>
+<!-- END: Mobile Device Frame -->
+</body></html>

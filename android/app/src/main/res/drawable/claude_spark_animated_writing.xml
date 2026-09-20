@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<animation-list xmlns:android="http://schemas.android.com/apk/res/android" android:oneshot="false">
+    <item
+        android:duration="125"
+        android:drawable="@drawable/claude_spark_writing1"/>
+    <item
+        android:duration="125"
+        android:drawable="@drawable/claude_spark_writing2"/>
+    <item
+        android:duration="125"
+        android:drawable="@drawable/claude_spark_writing3"/>
+    <item
+        android:duration="125"
+        android:drawable="@drawable/claude_spark_writing4"/>
+    <item
+        android:duration="125"
+        android:drawable="@drawable/claude_spark_writing5"/>
+    <item
+        android:duration="125"
+        android:drawable="@drawable/claude_spark_writing6"/>
+    <item
+        android:duration="125"
+        android:drawable="@drawable/claude_spark_writing7"/>
+    <item
+        android:duration="125"
+        android:drawable="@drawable/claude_spark_writing8"/>
+</animation-list>

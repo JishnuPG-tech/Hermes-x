@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><title>Hermes</title><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Copernicus:ital,wght@0,400;0,700;1,400&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100%;min-height:100%;margin:0;padding:0;}body{overscroll-behavior-y:none;-webkit-tap-highlight-color:transparent;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "primary-fixed-dim": "#ffb59d", "on-background": "#e5e2e0", "surface-dark-soft": "#232220", "tertiary-container": "#d87656", "surface-container-lowest": "#0e0e0d", "on-surface-variant": "#dcc1b8", "on-primary-fixed": "#390b00", "on-tertiary": "#5c1902", "outline": "#a48b84", "primary": "#ffb59d", "surface-card": "#1f1e1c", "on-primary-fixed-variant": "#7e2c0e", "error-container": "#93000a", "surface": "#131312", "secondary-fixed": "#d1e4ff", "surface-container-high": "#2a2a29", "outline-variant": "#56423c", "surface-dim": "#131312", "on-error": "#690005", "hairline": "#302f2c", "inverse-surface": "#e5e2e0", "on-surface": "#e5e2e0", "surface-tint": "#ffb59d", "tertiary-fixed": "#ffdbd0", "tertiary": "#ffb59e", "accent-warning": "#eab308", "surface-container": "#20201e", "on-primary-container": "#521400", "secondary-fixed-dim": "#9dcaff", "accent-green": "#22c55e", "secondary": "#9dcaff", "on-error-container": "#ffdad6", "text-secondary": "#8e8b82", "tertiary-fixed-dim": "#ffb59e", "inverse-primary": "#9d4324", "surface-variant": "#353533", "on-tertiary-fixed-variant": "#7a2f15", "secondary-container": "#3495e9", "inverse-on-surface": "#31302f", "text-muted": "#b0aea5", "surface-elevated": "#2a2927", "surface-container-low": "#1c1c1a", "on-tertiary-fixed": "#390b00", "on-secondary-fixed-variant": "#00497c", "surface-bright": "#3a3938", "surface-container-highest": "#353533", "accent-blue-soft": "rgba(56, 152, 236, 0.15)", "accent-danger": "#e2726e", "primary-container": "#dc7350", "on-secondary-container": "#002b4c", "ink": "#faf9f5", "on-primary": "#5d1800", "on-tertiary-container": "#521400", "on-secondary-fixed": "#001d35", "on-secondary": "#003257", "primary-fixed": "#ffdbd0", "error": "#ffb4ab", "background": "#131312" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "margin": "1rem", "gutter": "1rem", "space-sm": "0.5rem", "space-lg": "1.5rem", "space-xl": "2rem", "space-md": "1rem", "space-xs": "0.25rem" }, fontFamily: { "caption-sans": ["Inter, Roboto, sans-serif"], "display-title": ["Copernicus, Georgia, serif"], "label-md": ["Inter"], "label-sm": ["Inter"], "code": ["JetBrains Mono, monospace"], "headline-serif": ["Newsreader"], "body-sm": ["Inter"], "body-sans": ["Inter, Roboto, sans-serif"], "title-sans": ["Inter, Roboto, sans-serif"], "title-serif": ["Copernicus, Georgia, serif"] }, fontSize: { "caption-sans": ["12px", { "lineHeight": "16px", "fontWeight": "400" }], "display-title": ["28px", { "lineHeight": "36px", "fontWeight": "400" }], "label-md": ["13px", { "lineHeight": "18px", "fontWeight": "500" }], "label-sm": ["11px", { "lineHeight": "14px", "fontWeight": "600" }], "code": ["13px", { "lineHeight": "20px", "fontWeight": "400" }], "headline-serif": ["20px", { "lineHeight": "28px", "fontWeight": "400" }], "body-sm": ["13px", { "lineHeight": "20px", "fontWeight": "400" }], "body-sans": ["14px", { "lineHeight": "22px", "fontWeight": "400" }], "title-sans": ["16px", { "lineHeight": "24px", "fontWeight": "500" }], "title-serif": ["20px", { "fontWeight": "400" }] } } } };</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-sans text-body-sans text-on-surface flex flex-col min-h-screen selection:bg-primary-container selection:text-ink antialiased"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-6 px-margin flex items-center justify-between text-caption-sans font-caption-sans text-text-muted select-none"><span class="tracking-tight font-medium text-ink">12:24</span><div class="flex items-center gap-space-xs"><span class="text-[10px] tracking-wide font-medium">VoLTE</span><span class="text-[10px] font-semibold tracking-tighter">5G</span><span class="material-symbols-outlined text-[14px] leading-none">signal_cellular_alt</span><span class="material-symbols-outlined text-[14px] leading-none">wifi</span><div class="flex items-center gap-0.5 ml-0.5"><span class="text-[11px] leading-none font-medium">63%</span><span class="material-symbols-outlined text-[16px] leading-none rotate-90">battery_charging_60</span></div></div></div><div class="h-14 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><button aria-label="Open drawer" class="min-w-[44px] min-h-[44px] flex items-center justify-center -ml-space-sm rounded-full text-text-muted hover:text-ink hover:bg-surface-elevated active:bg-surface-dark-soft transition-colors"><span class="material-symbols-outlined text-[24px]">menu</span></button><h1 class="font-title-serif text-title-serif tracking-tight text-ink">Chat</h1></div><div class="flex items-center gap-space-xs"><button aria-label="New conversation" class="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full text-text-muted hover:text-ink hover:bg-surface-elevated transition-colors"><span class="material-symbols-outlined text-[20px]">edit_square</span></button><button aria-label="Account profile" class="min-w-[44px] min-h-[44px] flex items-center justify-center"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></button></div></div></header><main class="flex-1 flex flex-col relative w-full pt-20 pb-20 px-margin bg-surface max-w-3xl mx-auto"><div class="flex flex-col w-full min-w-0 select-none pb-24">
+<!-- Brand Wordmark Header -->
+<div class="flex items-center justify-between pt-2 pb-6 px-1">
+<div class="flex items-center gap-3">
+<span class="font-display-title text-[32px] leading-[36px] tracking-tight text-ink font-normal">Hermes</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-elevated text-primary text-label-sm font-label-sm tracking-wider uppercase">v3.4</span>
+</div>
+<button aria-label="Quick search conversations" class="w-10 h-10 rounded-full flex items-center justify-center text-text-muted hover:text-ink active:bg-surface-elevated transition-colors">
+<span class="material-symbols-outlined text-[22px]">search</span>
+</button>
+</div>
+<!-- Primary System Navigation Items -->
+<nav aria-label="System navigation" class="flex flex-col space-y-1 w-full">
+<!-- Chats -->
+<a class="group flex items-center justify-between w-full px-3 py-3 rounded-xl hover:bg-surface-elevated active:bg-surface-dark-soft transition-all duration-150" href="#">
+<div class="flex items-center gap-3.5 min-w-0">
+<span class="material-symbols-outlined text-[22px] text-text-muted group-hover:text-primary transition-colors">chat_bubble_outline</span>
+<span class="font-body-sans text-body-sans text-ink font-medium tracking-tight">Chats</span>
+</div>
+<div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-accent-blue-soft">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span>
+<span class="font-label-sm text-label-sm text-secondary font-medium">2 active</span>
+</div>
+</a>
+<!-- Projects -->
+<a class="group flex items-center justify-between w-full px-3 py-3 rounded-xl hover:bg-surface-elevated active:bg-surface-dark-soft transition-all duration-150" href="#">
+<div class="flex items-center gap-3.5 min-w-0">
+<span class="material-symbols-outlined text-[22px] text-text-muted group-hover:text-primary transition-colors">folder_open</span>
+<span class="font-body-sans text-body-sans text-ink font-medium tracking-tight">Projects</span>
+</div>
+<span class="font-label-sm text-label-sm text-text-muted font-normal truncate max-w-[130px]">Hermes-x (main)</span>
+</a>
+<!-- Tasks -->
+<a class="group flex items-center justify-between w-full px-3 py-3 rounded-xl bg-surface-elevated/40 hover:bg-surface-elevated active:bg-surface-dark-soft transition-all duration-150" href="#">
+<div class="flex items-center gap-3.5 min-w-0">
+<span class="material-symbols-outlined text-[22px] text-tertiary">offline_bolt</span>
+<span class="font-body-sans text-body-sans text-ink font-medium tracking-tight">Tasks</span>
+</div>
+<div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface-container-high">
+<span class="w-1.5 h-1.5 rounded-full bg-accent-warning"></span>
+<span class="font-label-sm text-label-sm text-ink font-medium">1 running</span>
+</div>
+</a>
+<!-- Agents -->
+<a class="group flex items-center justify-between w-full px-3 py-3 rounded-xl hover:bg-surface-elevated active:bg-surface-dark-soft transition-all duration-150" href="#">
+<div class="flex items-center gap-3.5 min-w-0">
+<span class="material-symbols-outlined text-[22px] text-text-muted group-hover:text-primary transition-colors">smart_toy</span>
+<span class="font-body-sans text-body-sans text-ink font-medium tracking-tight">Agents</span>
+</div>
+<span class="font-label-sm text-label-sm text-text-muted font-normal">4 online</span>
+</a>
+<!-- Terminal -->
+<a class="group flex items-center justify-between w-full px-3 py-3 rounded-xl hover:bg-surface-elevated active:bg-surface-dark-soft transition-all duration-150" href="#">
+<div class="flex items-center gap-3.5 min-w-0">
+<span class="material-symbols-outlined text-[22px] text-text-muted group-hover:text-primary transition-colors">terminal</span>
+<span class="font-body-sans text-body-sans text-ink font-medium tracking-tight">Terminal</span>
+</div>
+<div class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container">
+<span class="w-1.5 h-1.5 rounded-full bg-accent-green"></span>
+<span class="font-code text-[11px] text-text-muted tracking-tight">ec2:online</span>
+</div>
+</a>
+<!-- Artifacts -->
+<a class="group flex items-center justify-between w-full px-3 py-3 rounded-xl hover:bg-surface-elevated active:bg-surface-dark-soft transition-all duration-150" href="#">
+<div class="flex items-center gap-3.5 min-w-0">
+<span class="material-symbols-outlined text-[22px] text-text-muted group-hover:text-primary transition-colors">category</span>
+<span class="font-body-sans text-body-sans text-ink font-medium tracking-tight">Artifacts</span>
+</div>
+<span class="font-label-sm text-label-sm text-text-muted font-normal">Builds, APKs</span>
+</a>
+</nav>
+<!-- Hairline Separator Block -->
+<div class="my-5 w-full h-[1px] bg-hairline"></div>
+<!-- Pinned Section -->
+<section class="flex flex-col w-full">
+<div class="flex items-center justify-between px-3 pb-2.5">
+<h2 class="font-label-sm text-label-sm uppercase tracking-[0.14em] text-text-muted font-semibold">Pinned</h2>
+<span class="font-caption-sans text-caption-sans text-text-muted">2 threads</span>
+</div>
+<div class="flex flex-col space-y-1 w-full">
+<!-- Pinned Item 1 -->
+<a class="group flex items-start gap-3 w-full px-3 py-2.5 rounded-xl hover:bg-surface-elevated active:bg-surface-dark-soft transition-colors" href="#">
+<div class="mt-1 flex-shrink-0 flex items-center justify-center">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-green opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-accent-green"></span>
+</span>
+</div>
+<div class="flex flex-col min-w-0 flex-1">
+<span class="font-body-sans text-body-sans text-ink font-normal leading-snug truncate group-hover:text-primary transition-colors">Architecture upgrade &amp; test verification</span>
+<span class="font-caption-sans text-caption-sans text-text-muted mt-0.5">Automated benchmark daemon · 4m ago</span>
+</div>
+<span class="material-symbols-outlined text-[16px] text-text-muted opacity-0 group-hover:opacity-100 transition-opacity mt-1">push_pin</span>
+</a>
+<!-- Pinned Item 2 -->
+<a class="group flex items-start gap-3 w-full px-3 py-2.5 rounded-xl hover:bg-surface-elevated active:bg-surface-dark-soft transition-colors" href="#">
+<div class="mt-1.5 flex-shrink-0 w-2 h-2 rounded-full bg-surface-variant"></div>
+<div class="flex flex-col min-w-0 flex-1">
+<span class="font-body-sans text-body-sans text-ink font-normal leading-snug truncate group-hover:text-primary transition-colors">Resume optimization for ATS score</span>
+<span class="font-caption-sans text-caption-sans text-text-muted mt-0.5">Parsed via Latex pipeline · Yesterday</span>
+</div>
+<span class="material-symbols-outlined text-[16px] text-text-muted opacity-0 group-hover:opacity-100 transition-opacity mt-1">push_pin</span>
+</a>
+</div>
+</section>
+<!-- Hairline Separator Block -->
+<div class="my-5 w-full h-[1px] bg-hairline"></div>
+<!-- Recents Section -->
+<section class="flex flex-col w-full">
+<div class="flex items-center justify-between px-3 pb-2.5">
+<h2 class="font-label-sm text-label-sm uppercase tracking-[0.14em] text-text-muted font-semibold">Recents</h2>
+<button aria-label="Clear recents" class="font-caption-sans text-caption-sans text-text-muted hover:text-ink transition-colors">Filter</button>
+</div>
+<div class="flex flex-col space-y-0.5 w-full">
+<!-- Recent 1 -->
+<a class="group flex items-center justify-between w-full px-3 py-2.5 rounded-xl hover:bg-surface-elevated active:bg-surface-dark-soft transition-colors" href="#">
+<div class="flex items-center gap-3 min-w-0">
+<span class="material-symbols-outlined text-[18px] text-text-muted flex-shrink-0 group-hover:text-ink">forum</span>
+<span class="font-body-sans text-body-sans text-on-surface truncate">Hugging Face voice pipeline deployment</span>
+</div>
+<span class="font-caption-sans text-[11px] text-text-muted flex-shrink-0 ml-2">2h</span>
+</a>
+<!-- Recent 2 -->
+<a class="group flex items-center justify-between w-full px-3 py-2.5 rounded-xl hover:bg-surface-elevated active:bg-surface-dark-soft transition-colors" href="#">
+<div class="flex items-center gap-3 min-w-0">
+<span class="material-symbols-outlined text-[18px] text-text-muted flex-shrink-0 group-hover:text-ink">route</span>
+<span class="font-body-sans text-body-sans text-on-surface truncate">OmniRoute provider fallback diagnostics</span>
+</div>
+<span class="font-caption-sans text-[11px] text-text-muted flex-shrink-0 ml-2">5h</span>
+</a>
+<!-- Recent 3 -->
+<a class="group flex items-center justify-between w-full px-3 py-2.5 rounded-xl hover:bg-surface-elevated active:bg-surface-dark-soft transition-colors" href="#">
+<div class="flex items-center gap-3 min-w-0">
+<span class="material-symbols-outlined text-[18px] text-text-muted flex-shrink-0 group-hover:text-ink">cloud_queue</span>
+<span class="font-body-sans text-body-sans text-on-surface truncate">Free Docker hosting platforms 24/7</span>
+</div>
+<span class="font-caption-sans text-[11px] text-text-muted flex-shrink-0 ml-2">May 18</span>
+</a>
+<!-- Recent 4 -->
+<a class="group flex items-center justify-between w-full px-3 py-2.5 rounded-xl hover:bg-surface-elevated active:bg-surface-dark-soft transition-colors" href="#">
+<div class="flex items-center gap-3 min-w-0">
+<span class="material-symbols-outlined text-[18px] text-text-muted flex-shrink-0 group-hover:text-ink">shield_person</span>
+<span class="font-body-sans text-body-sans text-on-surface truncate">Agent OS permission policy configuration</span>
+</div>
+<span class="font-caption-sans text-[11px] text-text-muted flex-shrink-0 ml-2">May 16</span>
+</a>
+</div>
+</section>
+<!-- Ambient Drawer Quick Status Card -->
+<div class="mt-6 mx-1 p-3.5 rounded-2xl bg-surface-card flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-surface-elevated flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[18px]">memory</span>
+</div>
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm text-ink font-medium">Context Window</span>
+<span class="font-caption-sans text-[11px] text-text-muted">14.2k / 200k tokens consumed</span>
+</div>
+</div>
+<div class="w-12 h-1.5 rounded-full bg-surface-dark-soft overflow-hidden">
+<div class="w-[28%] h-full bg-primary rounded-full"></div>
+</div>
+</div>
+<!-- Pinned Floating Bottom Action Bar -->
+<div class="fixed bottom-16 inset-x-0 max-w-3xl mx-auto px-margin z-30 pointer-events-none">
+<div class="pointer-events-auto flex items-center justify-between p-2 rounded-2xl bg-surface-elevated/95 backdrop-blur-md shadow-[0_4px_24px_rgba(0,0,0,0.55)]">
+<!-- User Profile Circle Left -->
+<a class="flex items-center gap-3 min-w-0 pr-3 pl-1 py-1 rounded-xl hover:bg-surface-dark-soft transition-colors group" href="#">
+<div class="relative w-9 h-9 rounded-full bg-primary flex items-center justify-center text-on-primary font-display-title text-[16px] font-medium flex-shrink-0">
+          J
+          <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-accent-green ring-2 ring-surface-elevated"></span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-body-sm text-body-sm text-ink font-medium leading-tight truncate group-hover:text-primary transition-colors">Jishnu · Sovereign</span>
+<span class="font-caption-sans text-[11px] text-text-muted leading-tight truncate">Enterprise Node · tier 1</span>
+</div>
+</a>
+<!-- High-Contrast Pill CTA: New Task -->
+<button class="flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-ink text-surface-container-lowest font-label-md text-label-md font-medium tracking-tight shadow-md hover:bg-on-surface transition-all active:scale-[0.98]">
+<span class="material-symbols-outlined text-[18px]">add</span>
+<span>New task</span>
+</button>
+</div>
+</div>
+</div>
+<script>
+  (function() {
+    // Micro-interactions: brief tactile feedback on row press
+    const interactiveRows = document.querySelectorAll('nav a, section a, button');
+    interactiveRows.forEach(el => {
+      el.addEventListener('touchstart', () => {
+        el.style.opacity = '0.78';
+      }, { passive: true });
+      el.addEventListener('touchend', () => {
+        el.style.opacity = '1';
+      }, { passive: true });
+    });
+  })();
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/85 backdrop-blur-xl shadow-[0_-1px_12px_rgba(0,0,0,0.12)]" data-active-classes="text-primary font-medium"><div class="flex justify-around items-center h-14 px-space-md"><a aria-current="page" class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] transition-colors text-primary font-medium" data-path="chat" href="#"><span class="material-symbols-outlined text-[22px]">forum</span><span class="font-label-sm text-label-sm mt-0.5">Chat</span></a><a class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-text-muted hover:text-ink transition-colors" data-path="tasks" href="#"><span class="material-symbols-outlined text-[22px]">precision_manufacturing</span><span class="font-label-sm text-label-sm mt-0.5">Tasks</span></a><a class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-text-muted hover:text-ink transition-colors" data-path="artifacts" href="#"><span class="material-symbols-outlined text-[22px]">history_edu</span><span class="font-label-sm text-label-sm mt-0.5">Artifacts</span></a><a class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-text-muted hover:text-ink transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[22px]">tune</span><span class="font-label-sm text-label-sm mt-0.5">Config</span></a></div><div class="w-full flex justify-center pb-2 pt-1 pointer-events-none"><div class="w-32 h-1 rounded-full bg-on-surface/30"></div></div></nav></body></html>

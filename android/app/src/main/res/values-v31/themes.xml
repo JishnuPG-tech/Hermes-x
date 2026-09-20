@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Hermes" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowBackground">#141413</item>
+        <item name="android:windowSplashScreenBackground">#141413</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/logo_claude_splash</item>
+        <item name="android:windowSplashScreenBrandingImage">@drawable/branding_claude_splash</item>
+    </style>
+</resources>

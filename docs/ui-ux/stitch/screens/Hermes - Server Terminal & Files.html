@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><title>Hermes</title><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Copernicus:ital,wght@0,400;0,700;1,400&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100%;min-height:100%;margin:0;padding:0;}body{overscroll-behavior-y:none;-webkit-tap-highlight-color:transparent;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "primary-fixed-dim": "#ffb59d", "on-background": "#e5e2e0", "surface-dark-soft": "#232220", "tertiary-container": "#d87656", "surface-container-lowest": "#0e0e0d", "on-surface-variant": "#dcc1b8", "on-primary-fixed": "#390b00", "on-tertiary": "#5c1902", "outline": "#a48b84", "primary": "#ffb59d", "surface-card": "#1f1e1c", "on-primary-fixed-variant": "#7e2c0e", "error-container": "#93000a", "surface": "#131312", "secondary-fixed": "#d1e4ff", "surface-container-high": "#2a2a29", "outline-variant": "#56423c", "surface-dim": "#131312", "on-error": "#690005", "hairline": "#302f2c", "inverse-surface": "#e5e2e0", "on-surface": "#e5e2e0", "surface-tint": "#ffb59d", "tertiary-fixed": "#ffdbd0", "tertiary": "#ffb59e", "accent-warning": "#eab308", "surface-container": "#20201e", "on-primary-container": "#521400", "secondary-fixed-dim": "#9dcaff", "accent-green": "#22c55e", "secondary": "#9dcaff", "on-error-container": "#ffdad6", "text-secondary": "#8e8b82", "tertiary-fixed-dim": "#ffb59e", "inverse-primary": "#9d4324", "surface-variant": "#353533", "on-tertiary-fixed-variant": "#7a2f15", "secondary-container": "#3495e9", "inverse-on-surface": "#31302f", "text-muted": "#b0aea5", "surface-elevated": "#2a2927", "surface-container-low": "#1c1c1a", "on-tertiary-fixed": "#390b00", "on-secondary-fixed-variant": "#00497c", "surface-bright": "#3a3938", "surface-container-highest": "#353533", "accent-blue-soft": "rgba(56, 152, 236, 0.15)", "accent-danger": "#e2726e", "primary-container": "#dc7350", "on-secondary-container": "#002b4c", "ink": "#faf9f5", "on-primary": "#5d1800", "on-tertiary-container": "#521400", "on-secondary-fixed": "#001d35", "on-secondary": "#003257", "primary-fixed": "#ffdbd0", "error": "#ffb4ab", "background": "#131312" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "margin": "1rem", "gutter": "1rem", "space-sm": "0.5rem", "space-lg": "1.5rem", "space-xl": "2rem", "space-md": "1rem", "space-xs": "0.25rem" }, fontFamily: { "caption-sans": ["Inter, Roboto, sans-serif"], "display-title": ["Copernicus, Georgia, serif"], "label-md": ["Inter"], "label-sm": ["Inter"], "code": ["JetBrains Mono, monospace"], "headline-serif": ["Newsreader"], "body-sm": ["Inter"], "body-sans": ["Inter, Roboto, sans-serif"], "title-sans": ["Inter, Roboto, sans-serif"], "title-serif": ["Copernicus, Georgia, serif"] }, fontSize: { "caption-sans": ["12px", { "lineHeight": "16px", "fontWeight": "400" }], "display-title": ["28px", { "lineHeight": "36px", "fontWeight": "400" }], "label-md": ["13px", { "lineHeight": "18px", "fontWeight": "500" }], "label-sm": ["11px", { "lineHeight": "14px", "fontWeight": "600" }], "code": ["13px", { "lineHeight": "20px", "fontWeight": "400" }], "headline-serif": ["20px", { "lineHeight": "28px", "fontWeight": "400" }], "body-sm": ["13px", { "lineHeight": "20px", "fontWeight": "400" }], "body-sans": ["14px", { "lineHeight": "22px", "fontWeight": "400" }], "title-sans": ["16px", { "lineHeight": "24px", "fontWeight": "500" }], "title-serif": ["20px", { "fontWeight": "400" }] } } } };</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-sans text-body-sans text-on-surface flex flex-col min-h-screen selection:bg-primary-container selection:text-ink antialiased"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-6 px-margin flex items-center justify-between text-caption-sans font-caption-sans text-text-muted select-none"><span class="tracking-tight font-medium text-ink">12:24</span><div class="flex items-center gap-space-xs"><span class="text-[10px] tracking-wide font-medium">VoLTE</span><span class="text-[10px] font-semibold tracking-tighter">5G</span><span class="material-symbols-outlined text-[14px] leading-none">signal_cellular_alt</span><span class="material-symbols-outlined text-[14px] leading-none">wifi</span><div class="flex items-center gap-0.5 ml-0.5"><span class="text-[11px] leading-none font-medium">63%</span><span class="material-symbols-outlined text-[16px] leading-none rotate-90">battery_charging_60</span></div></div></div><div class="h-14 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><button aria-label="Navigate back" class="min-w-[44px] min-h-[44px] flex items-center justify-center -ml-space-sm rounded-full text-text-muted hover:text-ink hover:bg-surface-elevated transition-colors" onclick="history.back()"><span class="material-symbols-outlined text-[22px]">arrow_back</span></button><h1 class="font-title-serif text-title-serif tracking-tight text-ink">Live Execution</h1></div><div class="flex items-center gap-space-xs"><button aria-label="More options" class="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full text-text-muted hover:text-ink hover:bg-surface-elevated transition-colors"><span class="material-symbols-outlined text-[20px]">more_vert</span></button><button aria-label="Account profile" class="min-w-[44px] min-h-[44px] flex items-center justify-center"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></button></div></div></header><main class="flex-1 flex flex-col relative w-full pt-20 pb-safe px-margin bg-surface max-w-3xl mx-auto"><div class="flex flex-col w-full pb-8">
+<div class="flex items-center justify-between py-space-sm mb-space-sm">
+<div class="flex items-center gap-space-xs">
+<div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container-high">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-green opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-accent-green"></span>
+</span>
+<span class="font-code text-caption-sans text-ink">Online</span>
+<span class="text-text-muted text-[10px]">•</span>
+<span class="font-code text-caption-sans text-text-muted">/data/jarvis</span>
+</div>
+</div>
+<button aria-label="Server details" class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-text-muted hover:text-ink active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[18px]">info</span>
+</button>
+</div>
+<section class="bg-surface-card rounded-xl p-space-md shadow-sm mb-space-md">
+<div class="flex items-center justify-between pb-space-xs mb-space-xs">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-primary">dns</span>
+<span class="font-label-sm text-label-sm text-text-muted uppercase tracking-wider">Hermes Node Telemetry</span>
+</div>
+<span class="font-code text-caption-sans text-primary">US-EAST-2A</span>
+</div>
+<div class="grid grid-cols-4 gap-2 pt-1">
+<div class="flex flex-col min-w-0 bg-surface-container-low p-2 rounded-lg">
+<span class="font-label-sm text-label-sm text-text-muted truncate">CPU</span>
+<div class="flex items-baseline gap-1 mt-0.5">
+<span class="font-code text-body-sm font-semibold text-accent-warning">24%</span>
+</div>
+<div class="w-full bg-surface-container-highest h-1 rounded-full mt-1.5 overflow-hidden">
+<div class="bg-accent-warning h-full rounded-full w-[24%]"></div>
+</div>
+</div>
+<div class="flex flex-col min-w-0 bg-surface-container-low p-2 rounded-lg">
+<span class="font-label-sm text-label-sm text-text-muted truncate">RAM</span>
+<div class="flex items-baseline gap-1 mt-0.5">
+<span class="font-code text-body-sm font-semibold text-ink truncate">3.8</span>
+<span class="font-caption-sans text-[10px] text-text-muted truncate">/ 8GB</span>
+</div>
+<div class="w-full bg-surface-container-highest h-1 rounded-full mt-1.5 overflow-hidden">
+<div class="bg-primary-container h-full rounded-full w-[47%]"></div>
+</div>
+</div>
+<div class="flex flex-col min-w-0 bg-surface-container-low p-2 rounded-lg">
+<span class="font-label-sm text-label-sm text-text-muted truncate">Disk Free</span>
+<div class="flex items-baseline gap-1 mt-0.5">
+<span class="font-code text-body-sm font-semibold text-ink truncate">42 GB</span>
+</div>
+<span class="font-caption-sans text-[9px] text-secondary truncate mt-0.5">HF Bucket</span>
+</div>
+<div class="flex flex-col min-w-0 bg-surface-container-low p-2 rounded-lg">
+<span class="font-label-sm text-label-sm text-text-muted truncate">WebSocket</span>
+<div class="flex items-baseline gap-1 mt-0.5">
+<span class="font-code text-body-sm font-semibold text-accent-green">18ms</span>
+</div>
+<span class="font-caption-sans text-[9px] text-accent-green truncate mt-0.5">Optimal</span>
+</div>
+</div>
+</section>
+<section class="bg-surface-container-lowest rounded-xl shadow-md overflow-hidden flex flex-col mb-space-md">
+<div class="bg-surface-container-high px-space-md py-2.5 flex items-center justify-between select-none">
+<div class="flex items-center gap-2 min-w-0 pr-2">
+<span class="w-2.5 h-2.5 rounded-full bg-accent-danger opacity-80"></span>
+<span class="w-2.5 h-2.5 rounded-full bg-accent-warning opacity-80"></span>
+<span class="w-2.5 h-2.5 rounded-full bg-accent-green opacity-80"></span>
+<span class="font-code text-caption-sans text-text-muted truncate ml-1">hermes@server-computer:~/projects/Hermes-x <span class="text-primary">(main)</span></span>
+</div>
+<div class="flex items-center gap-1.5 shrink-0">
+<button aria-label="Clear terminal output" class="px-2 py-0.5 rounded bg-surface-variant hover:bg-surface-bright text-caption-sans font-label-sm text-text-muted hover:text-ink active:scale-95 transition-all" id="clearBtn">Clear</button>
+<button aria-label="Rollback changes" class="px-2 py-0.5 rounded bg-surface-variant hover:bg-surface-bright text-caption-sans font-label-sm text-tertiary hover:text-ink active:scale-95 transition-all" id="rollbackBtn">Rollback</button>
+</div>
+</div>
+<div class="p-space-md flex flex-col gap-1.5 font-code text-code text-text-muted overflow-x-auto min-h-[290px] max-h-[380px] overflow-y-auto" id="terminalBody">
+<div class="flex items-center gap-2 text-text-secondary">
+<span>[System Engine v4.19-rc] Session bound via secure TLS handshake.</span>
+</div>
+<div class="flex items-center gap-2 text-ink mt-1">
+<span class="text-primary font-medium">hermes@box:~$</span>
+<span>git status -s</span>
+</div>
+<div class="pl-4 text-accent-warning">
+<span>M docs/ui-ux/DESIGN_SYSTEM.md</span>
+</div>
+<div class="pl-4 text-accent-warning">
+<span>M app/src/main/java/tech/hermes/ui/chat/ChatScreen.kt</span>
+</div>
+<div class="flex items-center gap-2 text-ink mt-2">
+<span class="text-primary font-medium">hermes@box:~$</span>
+<span>./gradlew testDebugUnitTest --continue</span>
+</div>
+<div class="pl-3 text-text-muted">
+<span>&gt; Task :app:testDebugUnitTest</span>
+</div>
+<div class="pl-3 flex items-center gap-1 text-secondary">
+<span class="material-symbols-outlined text-[14px]">smart_toy</span>
+<span>[QA Agent] Visual regression test: SCREEN_2 to SCREEN_9 diff = 0.00%</span>
+</div>
+<div class="pl-3 flex items-center gap-1 text-accent-green">
+<span class="material-symbols-outlined text-[14px]">verified_user</span>
+<span>[Security Agent] Vault scan: 0 hardcoded credentials detected.</span>
+</div>
+<div class="pl-3 text-accent-green font-medium">
+<span>BUILD SUCCESSFUL in 14s</span>
+</div>
+<div class="flex items-center gap-2 text-ink mt-2" id="promptRow">
+<span class="text-primary font-medium">hermes@box:~$</span>
+<span class="text-ink" id="terminalBuffer"></span>
+<span class="inline-block w-2 h-4 bg-primary-container animate-pulse"></span>
+</div>
+</div>
+</section>
+<div class="flex flex-col gap-space-sm mb-space-lg">
+<div class="flex items-center justify-between px-0.5">
+<span class="font-label-sm text-label-sm text-text-muted uppercase tracking-wider">Quick Commands</span>
+<span class="font-caption-sans text-caption-sans text-text-secondary">Tap to dispatch</span>
+</div>
+<div class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+<button class="shrink-0 px-3 py-1.5 rounded-full bg-surface-card hover:bg-surface-elevated active:scale-95 transition-all text-text-muted hover:text-ink font-code text-caption-sans shadow-sm flex items-center gap-1.5" onclick="injectCommand('git diff')">
+<span class="material-symbols-outlined text-[14px] text-primary">difference</span>
+<span>git diff</span>
+</button>
+<button class="shrink-0 px-3 py-1.5 rounded-full bg-surface-card hover:bg-surface-elevated active:scale-95 transition-all text-text-muted hover:text-ink font-code text-caption-sans shadow-sm flex items-center gap-1.5" onclick="injectCommand('git log -n 5')">
+<span class="material-symbols-outlined text-[14px] text-secondary">history</span>
+<span>git log -n 5</span>
+</button>
+<button class="shrink-0 px-3 py-1.5 rounded-full bg-surface-card hover:bg-surface-elevated active:scale-95 transition-all text-text-muted hover:text-ink font-code text-caption-sans shadow-sm flex items-center gap-1.5" onclick="injectCommand('checkpoint create')">
+<span class="material-symbols-outlined text-[14px] text-tertiary">bookmark_add</span>
+<span>checkpoint create</span>
+</button>
+<button class="shrink-0 px-3 py-1.5 rounded-full bg-surface-card hover:bg-surface-elevated active:scale-95 transition-all text-text-muted hover:text-ink font-code text-caption-sans shadow-sm flex items-center gap-1.5" onclick="injectCommand('restart worker')">
+<span class="material-symbols-outlined text-[14px] text-accent-warning">restart_alt</span>
+<span>restart worker</span>
+</button>
+</div>
+</div>
+<form class="relative flex items-center w-full bg-surface-elevated rounded-full shadow-lg px-space-md py-1.5 gap-2" id="commandForm" onsubmit="handleCommandSubmit(event)">
+<div class="flex items-center justify-center text-primary font-code text-title-sans font-bold select-none pl-1">
+      $
+    </div>
+<input autocomplete="off" class="flex-1 bg-transparent font-code text-body-sm text-ink placeholder-text-secondary focus:outline-none py-2" id="terminalInput" placeholder="Run command via Hermes authority..." spellcheck="false" type="text"/>
+<button aria-label="Send command" class="w-9 h-9 rounded-full bg-primary-container text-ink flex items-center justify-center shrink-0 hover:opacity-90 active:scale-90 transition-transform shadow-sm" type="submit">
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</form>
+</div>
+<script>
+  function injectCommand(cmd) {
+    const input = document.getElementById('terminalInput');
+    if (!input) return;
+    input.value = cmd;
+    input.focus();
+  }
+
+  function handleCommandSubmit(e) {
+    e.preventDefault();
+    const input = document.getElementById('terminalInput');
+    const term = document.getElementById('terminalBody');
+    const promptRow = document.getElementById('promptRow');
+    if (!input || !term || !promptRow) return;
+
+    const val = input.value.trim();
+    if (!val) return;
+
+    const cmdRow = document.createElement('div');
+    cmdRow.className = 'flex items-center gap-2 text-ink mt-2';
+    cmdRow.innerHTML = `<span class="text-primary font-medium">hermes@box:~$</span><span>${escapeHtml(val)}</span>`;
+    term.insertBefore(cmdRow, promptRow);
+
+    const outRow = document.createElement('div');
+    outRow.className = 'pl-3 font-code text-caption-sans';
+
+    if (val === 'clear') {
+      clearTerminal();
+      input.value = '';
+      return;
+    } else if (val === 'git diff') {
+      outRow.className += ' text-secondary';
+      outRow.innerHTML = `diff --git a/DESIGN_SYSTEM.md b/DESIGN_SYSTEM.md<br/>--- a/DESIGN_SYSTEM.md<br/>+++ b/DESIGN_SYSTEM.md<br/><span class="text-accent-green">+ * Added Terminal telemetry specs</span>`;
+    } else if (val === 'restart worker') {
+      outRow.className += ' text-accent-warning';
+      outRow.innerHTML = `[Worker 0] Graceful shutdown initiated...<br/>[Worker 0] Hermes orchestrator restarted (PID 8820).`;
+    } else if (val === 'checkpoint create') {
+      outRow.className += ' text-accent-green';
+      outRow.innerHTML = `[Checkpoint] State snapshot saved to s3://hermes-hf/ckpt_09128.h5`;
+    } else {
+      outRow.className += ' text-text-muted';
+      outRow.innerHTML = `Dispatched to Hermes task runner: "${escapeHtml(val)}" [exit code 0]`;
+    }
+
+    term.insertBefore(outRow, promptRow);
+    input.value = '';
+    term.scrollTop = term.scrollHeight;
+  }
+
+  function clearTerminal() {
+    const term = document.getElementById('terminalBody');
+    const promptRow = document.getElementById('promptRow');
+    if (!term || !promptRow) return;
+    term.innerHTML = '';
+    term.appendChild(promptRow);
+  }
+
+  document.getElementById('clearBtn')?.addEventListener('click', clearTerminal);
+  document.getElementById('rollbackBtn')?.addEventListener('click', () => {
+    injectCommand('git checkout -- .');
+  });
+
+  function escapeHtml(str) {
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+  }
+</script></main><div class="fixed bottom-0 w-full z-50 pointer-events-none pb-safe"><div class="w-full flex justify-center pb-2 pt-1"><div class="w-32 h-1 rounded-full bg-on-surface/30"></div></div></div></body></html>

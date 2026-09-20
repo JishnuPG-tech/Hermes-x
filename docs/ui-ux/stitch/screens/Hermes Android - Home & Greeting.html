@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Hermes Android - Home &amp; Greeting</title>
+<!-- Tailwind CSS CDN with forms and container queries -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            hermesDark: '#141413',
+            hermesCard: '#1f1e1c',
+            hermesInner: '#272624',
+            hermesBorder: '#2e2d2a',
+            hermesTextOffWhite: '#faf9f5',
+            hermesMuted: '#8e8b82',
+            hermesCoral: '#d97757',
+            hermesPurple: '#b392f0'
+          },
+          fontFamily: {
+            serifHeading: ['Georgia', 'Copernicus', 'Tiempos Headline', 'serif'],
+            sansUI: ['Inter', 'system-ui', '-apple-system', 'Roboto', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+<style data-purpose="custom-typography">
+    /* Exact font rendering refinements matching Android dark mode client */
+    body {
+      background-color: #141413;
+      color: #faf9f5;
+      font-family: 'Inter', system-ui, -apple-system, Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .font-greeting {
+      font-family: 'Georgia', 'Copernicus', 'Tiempos Headline', serif;
+      letter-spacing: -0.015em;
+    }
+  </style>
+</head>
+<body class="bg-[#141413] flex flex-col justify-between min-h-screen w-full overflow-hidden antialiased select-none">
+<!-- BEGIN: AndroidStatusBar -->
+<!-- Top Android system status bar matching 12:23 clock, data rate, VoLTE, 5G, and 64% battery -->
+<aside class="w-full pt-2 px-5 pb-1 flex items-center justify-between text-[11px] font-medium text-stone-300 z-50 tracking-tight" data-purpose="android-status-bar">
+<!-- Clock left aligned -->
+<div class="flex items-center space-x-1">
+<span class="text-xs font-semibold tracking-normal text-stone-200">12:23</span>
+</div>
+<!-- Network, VoLTE, 5G & Battery indicators right aligned -->
+<div class="flex items-center space-x-2 text-[10px] text-stone-300">
+<!-- Network upload/download speed -->
+<div class="flex flex-col leading-none text-[8.5px] items-end font-mono">
+<span class="opacity-90">1.40</span>
+<span class="opacity-70 text-[7.5px]">MB/s</span>
+</div>
+<!-- VoLTE icon -->
+<span class="px-0.5 py-[1px] border border-stone-400 rounded-[2px] text-[7px] font-bold tracking-tighter leading-none">VoLTE</span>
+<!-- 5G icon with signal bars -->
+<div class="flex items-center space-x-0.5">
+<span class="text-[8.5px] font-bold">5G</span>
+<!-- Cellular bars -->
+<svg class="w-3.5 h-3.5 fill-stone-300" viewbox="0 0 24 24">
+<path d="M2 22h20V2L2 22z"></path>
+</svg>
+</div>
+<!-- Battery percentage and capsule -->
+<div class="flex items-center space-x-1">
+<svg class="w-4 h-2.5 stroke-stone-300 fill-none" stroke-width="2" viewbox="0 0 24 12">
+<rect height="10" rx="2" width="20" x="1" y="1"></rect>
+<rect fill="#faf9f5" height="6" width="12" x="3" y="3"></rect>
+<path d="M22 4v4" stroke-linecap="round"></path>
+</svg>
+<span class="text-[10px] font-semibold">64%</span>
+</div>
+</div>
+</aside>
+<!-- END: AndroidStatusBar -->
+<!-- BEGIN: HermesAppBar -->
+<!-- Top App Bar with navigation drawer button (left) and incognito/ghost button (right) -->
+<header class="w-full px-5 py-2.5 flex items-center justify-between z-40" data-purpose="app-bar">
+<!-- Drawer Toggle Hamburger (3 horizontal lines) -->
+<button aria-label="Open navigation drawer" class="p-1 -ml-1 text-[#faf9f5] opacity-90 active:opacity-50 transition-opacity" type="button">
+<svg class="w-6 h-6 stroke-current" fill="none" stroke-linecap="round" stroke-width="2" viewbox="0 0 24 24">
+<line x1="3" x2="21" y1="7" y2="7"></line>
+<line x1="3" x2="21" y1="12" y2="12"></line>
+<line x1="3" x2="21" y1="17" y2="17"></line>
+</svg>
+</button>
+<!-- Ghost / Incognito Profile Icon -->
+<button aria-label="Incognito and settings profile" class="p-1 -mr-1 text-[#faf9f5] opacity-90 active:opacity-50 transition-opacity" type="button">
+<svg class="w-6 h-6 stroke-current fill-none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewbox="0 0 24 24">
+<!-- Incognito ghost outline icon matching Android client -->
+<path d="M12 3a7 7 0 0 0-7 7c0 2.8 1.4 5.3 1.5 8l1.5-1 2 1.5 2-1.5 2 1.5 2-1.5 1.5 1c.1-2.7 1.5-5.2 1.5-8a7 7 0 0 0-7-7z"></path>
+<circle cx="9" cy="10" fill="currentColor" r="1"></circle>
+<circle cx="15" cy="10" fill="currentColor" r="1"></circle>
+</svg>
+</button>
+</header>
+<!-- END: HermesAppBar -->
+<!-- BEGIN: MainHeroGreeting -->
+<!-- Main vertical space displaying centered official Hermes Agent vector logo & serif greeting -->
+<main class="flex-1 flex flex-col items-center justify-center -mt-16 px-6 text-center" data-purpose="center-hero-greeting">
+<!-- Hermes Official Terracotta Coral Vector Mark -->
+<div class="mb-4 flex items-center justify-center" data-purpose="hermes-logo-container">
+<img alt="Hermes Agent" class="w-14 h-14 object-contain mx-auto mb-5" src="https://lh3.googleusercontent.com/aida/AEtjO1X91c0knfGrsDaEZMzrrDdaO8hIKH2N52uqlZsmJVVqUOqTs109m5Mmoaypx-lxqO30623_Pig-cdxAxdsnnPoB0e8HUxutM2mMU9bI28XD3-_p0Pd-mZIfHk72Dv7NZAmI-6DcMSrY7e_tu5XfDpsgaoAJXV8k1QX-hHGdVhlg4Zwj4ELG1eT9-PUgUtHeK6_LIud13MlSWMiPeI1A8vxFaiwSv4KpYk5V2XDxnGqOiuUfKJCpRK0VPAE"/>
+</div>
+<!-- Serif Greeting Headline -->
+<h1 class="font-greeting text-[27px] sm:text-[30px] font-normal leading-tight text-[#faf9f5] tracking-tight" data-purpose="greeting-headline">
+      Good afternoon, Jishnu
+    </h1>
+</main>
+<!-- END: MainHeroGreeting -->
+<!-- BEGIN: BottomDockedComposer -->
+<!-- Floating bottom composer card with Pro upsell, prompt input, and voice interaction controls -->
+<section class="w-full px-4 pb-3 flex flex-col items-center" data-purpose="bottom-interaction-container">
+<!-- Elevated Composer Card Container -->
+<div class="w-full max-w-lg bg-[#1f1e1c] border border-[#2e2d2a] rounded-[28px] p-3.5 shadow-2xl flex flex-col space-y-3.5">
+<!-- Upsell Strip (Claude/Hermes Pro Banner) -->
+<aside class="w-full bg-[#272624]/60 rounded-2xl px-4 py-2.5 flex items-center justify-between border border-[#32312d]/50" data-purpose="pro-upsell-banner">
+<span class="text-[13px] font-normal text-stone-300">Get more with Claude Pro</span>
+<a class="text-[13px] font-medium text-[#b392f0] active:text-[#c4a9f5] transition-colors" href="#upgrade">
+          Upgrade to Pro
+        </a>
+</aside>
+<!-- Input Placeholder Text -->
+<div class="px-2 pt-1 pb-1.5 cursor-text" data-purpose="composer-input-placeholder">
+<p class="text-[17px] text-[#8e8b82] font-normal select-none">
+          Chat with Claude...
+        </p>
+</div>
+<!-- Action Row: Attachment button, Model picker, Mic dictation, Voice call button -->
+<div class="flex items-center justify-between pt-1" data-purpose="composer-action-bar">
+<!-- Left group: Add button + Model Selection Badge -->
+<div class="flex items-center space-x-2">
+<!-- '+' Add attachment circle button -->
+<button aria-label="Attach file or image" class="w-9 h-9 rounded-full bg-[#2a2927] hover:bg-[#333230] text-[#faf9f5] flex items-center justify-center transition-colors" type="button">
+<svg class="w-5 h-5 stroke-current" fill="none" stroke-linecap="round" stroke-width="2" viewbox="0 0 24 24">
+<line x1="12" x2="12" y1="5" y2="19"></line>
+<line x1="5" x2="19" y1="12" y2="12"></line>
+</svg>
+</button>
+<!-- Model Switcher Pill -->
+<button aria-label="Select AI Model" class="h-9 px-3.5 rounded-full bg-[#2a2927] hover:bg-[#333230] border border-[#343330]/40 text-[#faf9f5] text-[13px] font-normal flex items-center space-x-1 transition-colors" type="button">
+<span>Sonnet 5</span>
+<span class="text-[#8e8b82] text-[12px] font-normal ml-0.5">Low</span>
+</button>
+</div>
+<!-- Right group: Microphone dictation & Voice call audio pill -->
+<div class="flex items-center space-x-2.5">
+<!-- Dictation microphone icon button -->
+<button aria-label="Dictate prompt" class="w-9 h-9 rounded-full text-stone-300 hover:text-white flex items-center justify-center transition-colors" type="button">
+<svg class="w-5 h-5 stroke-current fill-none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewbox="0 0 24 24">
+<rect height="11" rx="3" width="6" x="9" y="3"></rect>
+<path d="M5 10a7 7 0 0 0 14 0"></path>
+<line x1="12" x2="12" y1="17" y2="21"></line>
+</svg>
+</button>
+<!-- Filled white circle with audio soundwave bars for direct real-time voice mode -->
+<button aria-label="Start voice conversation" class="w-10 h-10 rounded-full bg-[#faf9f5] hover:bg-white text-[#141413] flex items-center justify-center shadow-lg active:scale-95 transition-transform" type="button">
+<svg class="w-5 h-5 fill-current" viewbox="0 0 24 24">
+<!-- Soundwave waveform visualization -->
+<rect height="6" rx="1" width="2" x="5" y="9"></rect>
+<rect height="12" rx="1" width="2" x="9.5" y="6"></rect>
+<rect height="6" rx="1" width="2" x="14" y="9"></rect>
+<rect height="3" rx="1" width="2" x="18.5" y="10.5"></rect>
+</svg>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- END: BottomDockedComposer -->
+<!-- BEGIN: AndroidNavigationBar -->
+<!-- Classic 3-button Android system navigation bar at the screen footer -->
+<nav class="w-full h-11 px-12 flex items-center justify-between text-stone-500 opacity-60" data-purpose="android-system-navigation">
+<!-- Recents button (3 vertical bars) -->
+<button aria-label="Recent apps" class="p-2 active:opacity-40" type="button">
+<svg class="w-4 h-4 stroke-current" fill="none" stroke-linecap="round" stroke-width="2" viewbox="0 0 24 24">
+<line x1="6" x2="6" y1="5" y2="19"></line>
+<line x1="12" x2="12" y1="5" y2="19"></line>
+<line x1="18" x2="18" y1="5" y2="19"></line>
+</svg>
+</button>
+<!-- Home button (rounded square) -->
+<button aria-label="Go home" class="p-2 active:opacity-40" type="button">
+<div class="w-3.5 h-3.5 rounded-[4px] border-2 border-current"></div>
+</button>
+<!-- Back button (chevron left) -->
+<button aria-label="Back" class="p-2 active:opacity-40" type="button">
+<svg class="w-4 h-4 stroke-current" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" viewbox="0 0 24 24">
+<polyline points="15 18 9 12 15 6"></polyline>
+</svg>
+</button>
+</nav>
+<!-- END: AndroidNavigationBar -->
+</body></html>

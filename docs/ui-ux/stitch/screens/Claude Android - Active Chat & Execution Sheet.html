@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Hermes Android App UI</title>
+<!-- Tailwind CSS CDN with plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script data-purpose="tailwind-config">
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            claude: {
+              bg: '#141413',
+              card: '#1e1d1b',
+              surface: '#262523',
+              bubble: '#252422',
+              pill: '#2d2c29',
+              coral: '#d97757',
+              coralDark: '#c96442',
+              textWarm: '#faf9f5',
+              textMuted: '#94918b',
+              textSubtle: '#686660',
+              border: '#2e2d2a'
+            }
+          },
+          fontFamily: {
+            serif: ['Newsreader', 'Georgia', 'Cambria', 'Times New Roman', 'serif'],
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif']
+          }
+        }
+      }
+    };
+  </script>
+<style data-purpose="custom-fonts">
+    @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Inter:wght@400;450;500;600&display=swap');
+  </style>
+<style data-purpose="animations-and-effects">
+    /* Subtle breathing and spin for Claude asterisk */
+    @keyframes spinClockwise {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .animate-claude-spin {
+      animation: spinClockwise 11s linear infinite;
+    }
+
+    /* Thinking text shimmer effect seen in Anthropic apps */
+    @keyframes shimmerWave {
+      0% { opacity: 0.35; }
+      50% { opacity: 1; }
+      100% { opacity: 0.35; }
+    }
+    .shimmer-active {
+      display: inline-block;
+      animation: shimmerWave 2s ease-in-out infinite;
+    }
+    .shimmer-char {
+      animation: shimmerWave 1.6s ease-in-out infinite;
+    }
+    .shimmer-delay-1 { animation-delay: 0.2s; }
+    .shimmer-delay-2 { animation-delay: 0.4s; }
+    .shimmer-delay-3 { animation-delay: 0.6s; }
+
+    /* Custom scrollbar hiding */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="bg-[#141413] text-[#faf9f5] font-sans antialiased m-0 p-0 flex justify-center items-center min-h-screen select-none">
+<!-- BEGIN: MobileDeviceContainer -->
+<!-- Outer viewport wrapper simulating exact Android display ratio and bezels -->
+<div class="w-full max-w-[430px] h-[920px] bg-[#141413] flex flex-col relative overflow-hidden shadow-2xl border border-[#2a2927]/60 md:rounded-[44px]" data-purpose="device-frame">
+<!-- BEGIN: AndroidStatusBar -->
+<header class="w-full h-11 pt-2 px-5 flex justify-between items-center text-xs font-medium text-[#d4d1cb] z-30 tracking-tight shrink-0" data-purpose="android-status-bar">
+<!-- Left side: Clock -->
+<div class="flex items-center text-[13px] font-medium tracking-normal text-[#f0ede6]">
+        3:59
+      </div>
+<!-- Right side: Network, Signal, Battery indicators -->
+<div class="flex items-center space-x-2 text-[11px]">
+<div class="flex items-center gap-0.5 text-[10px] text-[#9a9790] font-mono leading-none mr-1">
+<span class="flex flex-col text-[8px] items-center mr-0.5">
+<svg class="w-2.5 h-2.5 text-[#9a9790]" fill="none" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>
+</span>
+<span>14.0</span>
+<span class="text-[8px] text-[#7d7a74]">KB/S</span>
+</div>
+<span class="text-[10px] px-0.5 py-[1px] font-semibold tracking-wider text-[#b8b5ae]">Vo<span class="text-[8px] tracking-tight">LTE</span></span>
+<!-- 5G indicator -->
+<span class="text-[11px] font-bold tracking-tight text-[#e0ddd5]">5G</span>
+<!-- Cellular Signal Icon -->
+<svg class="w-3.5 h-3.5 fill-[#d4d1cb]" viewbox="0 0 24 24">
+<path d="M2 22h20V2L2 22z"></path>
+</svg>
+<!-- Battery Icon & Percentage -->
+<div class="flex items-center space-x-1">
+<div class="w-4 h-2.5 border border-[#c4c1b9] rounded-sm p-[1px] relative flex items-center">
+<div class="h-full w-[51%] bg-[#d4d1cb] rounded-xs"></div>
+<div class="absolute -right-1 w-0.5 h-1 bg-[#c4c1b9] rounded-r-xs"></div>
+</div>
+<span class="text-[10px] font-normal text-[#c4c1b9]">51%</span>
+</div>
+</div>
+</header>
+<!-- END: AndroidStatusBar -->
+<!-- BEGIN: TopBarNav -->
+<div class="w-full px-4 pt-1 pb-2 flex items-center justify-between shrink-0 z-20" data-purpose="app-navigation-bar">
+<!-- Hamburger Menu -->
+<button aria-label="Menu" class="p-1 text-[#d4d1cb] hover:text-white transition-colors focus:outline-none">
+<svg class="w-6 h-6 stroke-[1.75]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</button>
+<div class="flex-1"></div>
+</div>
+<!-- END: TopBarNav -->
+<!-- BEGIN: ScrollableChatStream -->
+<main class="flex-1 overflow-y-auto px-4 pb-4 space-y-4 no-scrollbar" data-purpose="chat-history-scroll">
+<!-- Previous Claude Response Section (Scrolled partial view) -->
+<div class="pt-1" data-purpose="previous-response-block">
+<div class="text-[#494743] font-serif text-lg leading-snug truncate select-none">
+          to screenshot and rebuild...
+        </div>
+<!-- Header row with Leaked Spec and Artifact pill -->
+<div class="flex items-center justify-between mt-1 mb-2">
+<h2 class="font-serif text-[22px] text-[#faf9f5] font-normal tracking-tight">
+            leaked spec.
+          </h2>
+<!-- Artifact pill chip -->
+<div class="inline-flex items-center px-3 py-1 rounded-full bg-[#201f1d] border border-[#33312c] text-xs text-[#c8c5bd] font-normal" data-purpose="artifact-pill">
+            6 Artifacts
+          </div>
+</div>
+<!-- Action icons bar -->
+<div class="flex items-center space-x-5 py-1 text-[#8f8c85]" data-purpose="response-action-buttons">
+<!-- Copy icon -->
+<button aria-label="Copy" class="hover:text-white transition-colors">
+<svg class="w-[17px] h-[17px] stroke-[1.6]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<rect height="12" rx="2" width="12" x="9" y="9"></rect>
+<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+</svg>
+</button>
+<!-- Play / Audio icon -->
+<button aria-label="Listen" class="hover:text-white transition-colors">
+<svg class="w-[17px] h-[17px] stroke-[1.6]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<polygon points="5 3 19 12 5 21 5 3"></polygon>
+</svg>
+</button>
+<!-- Thumbs Up -->
+<button aria-label="Helpful" class="hover:text-white transition-colors">
+<svg class="w-[17px] h-[17px] stroke-[1.6]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M7 10v12M15 10.5V6a3 3 0 0 0-3-3l-4 7h-1v12h12.5a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H15z"></path>
+</svg>
+</button>
+<!-- Thumbs Down -->
+<button aria-label="Unhelpful" class="hover:text-white transition-colors">
+<svg class="w-[17px] h-[17px] stroke-[1.6]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M17 14V2M9 13.5V18a3 3 0 0 0 3 3l4-7h1V2H4.5a2 2 0 0 0-2 1.7L1.12 12.7a2 2 0 0 0 2 2.3H9z"></path>
+</svg>
+</button>
+</div>
+</div>
+<!-- BEGIN: UserMessageBubble -->
+<article class="bg-[#242321] rounded-[22px] px-4 py-3.5 text-[#edeae3] text-[15px] leading-[1.38] font-normal tracking-normal shadow-sm" data-purpose="user-prompt-card">
+        Ok now how to implement in my android apk the animation you have provided can you write the design.md file for this
+      </article>
+<!-- END: UserMessageBubble -->
+<!-- BEGIN: ActiveTaskIndicator -->
+<div class="pt-2 space-y-4" data-purpose="execution-indicators">
+<!-- Collapsible File creation pill row -->
+<button class="flex items-center space-x-2 text-[#9f9c94] text-sm hover:text-[#d4d1cb] transition-colors group">
+<!-- File with Plus Icon -->
+<svg class="w-4 h-4 text-[#8a8780] group-hover:text-white transition-colors stroke-[1.7]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+<polyline points="14 2 14 8 20 8"></polyline>
+<line x1="12" x2="12" y1="18" y2="12"></line>
+<line x1="9" x2="15" y1="15" y2="15"></line>
+</svg>
+<span class="font-normal text-[#9b9890]">Creating file</span>
+<svg class="w-3.5 h-3.5 text-[#6c6a63] group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" stroke-width="2.2" viewbox="0 0 24 24">
+<polyline points="9 18 15 12 9 6"></polyline>
+</svg>
+</button>
+<!-- Spinner & "Still working on it..." status -->
+<div class="flex items-center space-x-3.5 py-1">
+<!-- Claude Sunburst/Asterisk Logo Mark animated -->
+<div class="relative w-6 h-6 flex items-center justify-center animate-claude-spin">
+<svg class="w-6 h-6 text-[#d97757]" fill="currentColor" viewbox="0 0 24 24">
+<!-- Geometric 12-arm sunburst/asterisk as in Claude design system -->
+<g stroke="currentColor" stroke-linecap="round" stroke-width="1.8">
+<line x1="12" x2="12" y1="2" y2="6"></line>
+<line x1="12" x2="12" y1="18" y2="22"></line>
+<line x1="4.93" x2="7.76" y1="4.93" y2="7.76"></line>
+<line x1="16.24" x2="19.07" y1="16.24" y2="19.07"></line>
+<line x1="2" x2="6" y1="12" y2="12"></line>
+<line x1="18" x2="22" y1="12" y2="12"></line>
+<line x1="4.93" x2="7.76" y1="19.07" y2="16.24"></line>
+<line x1="16.24" x2="19.07" y1="7.76" y2="4.93"></line>
+</g>
+</svg>
+</div>
+<!-- Serif Italic Status Message -->
+<span class="font-serif italic text-lg text-[#faf9f5] font-normal tracking-wide">
+            Still working on it...
+          </span>
+</div>
+</div>
+<!-- END: ActiveTaskIndicator -->
+<!-- Space cushion before pinned bottom sheet -->
+<div class="h-6"></div>
+</main>
+<!-- END: ScrollableChatStream -->
+<!-- BEGIN: SummaryBottomSheet -->
+<!-- The authentic interactive execution summary modal sliding from bottom -->
+<section class="w-full bg-[#1b1a18] border-t border-[#2e2d2a] rounded-t-[28px] px-5 pt-2.5 pb-2 shadow-2xl relative z-30 transition-all" data-purpose="execution-summary-sheet">
+<!-- Sheet Handle -->
+<div class="w-full flex justify-center pb-2">
+<div class="w-10 h-1 bg-[#474540] rounded-full"></div>
+</div>
+<!-- Sheet Header: Close button & Centered Title -->
+<div class="relative flex items-center justify-between pb-4 pt-0.5">
+<button aria-label="Close summary" class="text-[#8f8c85] hover:text-white transition-colors" id="closeSummaryBtn">
+<svg class="w-5 h-5 stroke-[2]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<line x1="18" x2="6" y1="6" y2="18"></line>
+<line x1="6" x2="18" y1="6" y2="18"></line>
+</svg>
+</button>
+<h3 class="font-serif text-[18px] text-[#faf9f5] font-medium tracking-normal absolute left-1/2 -translate-x-1/2">
+          Summary
+        </h3>
+<div class="w-5"></div>
+</div>
+<!-- Summary Execution Stepper / Timeline -->
+<div class="pl-1 pr-2 pb-3 space-y-3 relative text-[14.5px] leading-relaxed" data-purpose="execution-stepper">
+<!-- Step 1: Completed Guide step -->
+<div class="flex items-start group">
+<!-- Step icon & vertical rail line -->
+<div class="flex flex-col items-center mr-3 mt-1.5 shrink-0">
+<span class="w-2.5 h-2.5 rounded-full bg-[#64615a] block"></span>
+<span class="w-[1.5px] h-9 bg-[#35332e] mt-1"></span>
+</div>
+<!-- Step Text -->
+<p class="font-serif text-[#d8d5cc] font-normal text-[15px] pt-0.5">
+            Drafting an Android animation implementation guide with code examples.
+          </p>
+</div>
+<!-- Step 2: Creating file task -->
+<div class="flex items-start">
+<div class="flex flex-col items-center mr-3 mt-0.5 shrink-0">
+<!-- Mini document icon -->
+<svg class="w-3.5 h-3.5 text-[#8a8780] stroke-[2]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<rect height="18" rx="2" width="16" x="4" y="3"></rect>
+<line x1="12" x2="12" y1="8" y2="14"></line>
+<line x1="9" x2="15" y1="11" y2="11"></line>
+</svg>
+<span class="w-[1.5px] h-7 bg-[#d97757]/80 mt-1"></span>
+</div>
+<div class="font-sans font-medium text-[15px] text-[#faf9f5] pt-0">
+            Creating file
+          </div>
+</div>
+<!-- Step 3: Active "Thinking" State with glowing coral indicator -->
+<div class="flex items-center">
+<div class="flex flex-col items-center mr-3 shrink-0">
+<!-- Glowing orange dot -->
+<span class="w-2.5 h-2.5 rounded-full bg-[#d97757] ring-4 ring-[#d97757]/20 block"></span>
+</div>
+<div class="font-serif text-[16px] text-[#faf9f5] tracking-wide flex items-center">
+<span>Thin</span>
+<span class="text-[#88857f] shimmer-char shimmer-delay-1">k</span>
+<span class="text-[#6d6a64] shimmer-char shimmer-delay-2">i</span>
+<span class="text-[#88857f] shimmer-char shimmer-delay-3">ng</span>
+</div>
+</div>
+</div>
+</section>
+<!-- END: SummaryBottomSheet -->
+<!-- BEGIN: BottomComposerBar -->
+<footer class="w-full bg-[#141413] px-3.5 pb-2 pt-1 border-t border-[#232220] z-40 shrink-0" data-purpose="chat-input-composer">
+<!-- Composer Card Container -->
+<div class="bg-[#1e1d1b] rounded-[24px] p-2.5 border border-[#2a2927]">
+<!-- Input Text Field Area -->
+<div class="px-2 pt-0.5 pb-2 text-[15px] text-[#737069] select-text">
+          Reply to Claude...
+        </div>
+<!-- Action buttons row: Add, Model Pill, Stop Button -->
+<div class="flex items-center justify-between pt-0.5">
+<div class="flex items-center space-x-2">
+<!-- Add / Attach Button -->
+<button aria-label="Add context" class="w-8 h-8 rounded-full bg-[#272623] hover:bg-[#32312d] flex items-center justify-center text-[#d4d1cb] transition-colors">
+<svg class="w-4 h-4 stroke-[2]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<line x1="12" x2="12" y1="5" y2="19"></line>
+<line x1="5" x2="19" y1="12" y2="12"></line>
+</svg>
+</button>
+<!-- Model Switcher Pill Chip -->
+<button aria-label="Select Model" class="h-8 px-3.5 rounded-full bg-[#292825] hover:bg-[#33322e] flex items-center space-x-1 text-xs text-[#faf9f5] font-normal transition-colors">
+<span class="font-medium text-[13px]">Sonnet 5</span>
+<span class="text-[#8f8c85] text-[13px] ml-1">Low</span>
+</button>
+</div>
+<!-- Stop Generation Button (Square inside circular target) -->
+<button aria-label="Stop generating" class="w-8 h-8 rounded-full bg-[#2c2a27] hover:bg-[#383632] flex items-center justify-center transition-colors" id="stopGenerationBtn">
+<div class="w-3.5 h-3.5 border-[1.75px] border-[#d8d5cc] rounded-[3px]"></div>
+</button>
+</div>
+</div>
+</footer>
+<!-- END: BottomComposerBar -->
+<!-- BEGIN: AndroidSystemNavBar -->
+<div class="w-full h-8 bg-[#141413] flex items-center justify-around px-12 text-[#7d7a73] z-40 shrink-0 select-none pb-1" data-purpose="android-system-navigation">
+<!-- Recents button (Three vertical bars or hamburger style) -->
+<button aria-label="Recents" class="p-1 hover:text-white transition-colors">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<line x1="5" x2="19" y1="6" y2="6"></line>
+<line x1="5" x2="19" y1="12" y2="12"></line>
+<line x1="5" x2="19" y1="18" y2="18"></line>
+</svg>
+</button>
+<!-- Home button (Circle / Rounded pill) -->
+<button aria-label="Home" class="p-1 hover:text-white transition-colors">
+<div class="w-3.5 h-3.5 rounded-sm border-2 border-current"></div>
+</button>
+<!-- Back button (Chevron / Triangle) -->
+<button aria-label="Back" class="p-1 hover:text-white transition-colors">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<polyline points="15 18 9 12 15 6"></polyline>
+</svg>
+</button>
+</div>
+<!-- END: AndroidSystemNavBar -->
+</div>
+<!-- END: MobileDeviceContainer -->
+<script data-purpose="bottom-sheet-toggle">
+    // Interactive dismiss toggle for the Summary bottom sheet
+    document.addEventListener('DOMContentLoaded', () => {
+      const closeBtn = document.getElementById('closeSummaryBtn');
+      const summarySheet = document.querySelector('[data-purpose="execution-summary-sheet"]');
+      
+      if (closeBtn && summarySheet) {
+        closeBtn.addEventListener('click', () => {
+          summarySheet.classList.toggle('hidden');
+        });
+      }
+    });
+  </script>
+</body></html>

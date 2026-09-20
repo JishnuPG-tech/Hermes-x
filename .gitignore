@@ -1,0 +1,36 @@
+# Large files & Binaries
+*.apk
+*.aab
+*.dex
+*.zip
+*.tar.gz
+
+# Android & Gradle Build Artifacts
+.gradle/
+android/.gradle/
+android/build/
+android/app/build/
+build/
+local.properties
+.cxx/
+*.iml
+.idea/
+
+# Decompiled raw dumps & screenshots
+android/Claude-decompiled/
+ui/stitch_claude_android_ui_replica/
+ui/stitch_claude_android_ui_replica.zip
+claude/
+screenshot_*.png
+*_verified.png
+window_dump*.xml
+
+# Python & Environment
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+venv/
+.venv/
+/data/

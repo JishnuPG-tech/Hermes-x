@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Voice Settings</title>
+<!-- Tailwind CSS v3 -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Google Fonts for Editorial Serif and Clean Sans -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brandDark: '#141413',
+            cardBg: '#1e1e1c',
+            chipBg: '#2a2927',
+            borderSubtle: '#2c2b28',
+            textLight: '#f5f4ef',
+            textMuted: '#9e9d96',
+            dotActive: '#e4e3dd',
+            dotInactive: '#383733',
+          },
+          fontFamily: {
+            serif: ['"Instrument Serif"', 'Georgia', 'serif'],
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+<style data-purpose="custom-layout">
+    body {
+      background-color: #141413;
+      color: #f5f4ef;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+    }
+
+    /* Subtle glow around the active persona card */
+    .active-persona-card {
+      background: radial-gradient(circle at center, #262522 0%, #1c1b19 100%);
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05),
+                  0 0 35px -8px rgba(120, 80, 50, 0.18),
+                  inset 0 0 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .inactive-card-edge {
+      background: #1c1b19;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03);
+    }
+  </style>
+</head>
+<body class="flex justify-center items-center min-h-screen bg-black sm:p-4">
+<!-- Mobile Screen Container -->
+<main class="relative w-full max-w-[412px] h-[915px] max-h-[100vh] bg-brandDark flex flex-col justify-between overflow-hidden sm:rounded-[36px] sm:ring-1 sm:ring-white/10 shadow-2xl">
+<!-- BEGIN: TopContainer -->
+<div class="w-full flex flex-col">
+<!-- BEGIN: AndroidStatusBar -->
+<section class="w-full pt-3 px-6 pb-2 flex justify-between items-center text-[12px] font-medium tracking-tight text-[#c5c4bd]" data-purpose="status-bar">
+<!-- Clock -->
+<span class="text-[13px] font-medium">12:24</span>
+<!-- System Status Icons -->
+<div class="flex items-center space-x-1.5 opacity-90 scale-95 origin-right">
+<!-- Vibrate/Sound icon representation -->
+<svg class="w-3.5 h-3.5" fill="currentColor" viewbox="0 0 24 24">
+<path d="M12 2a2 2 0 0 0-2 2v16a2 2 0 0 0 4 0V4a2 2 0 0 0-2-2zM4 7a1 1 0 0 0-1 1v8a1 1 0 0 0 2 0V8a1 1 0 0 0-1-1zm16 0a1 1 0 0 0-1 1v8a1 1 0 0 0 2 0V8a1 1 0 0 0-1-1z"></path>
+</svg>
+<!-- Network speed indicator -->
+<span class="text-[10px] font-semibold leading-none tracking-tighter">27.0<br/><span class="text-[8px] font-normal">KB/S</span></span>
+<!-- VoLTE Badge -->
+<span class="text-[9px] border border-[#c5c4bd]/60 rounded-[2px] px-0.5 font-bold leading-tight">Vo<br/>LTE</span>
+<!-- 5G Badge -->
+<span class="text-[10px] font-bold">5G</span>
+<!-- Signal bars -->
+<div class="flex items-end space-x-[2px] h-3.5 pb-0.5">
+<span class="w-[2.5px] h-1 bg-[#c5c4bd] rounded-xs"></span>
+<span class="w-[2.5px] h-1.5 bg-[#c5c4bd] rounded-xs"></span>
+<span class="w-[2.5px] h-2 bg-[#c5c4bd] rounded-xs"></span>
+<span class="w-[2.5px] h-2.5 bg-[#c5c4bd] rounded-xs"></span>
+</div>
+<!-- Battery icon -->
+<div class="flex items-center space-x-1 pl-0.5">
+<div class="w-5 h-2.5 border border-[#c5c4bd] rounded-[3px] p-0.5 flex items-center relative">
+<div class="h-full bg-[#c5c4bd] rounded-[1px] w-[63%]"></div>
+<div class="absolute -right-[2px] w-[2px] h-1 bg-[#c5c4bd] rounded-r-xs"></div>
+</div>
+<span class="text-[11px] font-semibold">63%</span>
+</div>
+</div>
+</section>
+<!-- END: AndroidStatusBar -->
+<!-- BEGIN: NavigationHeader -->
+<header class="relative w-full px-5 py-4 flex items-center" data-purpose="app-bar">
+<!-- Back Button -->
+<button aria-label="Go back" class="p-1 -ml-1 text-textLight hover:opacity-80 transition-opacity">
+<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24">
+<path d="M19 12H5M12 19l-7-7 7-7"></path>
+</svg>
+</button>
+<!-- Screen Title (Claude's distinctive editorial serif) -->
+<h1 class="absolute left-0 right-0 mx-auto w-fit text-center font-serif text-[26px] tracking-tight font-normal text-[#faf9f5]">
+          Voice settings
+        </h1>
+</header>
+<!-- END: NavigationHeader -->
+<!-- BEGIN: PersonaCarousel -->
+<section class="mt-4 w-full flex flex-col items-center overflow-hidden" data-purpose="persona-selector">
+<!-- Card Viewport Container -->
+<div class="w-full flex items-center justify-center relative h-[210px]">
+<!-- Previous Card (Peeking out from left edge) -->
+<div class="absolute -left-[108px] w-[172px] h-[172px] inactive-card-edge rounded-[32px] flex items-center justify-end pr-4 text-[#dedcd5] font-sans text-lg font-medium opacity-90 pointer-events-none">
+<span>ssy</span>
+</div>
+<!-- Active Center Card: Rounded -->
+<div class="active-persona-card w-[186px] h-[186px] rounded-[34px] flex items-center justify-center z-10 cursor-pointer select-none">
+<span class="text-[#faf9f5] font-sans text-[21px] font-normal tracking-normal">
+              Rounded
+            </span>
+</div>
+</div>
+<!-- Carousel Pagination Dots -->
+<div class="flex items-center space-x-2 mt-6" data-purpose="carousel-indicator">
+<span class="w-1.5 h-1.5 rounded-full bg-dotInactive"></span>
+<span class="w-1.5 h-1.5 rounded-full bg-dotInactive"></span>
+<span class="w-1.5 h-1.5 rounded-full bg-dotInactive"></span>
+<span class="w-1.5 h-1.5 rounded-full bg-dotInactive"></span>
+<span class="w-1.5 h-1.5 rounded-full bg-[#faf9f5]"></span>
+</div>
+</section>
+<!-- END: PersonaCarousel -->
+<!-- BEGIN: SettingsOptionsGroup -->
+<section class="mt-8 px-4 flex flex-col space-y-3" data-purpose="voice-options">
+<!-- Language / Accent Row -->
+<div class="w-full bg-[#1b1b19] hover:bg-[#20201d] transition-colors rounded-[18px] px-4 py-4 flex items-center justify-between cursor-pointer" role="button" tabindex="0">
+<div class="flex items-center space-x-2.5 overflow-hidden">
+<!-- Voice indicator waves/dots icon -->
+<div class="flex items-center space-x-[3px] text-textMuted px-1">
+<span class="w-[3px] h-[3px] bg-neutral-400 rounded-full"></span>
+<span class="w-[3px] h-[3px] bg-neutral-400 rounded-full"></span>
+</div>
+<!-- BETA Chip Badge -->
+<span class="bg-[#2a2926] text-[#b0aea5] text-[10px] font-semibold tracking-wider px-1.5 py-0.5 rounded-[4px] border border-white/5">
+              BETA
+            </span>
+<!-- Setting Name -->
+<span class="text-[#f5f4ef] text-[17px] font-normal truncate pl-1">
+              English (United Kingdom)
+            </span>
+</div>
+<!-- Trailing Chevron -->
+<svg class="w-4 h-4 text-[#8a8880] flex-shrink-0 ml-2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" viewbox="0 0 24 24">
+<path d="M9 18l6-6-6-6"></path>
+</svg>
+</div>
+<!-- Pace / Speed Row -->
+<div class="w-full bg-[#1b1b19] hover:bg-[#20201d] transition-colors rounded-[18px] px-5 py-4 flex items-center justify-between cursor-pointer" role="button" tabindex="0">
+<span class="text-[#f5f4ef] text-[18px] font-normal tracking-tight">
+            Pace
+          </span>
+<div class="flex items-center space-x-2 text-[#9e9d96]">
+<span class="text-[17px] font-normal text-[#9e9d96]">
+              Normal
+            </span>
+<svg class="w-4 h-4 text-[#8a8880]" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" viewbox="0 0 24 24">
+<path d="M9 18l6-6-6-6"></path>
+</svg>
+</div>
+</div>
+</section>
+<!-- END: SettingsOptionsGroup -->
+</div>
+<!-- END: TopContainer -->
+<!-- BEGIN: AndroidNavigationBar -->
+<nav class="w-full pb-4 pt-2 px-12 flex justify-between items-center text-[#73726c]" data-purpose="android-system-nav">
+<!-- Recents / App Switcher Icon -->
+<button aria-label="Recent apps" class="p-2 opacity-70 hover:opacity-100">
+<svg class="w-[18px] h-[18px] stroke-[#85847e]" fill="none" stroke-width="1.8" viewbox="0 0 24 24">
+<line stroke-linecap="round" x1="4" x2="20" y1="7" y2="7"></line>
+<line stroke-linecap="round" x1="4" x2="20" y1="12" y2="12"></line>
+<line stroke-linecap="round" x1="4" x2="20" y1="17" y2="17"></line>
+</svg>
+</button>
+<!-- Home Icon (Rounded Square) -->
+<button aria-label="Home" class="p-2 opacity-70 hover:opacity-100">
+<div class="w-[15px] h-[15px] border-[1.8px] border-[#85847e] rounded-[4.5px]"></div>
+</button>
+<!-- Back Triangle Icon -->
+<button aria-label="Back" class="p-2 opacity-70 hover:opacity-100">
+<svg class="w-4 h-4 text-[#85847e]" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.8" viewbox="0 0 24 24">
+<polygon points="6,12 18,4 18,20"></polygon>
+</svg>
+</button>
+</nav>
+<!-- END: AndroidNavigationBar -->
+</main>
+</body></html>

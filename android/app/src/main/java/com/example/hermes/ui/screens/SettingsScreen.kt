@@ -1,0 +1,465 @@
+package com.example.hermes.ui.screens
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.hermes.theme.*
+
+@Composable
+fun SettingsScreen(
+    onOpenDrawer: () -> Unit,
+    onNavigateProfile: () -> Unit = {},
+    onNavigateBilling: () -> Unit = {},
+    onNavigateCapabilities: () -> Unit = {},
+    onNavigateConnectors: () -> Unit = {},
+    onNavigatePermissions: () -> Unit = {},
+    onNavigateVoiceSettings: () -> Unit = {},
+    onNavigateNotifications: () -> Unit = {},
+    onNavigateTimeFocus: () -> Unit = {},
+    onNavigatePrivacy: () -> Unit = {},
+    onNavigateSharing: () -> Unit = {},
+    onUpgradeClick: () -> Unit = onNavigateBilling
+) {
+    var selectedColorMode by remember { mutableStateOf("System") }
+    var selectedFontStyle by remember { mutableStateOf("Default") }
+    var showColorModeDialog by remember { mutableStateOf(false) }
+    var showFontStyleDialog by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(CanvasNearBlack)
+            .safeDrawingPadding()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 6.dp)
+        ) {
+            // Top App Bar: Hamburger, Serif Settings Title, Info Icon (12-01-20)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                IconButton(onClick = onOpenDrawer) {
+                    Icon(Icons.Default.Menu, contentDescription = "Menu", tint = TextPrimaryWarm)
+                }
+
+                Text(
+                    text = "Settings",
+                    style = HermesTypography.headlineMedium.copy(fontSize = 20.sp, color = TextPrimaryWarm)
+                )
+
+                IconButton(onClick = {}) {
+                    Icon(Icons.Outlined.Info, contentDescription = "Info", tint = TextPrimaryWarm)
+                }
+            }
+
+            // Scrollable settings sections (12-01-20)
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(top = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // User Account Pill Card
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(Color(0xFF1F1E1C))
+                            .border(1.dp, BorderSubtle, RoundedCornerShape(22.dp))
+                            .clickable(onClick = onNavigateProfile)
+                            .padding(horizontal = 18.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "jishnupg2005@gmail.com",
+                            style = HermesTypography.titleLarge.copy(fontSize = 15.sp, color = TextPrimaryWarm)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(PureWhite)
+                                .padding(horizontal = 12.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = "Free",
+                                style = HermesTypography.labelSmall.copy(
+                                    color = TextInk,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                                    fontSize = 12.sp
+                                )
+                            )
+                        }
+                    }
+                }
+
+                // Promo Card: "Want more Claude?" (12-01-20)
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(Color(0xFF1F1E1C))
+                            .border(1.dp, BorderSubtle, RoundedCornerShape(22.dp))
+                            .padding(18.dp)
+                    ) {
+                        Text(
+                            text = "Want more Claude?",
+                            style = HermesTypography.headlineMedium.copy(fontSize = 19.sp, color = TextPrimaryWarm)
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Upgrade for more usage and capabilities.",
+                            style = HermesTypography.bodyMedium.copy(color = TextMuted, fontSize = 14.sp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = onUpgradeClick,
+                            shape = CircleShape,
+                            colors = ButtonDefaults.buttonColors(containerColor = PureWhite, contentColor = PureBlack),
+                            modifier = Modifier.height(42.dp)
+                        ) {
+                            Text(
+                                text = "Upgrade",
+                                style = HermesTypography.titleLarge.copy(
+                                    fontSize = 14.sp,
+                                    color = PureBlack,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                                )
+                            )
+                        }
+                    }
+                }
+
+                // Group 1: Profile & Billing
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(Color(0xFF1F1E1C))
+                            .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp))
+                    ) {
+                        SettingOptionRow("Profile", icon = Icons.Outlined.AccountCircle, onClick = onNavigateProfile)
+                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
+                        SettingOptionRow("Billing", icon = Icons.Outlined.MonetizationOn, onClick = onNavigateBilling)
+                    }
+                }
+
+                // Group 2: Preferences (Font style, Color mode, Capabilities, Connectors, Permissions, Voice)
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(Color(0xFF1F1E1C))
+                            .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp))
+                    ) {
+                        SettingOptionRow(
+                            "Font style",
+                            subtitle = selectedFontStyle,
+                            icon = Icons.Outlined.FormatSize,
+                            onClick = { showFontStyleDialog = true }
+                        )
+                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
+                        SettingOptionRow(
+                            "Color mode",
+                            subtitle = selectedColorMode,
+                            icon = Icons.Outlined.DarkMode,
+                            onClick = { showColorModeDialog = true }
+                        )
+                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
+                        SettingOptionRow("Capabilities", subtitle = "5 enabled", icon = Icons.Outlined.Tune, onClick = onNavigateCapabilities)
+                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
+                        SettingOptionRow("Connectors", subtitle = "2 connected", icon = Icons.Outlined.AttachFile, onClick = onNavigateConnectors)
+                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
+                        SettingOptionRow("Permissions", icon = Icons.Outlined.Security, onClick = onNavigatePermissions)
+                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
+                        SettingOptionRow("Voice", subtitle = "Colm", icon = Icons.Outlined.RecordVoiceOver, onClick = onNavigateVoiceSettings)
+                    }
+                }
+
+                // Group 3: Controls (Notifications, Time & focus, Data & privacy, Sharing)
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(Color(0xFF1F1E1C))
+                            .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp))
+                    ) {
+                        SettingOptionRow("Notifications", icon = Icons.Outlined.Notifications, onClick = onNavigateNotifications)
+                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
+                        SettingOptionRow("Time & focus", icon = Icons.Outlined.HourglassEmpty, onClick = onNavigateTimeFocus)
+                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
+                        SettingOptionRow("Data & privacy", icon = Icons.Outlined.Lock, onClick = onNavigatePrivacy)
+                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
+                        SettingOptionRow("Sharing", icon = Icons.Outlined.Share, onClick = onNavigateSharing)
+                    }
+                }
+
+                // Group 4: Support & Legal
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(Color(0xFF1F1E1C))
+                            .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp))
+                    ) {
+                        SettingOptionRow("Help & support", icon = Icons.Outlined.HelpOutline, onClick = {})
+                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
+                        SettingOptionRow("Privacy policy", icon = Icons.Outlined.Description, onClick = {})
+                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
+                        SettingOptionRow("Terms of service", icon = Icons.Outlined.Gavel, onClick = {})
+                    }
+                }
+
+                // Group 5: Log Out
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(Color(0xFF1F1E1C))
+                            .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp))
+                    ) {
+                        SettingOptionRow(
+                            "Log out",
+                            icon = Icons.Default.ExitToApp,
+                            titleColor = DestructiveRed,
+                            showChevron = false,
+                            onClick = { showLogoutDialog = true }
+                        )
+                    }
+                }
+
+                // App Version Footer (12-01-20)
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Claude v2.4.1 (120)",
+                            style = HermesTypography.labelSmall.copy(
+                                fontSize = 12.sp,
+                                color = TextSubtle
+                            )
+                        )
+                    }
+                }
+            }
+        }
+
+        // Color Mode Dialog (12-01-44)
+        if (showColorModeDialog) {
+            AlertDialog(
+                onDismissRequest = { showColorModeDialog = false },
+                containerColor = Color(0xFF1F1E1C),
+                shape = RoundedCornerShape(22.dp),
+                title = {
+                    Text(
+                        text = "Color mode",
+                        style = HermesTypography.headlineMedium.copy(fontSize = 19.sp, color = TextPrimaryWarm)
+                    )
+                },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf("System", "Dark", "Light").forEach { mode ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable { selectedColorMode = mode }
+                                    .padding(vertical = 10.dp, horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = selectedColorMode == mode,
+                                    onClick = { selectedColorMode = mode },
+                                    colors = RadioButtonDefaults.colors(
+                                        selectedColor = AccentBlue,
+                                        unselectedColor = TextSubtle
+                                    )
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = mode,
+                                    style = HermesTypography.bodyLarge.copy(
+                                        fontSize = 16.sp,
+                                        color = TextPrimaryWarm
+                                    )
+                                )
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showColorModeDialog = false }) {
+                        Text("OK", color = AccentBlue, fontSize = 15.sp)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showColorModeDialog = false }) {
+                        Text("Cancel", color = TextMuted, fontSize = 15.sp)
+                    }
+                }
+            )
+        }
+
+        // Font Style Dialog (12-01-47)
+        if (showFontStyleDialog) {
+            AlertDialog(
+                onDismissRequest = { showFontStyleDialog = false },
+                containerColor = Color(0xFF1F1E1C),
+                shape = RoundedCornerShape(22.dp),
+                title = {
+                    Text(
+                        text = "Font style",
+                        style = HermesTypography.headlineMedium.copy(fontSize = 19.sp, color = TextPrimaryWarm)
+                    )
+                },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf("Default", "Dyslexic-friendly").forEach { font ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable { selectedFontStyle = font }
+                                    .padding(vertical = 10.dp, horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = selectedFontStyle == font,
+                                    onClick = { selectedFontStyle = font },
+                                    colors = RadioButtonDefaults.colors(
+                                        selectedColor = AccentBlue,
+                                        unselectedColor = TextSubtle
+                                    )
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = font,
+                                    style = HermesTypography.bodyLarge.copy(
+                                        fontSize = 16.sp,
+                                        color = TextPrimaryWarm
+                                    )
+                                )
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showFontStyleDialog = false }) {
+                        Text("OK", color = AccentBlue, fontSize = 15.sp)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showFontStyleDialog = false }) {
+                        Text("Cancel", color = TextMuted, fontSize = 15.sp)
+                    }
+                }
+            )
+        }
+
+        // Logout Confirmation Dialog
+        if (showLogoutDialog) {
+            AlertDialog(
+                onDismissRequest = { showLogoutDialog = false },
+                containerColor = Color(0xFF1F1E1C),
+                shape = RoundedCornerShape(20.dp),
+                title = { Text("Log out?", color = TextPrimaryWarm) },
+                text = { Text("Are you sure you want to log out of Claude?", color = TextMuted) },
+                confirmButton = {
+                    Button(
+                        onClick = { showLogoutDialog = false },
+                        colors = ButtonDefaults.buttonColors(containerColor = DestructiveRed)
+                    ) {
+                        Text("Log out")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showLogoutDialog = false }) {
+                        Text("Cancel", color = TextMuted)
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingOptionRow(
+    title: String,
+    subtitle: String? = null,
+    icon: ImageVector,
+    titleColor: Color = TextPrimaryWarm,
+    showChevron: Boolean = true,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 15.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = if (titleColor == DestructiveRed) DestructiveRed else TextPrimaryWarm,
+            modifier = Modifier.size(22.dp)
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = HermesTypography.titleLarge.copy(fontSize = 15.5.sp, color = titleColor)
+            )
+            if (!subtitle.isNullOrEmpty()) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = HermesTypography.bodyMedium.copy(fontSize = 12.5.sp, color = TextSubtle)
+                )
+            }
+        }
+        if (showChevron) {
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = TextSubtle,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+}

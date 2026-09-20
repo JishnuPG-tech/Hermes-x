@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<title>Connectors &amp; Vault - Claude</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Copernicus:ital,wght@0,400;0,700;1,400&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "background": "#141413",
+            "surface": "#141413",
+            "surface-card": "#1f1e1c",
+            "surface-elevated": "#262523",
+            "surface-dark-soft": "#232220",
+            "surface-container-low": "#191817",
+            "surface-container-high": "#2b2a27",
+            "hairline": "#302f2c",
+            "ink": "#faf9f5",
+            "on-surface": "#e5e2e0",
+            "text-muted": "#87867f",
+            "text-secondary": "#b0aea5",
+            "accent-green": "#22c55e",
+            "claude-blue": "#3898ec",
+            "primary": "#ffb59d",
+            "primary-container": "#dc7350"
+          },
+          fontFamily: {
+            "display-title": ["\"Copernicus, Georgia, serif\""],
+            "title-serif": ["\"Copernicus, Georgia, serif\""],
+            "headline-serif": ["Newsreader", "serif"],
+            "sans": ["Inter", "-apple-system", "sans-serif"],
+            "code": ["\"JetBrains Mono, monospace\""]
+          },
+          borderRadius: {
+            "card": "16px"
+          }
+        }
+      }
+    };
+  </script>
+<style>
+    @layer base {
+      html, body {
+        width: 100%;
+        min-height: 100%;
+        margin: 0;
+        padding: 0;
+        background-color: #141413;
+      }
+      body {
+        overscroll-behavior-y: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .pb-safe {
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      .pt-safe {
+        padding-top: env(safe-area-inset-top, 0px);
+      }
+    }
+    ::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+</head>
+<body class="bg-[#141413] font-sans text-on-surface flex flex-col min-h-screen selection:bg-claude-blue selection:text-white antialiased">
+<!-- Android System Status Bar + Claude Top App Bar -->
+<header class="fixed top-0 inset-x-0 z-50 bg-[#141413]/95 backdrop-blur-md pt-safe border-b border-[#302f2c]/40">
+<!-- Android System Status Bar -->
+<div class="h-6 px-5 flex items-center justify-between text-[11px] font-sans text-[#87867f] select-none tracking-tight">
+<span class="font-medium text-[#faf9f5]">12:23</span>
+<div class="flex items-center gap-1.5">
+<span class="text-[10px] tracking-wide font-medium">VoLTE</span>
+<span class="text-[10px] font-semibold tracking-tighter">5G</span>
+<span class="material-symbols-outlined text-[13px] leading-none">signal_cellular_alt</span>
+<span class="material-symbols-outlined text-[13px] leading-none">wifi</span>
+<div class="flex items-center gap-0.5 ml-0.5">
+<span class="text-[10px] font-medium leading-none">63%</span>
+<span class="material-symbols-outlined text-[15px] leading-none rotate-90">battery_charging_60</span>
+</div>
+</div>
+</div>
+<!-- Top App Bar with centered Copernicus title -->
+<div class="h-14 px-4 flex items-center justify-between relative">
+<!-- Back Chevron Button -->
+<button aria-label="Go back" class="w-10 h-10 -ml-1 rounded-full flex items-center justify-center text-[#b0aea5] hover:text-[#faf9f5] hover:bg-[#1f1e1c] active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[24px]">chevron_left</span>
+</button>
+<!-- Centered Serif Title -->
+<div class="absolute inset-x-12 text-center pointer-events-none flex flex-col items-center justify-center">
+<h1 class="font-title-serif text-[19px] leading-tight text-[#faf9f5] font-normal tracking-tight">Connectors &amp; Vault</h1>
+</div>
+<!-- Add Connector Action -->
+<button aria-label="Add Connector" class="w-10 h-10 -mr-1 rounded-full flex items-center justify-center text-[#faf9f5] hover:bg-[#1f1e1c] active:scale-95 transition-all" id="add-connector-top">
+<span class="material-symbols-outlined text-[22px]">add</span>
+</button>
+</div>
+</header>
+<!-- Main Content Container with exact 20px horizontal margins & 12px gaps -->
+<main class="flex-1 flex flex-col relative w-full pt-24 pb-28 px-5 max-w-xl mx-auto space-y-3">
+<!-- 1. Top Featured Card (Credential Vault) -->
+<section class="w-full bg-[#1f1e1c] border border-[#302f2c] rounded-[16px] p-4 shadow-sm relative overflow-hidden">
+<div class="flex items-start gap-3.5">
+<!-- Shield Icon Badge -->
+<div class="w-10 h-10 rounded-[12px] bg-[#2a2927] border border-[#302f2c] flex items-center justify-center shrink-0 text-[#ffb59d]">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">shield</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between gap-2">
+<h2 class="text-[16px] font-medium text-[#faf9f5] tracking-tight">Credential Vault</h2>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#22c55e]/15 text-[#22c55e] text-[11px] font-medium tracking-wide">
+<span class="w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse"></span>
+              SEALED
+            </span>
+</div>
+<p class="font-code text-[11px] text-[#ffb59d]/80 mt-0.5 tracking-tight truncate">/data/jarvis/secrets/vault.db</p>
+<p class="text-[13px] leading-[19px] text-[#b0aea5] mt-2 font-normal">
+            Zero plaintext secrets exposed to models. Hardware-isolated symmetric encryption active.
+          </p>
+</div>
+</div>
+<!-- Micro Status Row -->
+<div class="mt-3.5 pt-2.5 border-t border-[#302f2c]/80 flex items-center justify-between text-[11px] text-[#87867f]">
+<div class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-[#22c55e]"></span>
+<span class="text-[#b0aea5]">6 active credentials verified</span>
+</div>
+<span class="font-code text-[10px] text-[#87867f]">Root: HF Secrets</span>
+</div>
+</section>
+<!-- 2. Discovery Toggle Group (Automatic Tool Discovery) -->
+<section class="w-full bg-[#1f1e1c] border border-[#302f2c] rounded-[16px] p-4 shadow-sm">
+<div class="flex items-center justify-between gap-3.5">
+<div class="flex items-start gap-3 flex-1 min-w-0">
+<div class="w-8 h-8 rounded-[10px] bg-[#2a2927] flex items-center justify-center shrink-0 mt-0.5 text-[#87867f]">
+<span class="material-symbols-outlined text-[19px]" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</div>
+<div class="flex-1 min-w-0 pr-1">
+<h3 class="text-[16px] font-medium text-[#faf9f5] leading-tight tracking-tight">Automatic Tool Discovery</h3>
+<p class="text-[13px] leading-[18px] text-[#b0aea5] mt-1 font-normal">
+              Hermes will discover and load MCP servers and APIs dynamically based on task context.
+            </p>
+</div>
+</div>
+<!-- Claude Exact Toggle Switch -->
+<button aria-checked="true" aria-label="Toggle Tool Discovery" class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full bg-[#3898ec] transition-colors duration-200 ease-in-out focus:outline-none" id="toggle-discovery" role="switch">
+<span aria-hidden="true" class="pointer-events-none inline-block h-5 w-5 translate-x-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out mt-0.5 ml-0.5"></span>
+</button>
+</div>
+</section>
+<!-- 3. Grouped Connectors List Header -->
+<div class="pt-2 px-1 flex items-center justify-between">
+<span class="text-[12px] font-semibold uppercase tracking-wider text-[#87867f]">CONFIGURED ENDPOINTS (5)</span>
+<span class="font-code text-[11px] text-[#87867f]">MCP v1.1</span>
+</div>
+<!-- 3. Grouped Connectors List Container -->
+<section class="w-full bg-[#1f1e1c] border border-[#302f2c] rounded-[16px] overflow-hidden shadow-sm divide-y divide-[#302f2c]">
+<!-- Row 1: GitHub -->
+<div class="p-3.5 flex items-center justify-between gap-3 hover:bg-[#262523] active:bg-[#232220] transition-colors cursor-pointer group">
+<div class="flex items-center gap-3.5 min-w-0">
+<div class="w-10 h-10 rounded-[12px] bg-[#2a2927] flex items-center justify-center shrink-0 border border-[#302f2c]/60">
+<svg aria-hidden="true" class="w-5 h-5 fill-[#faf9f5]" viewbox="0 0 24 24">
+<path clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" fill-rule="evenodd"></path>
+</svg>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-1.5">
+<span class="text-[16px] font-medium text-[#faf9f5] leading-snug">GitHub</span>
+<span class="font-code text-[11px] text-[#87867f]">JishnuPG-tech</span>
+</div>
+<p class="text-[13px] text-[#b0aea5] truncate leading-tight mt-0.5">Repos, PRs, CI, Worktrees</p>
+</div>
+</div>
+<span class="px-2.5 py-1 rounded-full bg-[#3898ec]/15 text-[#3898ec] text-[12px] font-medium shrink-0 group-hover:bg-[#3898ec] group-hover:text-white transition-colors">
+          8 tools
+        </span>
+</div>
+<!-- Row 2: Hugging Face -->
+<div class="p-3.5 flex items-center justify-between gap-3 hover:bg-[#262523] active:bg-[#232220] transition-colors cursor-pointer group">
+<div class="flex items-center gap-3.5 min-w-0">
+<div class="w-10 h-10 rounded-[12px] bg-[#ffbd00]/15 flex items-center justify-center shrink-0 border border-[#ffbd00]/25">
+<span class="text-[20px] leading-none select-none">🤗</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-1.5">
+<span class="text-[16px] font-medium text-[#faf9f5] leading-snug">Hugging Face</span>
+<span class="material-symbols-outlined text-[15px] text-[#22c55e]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<p class="text-[13px] text-[#b0aea5] truncate leading-tight mt-0.5">Persistent Bucket Storage &amp; Inference</p>
+</div>
+</div>
+<span class="px-2.5 py-1 rounded-full bg-[#3898ec]/15 text-[#3898ec] text-[12px] font-medium shrink-0 group-hover:bg-[#3898ec] group-hover:text-white transition-colors">
+          5 tools
+        </span>
+</div>
+<!-- Row 3: Notion Workspace -->
+<div class="p-3.5 flex items-center justify-between gap-3 hover:bg-[#262523] active:bg-[#232220] transition-colors cursor-pointer group">
+<div class="flex items-center gap-3.5 min-w-0">
+<div class="w-10 h-10 rounded-[12px] bg-[#2a2927] border border-[#302f2c] flex items-center justify-center shrink-0 text-[#faf9f5]">
+<span class="font-serif font-bold text-[17px] leading-none">N</span>
+</div>
+<div class="flex-1 min-w-0">
+<span class="text-[16px] font-medium text-[#faf9f5] leading-snug block">Notion Workspace</span>
+<p class="text-[13px] text-[#b0aea5] truncate leading-tight mt-0.5">PRDs, Architecture Specs, Roadmaps</p>
+</div>
+</div>
+<span class="px-2.5 py-1 rounded-full bg-[#3898ec]/15 text-[#3898ec] text-[12px] font-medium shrink-0 group-hover:bg-[#3898ec] group-hover:text-white transition-colors">
+          4 tools
+        </span>
+</div>
+<!-- Row 4: Voice Gateway -->
+<div class="p-3.5 flex items-center justify-between gap-3 hover:bg-[#262523] active:bg-[#232220] transition-colors cursor-pointer">
+<div class="flex items-center gap-3.5 min-w-0">
+<div class="w-10 h-10 rounded-[12px] bg-[#2a2927] border border-[#302f2c] flex items-center justify-center shrink-0 text-[#ffb59d]">
+<span class="material-symbols-outlined text-[20px]">mic</span>
+</div>
+<div class="flex-1 min-w-0">
+<span class="text-[16px] font-medium text-[#faf9f5] leading-snug block">Voice Gateway</span>
+<p class="text-[13px] text-[#b0aea5] truncate leading-tight mt-0.5">Kokoro-82M TTS + Edge TTS</p>
+</div>
+</div>
+<div class="flex items-center gap-1.5 shrink-0 px-2.5 py-1 rounded-full bg-[#191817] border border-[#302f2c]">
+<span class="w-2 h-2 rounded-full bg-[#22c55e]"></span>
+<span class="text-[11px] text-[#faf9f5] font-medium">Connected</span>
+</div>
+</div>
+<!-- Row 5: OmniRoute Infrastructure -->
+<div class="p-3.5 flex items-center justify-between gap-3 hover:bg-[#262523] active:bg-[#232220] transition-colors cursor-pointer group">
+<div class="flex items-center gap-3.5 min-w-0">
+<div class="w-10 h-10 rounded-[12px] bg-[#2a2927] border border-[#302f2c] flex items-center justify-center shrink-0 text-[#87867f] group-hover:text-[#faf9f5] transition-colors">
+<span class="material-symbols-outlined text-[20px]">alt_route</span>
+</div>
+<div class="flex-1 min-w-0">
+<span class="text-[16px] font-medium text-[#faf9f5] leading-snug block">OmniRoute Infrastructure</span>
+<p class="text-[13px] text-[#b0aea5] truncate leading-tight mt-0.5">Model failover &amp; latency routing</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-[#87867f] text-[20px] group-hover:translate-x-0.5 group-hover:text-[#faf9f5] transition-all">chevron_right</span>
+</div>
+</section>
+<!-- 4. Bottom Action Card (Configure MCP Server / Custom Tool) -->
+<button class="w-full p-4 rounded-[16px] bg-[#1f1e1c] border border-[#302f2c] hover:bg-[#262523] active:bg-[#232220] transition-all text-left flex items-center justify-between group shadow-sm" id="cta-add-mcp">
+<div class="flex items-center gap-3.5">
+<div class="w-10 h-10 rounded-[12px] bg-[#2a2927] border border-[#302f2c] flex items-center justify-center shrink-0 text-[#ffb59d]">
+<span class="material-symbols-outlined text-[21px]">extension</span>
+</div>
+<div>
+<span class="text-[16px] font-medium text-[#faf9f5] block tracking-tight">Configure MCP Server / Custom Tool</span>
+<span class="text-[13px] text-[#b0aea5] block mt-0.5">Stdio, SSE, or remote OpenAPI schema</span>
+</div>
+</div>
+<div class="w-8 h-8 rounded-full bg-[#2a2927] border border-[#302f2c] flex items-center justify-center text-[#87867f] group-hover:text-[#faf9f5] group-hover:border-[#87867f]/50 transition-colors shrink-0">
+<span class="material-symbols-outlined text-[18px]">add</span>
+</div>
+</button>
+</main>
+<!-- Claude Clean Bottom Navigation Bar + Android Gesture Line -->
+<nav class="fixed bottom-0 inset-x-0 z-50 bg-[#141413]/95 backdrop-blur-md border-t border-[#302f2c]/50 pb-safe">
+<div class="max-w-xl mx-auto flex justify-around items-center h-14 px-4">
+<a class="flex flex-col items-center justify-center min-w-[52px] py-1 text-[#87867f] hover:text-[#faf9f5] transition-colors" href="#">
+<span class="material-symbols-outlined text-[22px]">forum</span>
+<span class="text-[11px] font-medium mt-0.5">Chat</span>
+</a>
+<a class="flex flex-col items-center justify-center min-w-[52px] py-1 text-[#87867f] hover:text-[#faf9f5] transition-colors" href="#">
+<span class="material-symbols-outlined text-[22px]">precision_manufacturing</span>
+<span class="text-[11px] font-medium mt-0.5">Tasks</span>
+</a>
+<a class="flex flex-col items-center justify-center min-w-[52px] py-1 text-[#87867f] hover:text-[#faf9f5] transition-colors" href="#">
+<span class="material-symbols-outlined text-[22px]">history_edu</span>
+<span class="text-[11px] font-medium mt-0.5">Artifacts</span>
+</a>
+<a aria-current="page" class="flex flex-col items-center justify-center min-w-[52px] py-1 text-[#ffb59d] transition-colors font-medium" href="#">
+<span class="material-symbols-outlined text-[22px]" style="font-variation-settings: 'FILL' 1;">tune</span>
+<span class="text-[11px] font-medium mt-0.5">Config</span>
+</a>
+</div>
+<!-- Android Gesture Home Bar Pill -->
+<div class="w-full flex justify-center pb-2 pt-0.5 pointer-events-none">
+<div class="w-32 h-1 rounded-full bg-[#87867f]/40"></div>
+</div>
+</nav>
+<script>
+    (function() {
+      // Toggle Discovery Switch
+      const toggle = document.getElementById('toggle-discovery');
+      if (toggle) {
+        toggle.addEventListener('click', () => {
+          const isChecked = toggle.getAttribute('aria-checked') === 'true';
+          const nextState = !isChecked;
+          toggle.setAttribute('aria-checked', String(nextState));
+          
+          const knob = toggle.querySelector('span');
+          if (nextState) {
+            toggle.classList.remove('bg-[#302f2c]');
+            toggle.classList.add('bg-[#3898ec]');
+            knob.classList.remove('translate-x-0.5');
+            knob.classList.add('translate-x-5');
+          } else {
+            toggle.classList.remove('bg-[#3898ec]');
+            toggle.classList.add('bg-[#302f2c]');
+            knob.classList.remove('translate-x-5');
+            knob.classList.add('translate-x-0.5');
+          }
+        });
+      }
+
+      // Tap feedback
+      const cta = document.getElementById('cta-add-mcp');
+      const topAdd = document.getElementById('add-connector-top');
+      const press = (el) => {
+        el.classList.add('scale-[0.98]');
+        setTimeout(() => el.classList.remove('scale-[0.98]'), 120);
+      };
+      if (cta) cta.addEventListener('click', () => press(cta));
+      if (topAdd) topAdd.addEventListener('click', () => press(topAdd));
+    })();
+  </script>
+</body></html>

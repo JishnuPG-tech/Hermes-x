@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+
+<html class="h-full bg-black" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Select Model - Claude</title>
+<!-- Tailwind CSS v3 -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            sheet: '#1f1e1c',
+            subtleBorder: '#2e2c29',
+            brandBlue: '#539ef5',
+            badgeBg: '#232936',
+            badgeText: '#7b9fd9',
+            brandOrange: '#cc785c',
+            dimText: '#87867f',
+            mainWhite: '#faf9f5',
+          },
+          fontFamily: {
+            serif: ['Newsreader', 'Georgia', 'serif'],
+            sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+<style data-purpose="custom-typography">
+    @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap');
+    
+    .greeting-font {
+      font-family: 'Newsreader', Georgia, serif;
+      letter-spacing: -0.01em;
+    }
+  </style>
+<style data-purpose="bottom-sheet-layout">
+    /* Bottom sheet curved top */
+    .bottom-sheet {
+      border-top-left-radius: 32px;
+      border-top-right-radius: 32px;
+    }
+    /* Subtle custom divider */
+    .row-divider {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    }
+  </style>
+</head>
+<body class="h-full w-full bg-[#111110] text-[#faf9f5] font-sans overflow-hidden flex flex-col justify-between select-none">
+<!-- BEGIN: Background HomeScreen -->
+<div class="relative w-full h-full flex flex-col justify-between overflow-hidden">
+<!-- Top Android Status Bar -->
+<div class="w-full pt-3 px-6 pb-2 flex items-center justify-between text-xs font-medium text-[#c5c4be] z-0">
+<!-- Time -->
+<span class="tracking-normal text-[13px] font-semibold">12:23</span>
+<!-- System Icons -->
+<div class="flex items-center space-x-1.5 opacity-90">
+<span class="text-[10px] font-semibold leading-none">17.0<br/><span class="text-[8px] font-normal">KB/S</span></span>
+<div class="flex items-center space-x-0.5 text-[10px] font-bold tracking-tighter">
+<span>Vo</span>
+<span>LTE</span>
+</div>
+<div class="flex items-center text-[11px] font-bold">
+<span>5G</span>
+</div>
+<!-- Network Bars -->
+<svg class="w-3.5 h-3.5 fill-current" viewbox="0 0 24 24">
+<path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L12 22l7.03-4.39C20.26 16.07 21 14.12 21 12c0-4.97-4.03-9-9-9z" opacity="0.3"></path>
+<path d="M12 3v19l7.03-4.39C20.26 16.07 21 14.12 21 12c0-4.97-4.03-9-9-9z"></path>
+</svg>
+<!-- Battery Icon -->
+<div class="flex items-center space-x-1 pl-0.5">
+<div class="w-5 h-2.5 border border-[#c5c4be] rounded-sm p-0.5 flex items-center">
+<div class="h-full bg-[#c5c4be] w-[64%] rounded-2xs"></div>
+</div>
+<span class="text-[11px] font-medium">64%</span>
+</div>
+</div>
+</div>
+<!-- Header Navigation Icons on Main Screen -->
+<header class="w-full px-5 py-2 flex items-center justify-between z-0">
+<!-- Hamburger Menu Icon -->
+<button aria-label="Menu" class="text-[#c5c4be] p-1.5 focus:outline-none" type="button">
+<svg class="w-6 h-6 stroke-current" fill="none" stroke-width="1.8" viewbox="0 0 24 24">
+<path d="M3.75 6.75h16.5M3.75 12h11.5" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</button>
+<!-- User Ghost / Profile Icon -->
+<button aria-label="Profile" class="text-[#c5c4be] p-1.5 focus:outline-none" type="button">
+<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewbox="0 0 24 24">
+<path d="M18 10a6 6 0 0 0-12 0v8h1.5a1.5 1.5 0 0 0 1.5-1.5V16h2v.5A1.5 1.5 0 0 0 12 18h0a1.5 1.5 0 0 0 1.5-1.5V16h2v.5a1.5 1.5 0 0 0 1.5 1.5H18v-8z"></path>
+<circle cx="9" cy="10" fill="currentColor" r="1"></circle>
+<circle cx="15" cy="10" fill="currentColor" r="1"></circle>
+</svg>
+</button>
+</header>
+<!-- Center Content: Greeting & Starburst -->
+<div class="flex-1 flex flex-col items-center justify-center pb-44 px-4 text-center z-0">
+<!-- Anthropic / Claude Starburst Icon -->
+<div class="mb-5 text-[#cc785c]" data-purpose="claude-sunburst">
+<svg class="w-14 h-14" fill="currentColor" viewbox="0 0 64 64">
+<!-- Multi-spoke stylized burst -->
+<line stroke="currentColor" stroke-linecap="round" stroke-width="4.5" x1="32" x2="32" y1="4" y2="22"></line>
+<line stroke="currentColor" stroke-linecap="round" stroke-width="4.5" x1="32" x2="32" y1="42" y2="60"></line>
+<line stroke="currentColor" stroke-linecap="round" stroke-width="4.5" x1="4" x2="22" y1="32" y2="32"></line>
+<line stroke="currentColor" stroke-linecap="round" stroke-width="4.5" x1="42" x2="60" y1="32" y2="32"></line>
+<line stroke="currentColor" stroke-linecap="round" stroke-width="4.5" x1="12.2" x2="24.9" y1="12.2" y2="24.9"></line>
+<line stroke="currentColor" stroke-linecap="round" stroke-width="4.5" x1="39.1" x2="51.8" y1="39.1" y2="51.8"></line>
+<line stroke="currentColor" stroke-linecap="round" stroke-width="4.5" x1="12.2" x2="24.9" y1="51.8" y2="39.1"></line>
+<line stroke="currentColor" stroke-linecap="round" stroke-width="4.5" x1="39.1" x2="51.8" y1="24.9" y2="12.2"></line>
+<line stroke="currentColor" stroke-linecap="round" stroke-width="3" x1="20" x2="27" y1="7" y2="23"></line>
+<line stroke="currentColor" stroke-linecap="round" stroke-width="3" x1="37" x2="44" y1="41" y2="57"></line>
+<line stroke="currentColor" stroke-linecap="round" stroke-width="3" x1="7" x2="23" y1="44" y2="37"></line>
+<line stroke="currentColor" stroke-linecap="round" stroke-width="3" x1="41" x2="57" y1="27" y2="20"></line>
+<line stroke="currentColor" stroke-linecap="round" stroke-width="3" x1="7" x2="23" y1="20" y2="27"></line>
+<line stroke="currentColor" stroke-linecap="round" stroke-width="3" x1="41" x2="57" y1="37" y2="44"></line>
+<line stroke="currentColor" stroke-linecap="round" stroke-width="3" x1="20" x2="27" y1="57" y2="41"></line>
+<line stroke="currentColor" stroke-linecap="round" stroke-width="3" x1="37" x2="44" y1="23" y2="7"></line>
+</svg>
+</div>
+<!-- Personalized Greeting -->
+<h1 class="greeting-font text-3xl md:text-4xl text-[#d4cfc7] font-normal tracking-wide">
+        Good afternoon, Jishnu
+      </h1>
+</div>
+<!-- Scrim / Dim Overlay -->
+<div aria-hidden="true" class="absolute inset-0 bg-black/60 pointer-events-none z-10"></div>
+<!-- BEGIN: SelectModelBottomSheet -->
+<section aria-labelledby="modal-title" aria-modal="true" class="absolute bottom-0 inset-x-0 bg-[#1f1e1c] bottom-sheet z-20 flex flex-col shadow-2xl pt-3 pb-1" data-purpose="model-picker-modal" role="dialog">
+<!-- Sheet Drag Handle -->
+<div class="w-full flex justify-center items-center pb-2">
+<div class="w-10 h-1 rounded-full bg-[#403e3a]"></div>
+</div>
+<!-- Modal Header -->
+<div class="relative flex items-center justify-center px-6 py-3.5 mb-1">
+<!-- Close Button -->
+<button aria-label="Close" class="absolute left-6 text-[#9e9d96] hover:text-white transition-colors focus:outline-none" type="button">
+<svg class="w-5 h-5 stroke-current" fill="none" stroke-width="2.3" viewbox="0 0 24 24">
+<path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</button>
+<!-- Centered Title -->
+<h2 class="text-[19px] font-medium text-[#faf9f5] tracking-tight" id="modal-title">
+          Select model
+        </h2>
+</div>
+<!-- Model Options List -->
+<div class="flex flex-col px-4 pt-1 pb-2 divide-y divide-[#2a2926]" data-purpose="model-list">
+<!-- Option 1: Fable 5.1 -->
+<div class="py-3 px-2 flex flex-col justify-center cursor-pointer active:opacity-75 transition-opacity" data-purpose="model-item">
+<div class="flex items-center space-x-2.5">
+<span class="text-[18px] font-medium text-[#faf9f5] tracking-tight">Fable 5.1</span>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#232936] text-[#789dce] border border-[#2b394e]/50">
+              Pro or Max
+            </span>
+</div>
+<p class="text-[14px] text-[#87867f] font-normal mt-0.5 tracking-normal">
+            For your toughest challenges
+          </p>
+</div>
+<!-- Option 2: Opus 5 -->
+<div class="py-3 px-2 flex flex-col justify-center cursor-pointer active:opacity-75 transition-opacity" data-purpose="model-item">
+<div class="flex items-center space-x-2.5">
+<span class="text-[18px] font-medium text-[#faf9f5] tracking-tight">Opus 5</span>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#232936] text-[#789dce] border border-[#2b394e]/50">
+              Pro
+            </span>
+</div>
+<p class="text-[14px] text-[#87867f] font-normal mt-0.5 tracking-normal">
+            For complex tasks
+          </p>
+</div>
+<!-- Option 3: Sonnet 5 (Active Selected Item) -->
+<div class="py-3 px-2 flex items-center justify-between cursor-pointer active:opacity-75 transition-opacity" data-purpose="model-item-selected">
+<div class="flex flex-col">
+<span class="text-[18px] font-medium text-[#539ef5] tracking-tight">Sonnet 5</span>
+<p class="text-[14px] text-[#539ef5] font-normal mt-0.5 tracking-normal">
+              Most efficient for everyday tasks
+            </p>
+</div>
+<!-- Selection Checkmark -->
+<div class="text-[#539ef5] pr-1.5">
+<svg class="w-5 h-5 stroke-current" fill="none" stroke-width="2.6" viewbox="0 0 24 24">
+<path d="M4.5 12.75l6 6 9-13.5" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+</div>
+<!-- Option 4: Haiku 4.5 -->
+<div class="py-3 px-2 flex flex-col justify-center cursor-pointer opacity-90 active:opacity-75 transition-opacity" data-purpose="model-item">
+<span class="text-[18px] font-medium text-[#faf9f5] tracking-tight">Haiku 4.5</span>
+<p class="text-[14px] text-[#87867f] font-normal mt-0.5 tracking-normal truncate">
+            Fastest for quick answers
+          </p>
+</div>
+</div>
+<!-- Android Bottom Navigation Bar (Software Keys) -->
+<footer class="w-full pt-2 pb-2.5 flex items-center justify-around text-[#6c6b65]" data-purpose="android-system-navigation">
+<!-- Recent Apps Button (Double Horizontal Lines) -->
+<button aria-label="Recent apps" class="p-2 flex flex-col items-center justify-center focus:outline-none" type="button">
+<div class="w-3.5 h-0.5 bg-current rounded-full mb-1"></div>
+<div class="w-3.5 h-0.5 bg-current rounded-full"></div>
+</button>
+<!-- Home Button (Rounded Square) -->
+<button aria-label="Home" class="p-2 flex items-center justify-center focus:outline-none" type="button">
+<div class="w-3.5 h-3.5 border-[1.8px] border-current rounded-[3.5px]"></div>
+</button>
+<!-- Back Button (Left Chevron / Arrow outline) -->
+<button aria-label="Back" class="p-2 flex items-center justify-center focus:outline-none" type="button">
+<svg class="w-3.5 h-3.5 fill-none stroke-current" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" viewbox="0 0 24 24">
+<polyline points="15 18 9 12 15 6"></polyline>
+</svg>
+</button>
+</footer>
+</section>
+<!-- END: SelectModelBottomSheet -->
+</div>
+<!-- END: Background HomeScreen -->
+</body></html>

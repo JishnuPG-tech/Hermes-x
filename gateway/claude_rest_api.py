@@ -7,8 +7,20 @@ stable, but load the complete implementation from the canonical Docker copy
 instead of maintaining a second, drift-prone copy.
 """
 
-from Backend.gateway.claude_rest_api import *  # noqa: F401,F403
-from Backend.gateway.claude_rest_api import router
+from typing import Optional, Dict, Any, List, Union
+import json
+import uuid
+import time
+import os
+import asyncio
+from fastapi import APIRouter, Request, Response, Header, Query, HTTPException, WebSocket
+from fastapi.responses import JSONResponse, StreamingResponse
+
+try:
+    from Backend.gateway.claude_rest_api import *  # noqa: F401,F403
+    from Backend.gateway.claude_rest_api import router
+except ImportError:
+    router = APIRouter(tags=["Claude REST API"])
 
 # 1. Models Catalog (Full ModelOption array matching Organization.claude_ai_bootstrap_models_config)
 MODELS_CATALOG = [

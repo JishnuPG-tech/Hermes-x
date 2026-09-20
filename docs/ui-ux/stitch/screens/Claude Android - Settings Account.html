@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Settings - Claude Android</title>
+<!-- Tailwind CSS CDN with forms and container queries plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            appDark: '#131312',
+            cardBg: '#1e1e1c',
+            dividerColor: '#282724',
+            textPrimary: '#f2f0ea',
+            textSecondary: '#a5a39a',
+            textMuted: '#7f7e77',
+          },
+          fontFamily: {
+            serifTitle: ['"Newsreader"', 'Georgia', 'serif'],
+            sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+<!-- Google Fonts for the Claude Serif Title -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&amp;display=swap" rel="stylesheet"/>
+<style data-purpose="custom-layout">
+    /* Remove default tap highlights */
+    * {
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    /* Android status bar font sizing */
+    .status-font {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-appDark text-textPrimary antialiased flex justify-center items-center min-h-screen">
+<!-- BEGIN: Mobile Device Canvas -->
+<div class="w-full max-w-[420px] h-[920px] bg-appDark flex flex-col justify-between overflow-hidden relative shadow-2xl" data-purpose="device-frame">
+<!-- Scrollable Content Viewport -->
+<div class="flex-1 flex flex-col overflow-y-auto no-scrollbar">
+<!-- BEGIN: StatusBar -->
+<section class="w-full pt-3 px-6 pb-2 flex justify-between items-center text-xs tracking-tight text-textSecondary status-font" data-purpose="status-bar">
+<!-- Time -->
+<span class="font-medium text-[13px] text-textPrimary pl-1">12:23</span>
+<!-- System Status Icons -->
+<div class="flex items-center space-x-1.5 opacity-90">
+<div class="flex flex-col items-center justify-center leading-none text-[8px] font-semibold">
+<span>0.60</span>
+<span>KB/S</span>
+</div>
+<span class="text-[9px] font-bold tracking-tight">Vo<br/>LTE</span>
+<span class="text-[10px] font-bold">5G</span>
+<!-- Signal Icon -->
+<svg class="w-3.5 h-3.5 fill-current" viewbox="0 0 24 24">
+<path d="M2 22h20V2L2 22z"></path>
+</svg>
+<!-- Battery Icon with Percentage -->
+<div class="flex items-center space-x-1 pl-0.5">
+<svg class="w-4 h-4 fill-current rotate-90" viewbox="0 0 24 24">
+<path d="M17 5v16c0 .55-.45 1-1 1H8c-.55 0-1-.45-1-1V5c0-.55.45-1 1-1h2V2h4v2h2c.55 0 1 .45 1 1zm-2 1H9v14h6V6z"></path>
+</svg>
+<span class="text-[11px] font-normal text-textPrimary">63%</span>
+</div>
+</div>
+</section>
+<!-- END: StatusBar -->
+<!-- BEGIN: NavigationBar -->
+<header class="relative flex items-center justify-between px-5 pt-3 pb-4" data-purpose="header">
+<!-- Hamburger Menu -->
+<button aria-label="Menu" class="text-textPrimary hover:opacity-80 transition-opacity p-1 -ml-1">
+<svg class="w-6 h-6 stroke-current stroke-[2.2]" fill="none" stroke-linecap="round" viewbox="0 0 24 24">
+<path d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5"></path>
+</svg>
+</button>
+<!-- Serif Settings Title -->
+<h1 class="text-[23px] font-medium font-serifTitle tracking-normal text-textPrimary">Settings</h1>
+<!-- Info / About Button -->
+<button aria-label="Information" class="text-textPrimary hover:opacity-80 transition-opacity p-1 -mr-1">
+<svg class="w-6 h-6 stroke-current stroke-[1.8]" fill="none" stroke-linecap="round" stroke-linejoin="round" viewbox="0 0 24 24">
+<circle cx="12" cy="12" r="10"></circle>
+<line x1="12" x2="12" y1="16" y2="12"></line>
+<circle cx="12" cy="8" fill="currentColor" r="0.7"></circle>
+</svg>
+</button>
+</header>
+<!-- END: NavigationBar -->
+<!-- BEGIN: ContentArea -->
+<main class="flex flex-col px-4 space-y-3 pb-6">
+<!-- BEGIN: AccountCard -->
+<section class="bg-cardBg rounded-[20px] px-4 py-3.5 flex items-center justify-between" data-purpose="account-bar">
+<span class="text-[17px] tracking-tight font-medium text-textPrimary truncate max-w-[250px]">
+            jishnupg2005@gmail.com
+          </span>
+<span class="bg-white text-black text-[13px] font-semibold px-3 py-1 rounded-full leading-none tracking-tight">
+            Free
+          </span>
+</section>
+<!-- END: AccountCard -->
+<!-- BEGIN: UpsellBanner -->
+<section class="bg-cardBg rounded-[22px] p-5 flex flex-col items-start space-y-2" data-purpose="upsell-card">
+<h2 class="text-[20px] font-semibold text-textPrimary tracking-tight">
+            Want more Claude?
+          </h2>
+<p class="text-[17px] leading-snug text-textSecondary font-normal max-w-[280px]">
+            Upgrade for more usage and capabilities.
+          </p>
+<div class="pt-2.5">
+<button class="bg-white text-black font-semibold text-[15px] px-5 py-2.5 rounded-full hover:bg-neutral-200 transition-colors shadow-sm">
+              Upgrade
+            </button>
+</div>
+</section>
+<!-- END: UpsellBanner -->
+<!-- BEGIN: GeneralSettingsGroup -->
+<section class="bg-cardBg rounded-[22px] overflow-hidden flex flex-col" data-purpose="profile-group">
+<!-- Profile Row -->
+<div class="flex items-center px-4 py-4 cursor-pointer hover:bg-white/5 transition-colors">
+<div class="w-7 flex justify-start text-textPrimary">
+<!-- Person circle icon -->
+<svg class="w-[25px] h-[25px] stroke-current stroke-[1.7]" fill="none" stroke-linecap="round" stroke-linejoin="round" viewbox="0 0 24 24">
+<circle cx="12" cy="8" r="4"></circle>
+<path d="M5.5 20a6.5 6.5 0 0 1 13 0"></path>
+<circle cx="12" cy="12" r="9.5"></circle>
+</svg>
+</div>
+<span class="ml-3 text-[18px] font-normal tracking-tight text-textPrimary">Profile</span>
+</div>
+<!-- Divider -->
+<div class="h-[1px] bg-dividerColor ml-14 mr-0"></div>
+<!-- Billing Row -->
+<div class="flex items-center px-4 py-4 cursor-pointer hover:bg-white/5 transition-colors">
+<div class="w-7 flex justify-start text-textPrimary">
+<!-- Billing dollar circle icon -->
+<svg class="w-[25px] h-[25px] stroke-current stroke-[1.7]" fill="none" stroke-linecap="round" stroke-linejoin="round" viewbox="0 0 24 24">
+<circle cx="12" cy="12" r="9.5"></circle>
+<path d="M14.5 9.5c-.3-.8-1.2-1.3-2.5-1.3-1.7 0-2.5.8-2.5 1.8 0 2.2 5 1.5 5 3.7 0 1.2-1 2-2.5 2-1.5 0-2.6-.7-2.9-1.7"></path>
+<path d="M12 7v10"></path>
+</svg>
+</div>
+<span class="ml-3 text-[18px] font-normal tracking-tight text-textPrimary">Billing</span>
+</div>
+</section>
+<!-- END: GeneralSettingsGroup -->
+<!-- BEGIN: CapabilitiesSettingsGroup -->
+<section class="bg-cardBg rounded-[22px] overflow-hidden flex flex-col" data-purpose="capabilities-group">
+<!-- Capabilities Row -->
+<div class="flex items-center px-4 py-3.5 cursor-pointer hover:bg-white/5 transition-colors">
+<div class="w-7 flex justify-start text-textPrimary">
+<!-- Sliders/Preferences Icon -->
+<svg class="w-[25px] h-[25px] stroke-current stroke-[1.7]" fill="none" stroke-linecap="round" viewbox="0 0 24 24">
+<line x1="6" x2="6" y1="4" y2="20"></line>
+<line x1="12" x2="12" y1="4" y2="20"></line>
+<line x1="18" x2="18" y1="4" y2="20"></line>
+<circle cx="6" cy="14" fill="#1e1e1c" r="2"></circle>
+<circle cx="12" cy="8" fill="#1e1e1c" r="2"></circle>
+<circle cx="18" cy="16" fill="#1e1e1c" r="2"></circle>
+</svg>
+</div>
+<div class="ml-3 flex flex-col">
+<span class="text-[18px] font-normal tracking-tight text-textPrimary leading-snug">Capabilities</span>
+<span class="text-[14px] text-textMuted leading-tight font-normal">5 enabled</span>
+</div>
+</div>
+<!-- Divider -->
+<div class="h-[1px] bg-dividerColor ml-14 mr-0"></div>
+<!-- Connectors Row -->
+<div class="flex items-center px-4 py-3.5 cursor-pointer hover:bg-white/5 transition-colors">
+<div class="w-7 flex justify-start text-textPrimary">
+<!-- Paperclip / Connection Icon -->
+<svg class="w-[23px] h-[23px] stroke-current stroke-[1.8] rotate-45" fill="none" stroke-linecap="round" stroke-linejoin="round" viewbox="0 0 24 24">
+<path d="M13.5 6.5l-6 6a4.24 4.24 0 0 0 6 6l8.5-8.5a3 3 0 0 0-4.24-4.24l-8.5 8.5a1.5 1.5 0 0 0 2.12 2.12l6-6"></path>
+</svg>
+</div>
+<div class="ml-3 flex flex-col">
+<span class="text-[18px] font-normal tracking-tight text-textPrimary leading-snug">Connectors</span>
+<span class="text-[14px] text-textMuted leading-tight font-normal">1 connected</span>
+</div>
+</div>
+<!-- Divider -->
+<div class="h-[1px] bg-dividerColor ml-14 mr-0"></div>
+<!-- Permissions Row -->
+<div class="flex items-center px-4 py-4 cursor-pointer hover:bg-white/5 transition-colors">
+<div class="w-7 flex justify-start text-textPrimary">
+<!-- Android Head Icon -->
+<svg class="w-[23px] h-[23px] fill-current" viewbox="0 0 24 24">
+<!-- Antennae -->
+<line stroke="currentColor" stroke-linecap="round" stroke-width="1.8" x1="5.5" x2="8" y1="4.5" y2="8"></line>
+<line stroke="currentColor" stroke-linecap="round" stroke-width="1.8" x1="18.5" x2="16" y1="4.5" y2="8"></line>
+<!-- Head dome -->
+<path d="M5 14v-2.5C5 8.36 8.13 5.5 12 5.5s7 2.86 7 6v2.5H5z"></path>
+<!-- Eyes -->
+<circle cx="9" cy="10.5" fill="#1e1e1c" r="0.9"></circle>
+<circle cx="15" cy="10.5" fill="#1e1e1c" r="0.9"></circle>
+</svg>
+</div>
+<span class="ml-3 text-[18px] font-normal tracking-tight text-textPrimary">Permissions</span>
+</div>
+</section>
+<!-- END: CapabilitiesSettingsGroup -->
+<!-- BEGIN: PreferencesGroup (Peeking at Bottom) -->
+<section class="bg-cardBg rounded-[22px] overflow-hidden flex flex-col" data-purpose="preferences-group">
+<!-- Color Mode Row -->
+<div class="flex items-center px-4 py-3.5">
+<div class="w-7 flex justify-start text-textPrimary">
+<!-- Moon Icon -->
+<svg class="w-[23px] h-[23px] stroke-current stroke-[1.8]" fill="none" stroke-linecap="round" stroke-linejoin="round" viewbox="0 0 24 24">
+<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+</svg>
+</div>
+<div class="ml-3 flex flex-col">
+<span class="text-[18px] font-normal tracking-tight text-textPrimary leading-snug">Color mode</span>
+<span class="text-[14px] text-textMuted leading-tight font-normal">System</span>
+</div>
+</div>
+</section>
+<!-- END: PreferencesGroup -->
+</main>
+<!-- END: ContentArea -->
+</div>
+<!-- BEGIN: AndroidNavigationBar -->
+<nav class="w-full h-11 bg-appDark flex items-center justify-around px-8 opacity-75 shrink-0" data-purpose="android-system-nav">
+<!-- Recent Apps (Hamburger lines) -->
+<button aria-label="Recent apps" class="p-2">
+<svg class="w-4 h-4 stroke-current stroke-[2]" fill="none" viewbox="0 0 24 24">
+<line x1="4" x2="20" y1="7" y2="7"></line>
+<line x1="4" x2="20" y1="12" y2="12"></line>
+<line x1="4" x2="20" y1="17" y2="17"></line>
+</svg>
+</button>
+<!-- Home (Square/Rounded Box) -->
+<button aria-label="Home" class="p-2">
+<svg class="w-3.5 h-3.5 stroke-current stroke-[2]" fill="none" viewbox="0 0 24 24">
+<rect height="16" rx="3.5" width="16" x="4" y="4"></rect>
+</svg>
+</button>
+<!-- Back (Left Chevron / Triangle) -->
+<button aria-label="Back" class="p-2">
+<svg class="w-3.5 h-3.5 stroke-current stroke-[2.2]" fill="none" stroke-linecap="round" stroke-linejoin="round" viewbox="0 0 24 24">
+<polyline points="15 19 8 12 15 5"></polyline>
+</svg>
+</button>
+</nav>
+<!-- END: AndroidNavigationBar -->
+</div>
+<!-- END: Mobile Device Canvas -->
+</body></html>

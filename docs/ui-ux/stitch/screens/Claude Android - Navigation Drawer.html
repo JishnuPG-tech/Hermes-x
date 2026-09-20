@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Claude Drawer</title>
+<!-- Tailwind CSS v3 with forms and container-queries -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brandDark: '#141413',
+            brandText: '#faf9f5',
+            brandMuted: '#9e9d96',
+            brandBorder: '#292826',
+            coralAvatar: '#d97757',
+          },
+          fontFamily: {
+            serif: ['Georgia', 'Charter', 'serif'],
+            sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+<!-- BEGIN: Custom Typography and Base Styles -->
+<style data-purpose="base-styling">
+    body {
+      background-color: #0b0b0a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    /* Hide scrollbars for an authentic mobile app appearance */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+<!-- END: Custom Typography and Base Styles -->
+</head>
+<body class="bg-black text-[#faf9f5]">
+<!-- BEGIN: Mobile Frame Container -->
+<main class="w-full max-w-[430px] h-[932px] bg-[#141413] flex flex-col justify-between relative overflow-hidden select-none shadow-2xl">
+<!-- BEGIN: Android Top Status Bar -->
+<header class="w-full px-6 pt-3 pb-1 flex justify-between items-center text-xs text-[#faf9f5] font-medium z-20 shrink-0" data-purpose="status-bar">
+<!-- Time -->
+<span class="text-[15px] font-normal tracking-wide pl-1">12:23</span>
+<!-- Status Icons (Network, 5G, Battery) -->
+<div class="flex items-center space-x-2 text-[12px] opacity-90 pr-1">
+<!-- Vibrate / silent indicator simulation & Data rate -->
+<span class="text-[10px] scale-90 font-mono tracking-tight leading-none text-right">
+          17.0 <span class="block text-[8px] font-sans">KB/S</span>
+</span>
+<!-- VoLTE Badge -->
+<div class="flex flex-col text-[8px] leading-[8px] border border-current px-[2px] py-[1px] rounded-[2px] font-semibold">
+<span>Vo</span>
+<span>LTE</span>
+</div>
+<!-- 5G Indicator -->
+<div class="flex items-center space-x-0.5">
+<span class="text-[11px] font-bold tracking-tighter">5G</span>
+<!-- Signal bars -->
+<svg class="w-3.5 h-3.5 fill-current inline-block ml-0.5" viewbox="0 0 24 24">
+<path d="M2 22h20V2L2 22z"></path>
+</svg>
+</div>
+<!-- Battery Status -->
+<div class="flex items-center space-x-1 pl-1">
+<!-- Battery Pill Shape -->
+<div class="w-6 h-3 border border-current rounded-[3px] p-[1.5px] flex items-center relative">
+<div class="h-full bg-current rounded-[1px] w-[63%]"></div>
+<div class="w-[1.5px] h-1.5 bg-current absolute -right-[2.5px] rounded-r-sm top-[2px]"></div>
+</div>
+<span class="text-[13px] font-normal tracking-tight">63%</span>
+</div>
+</div>
+</header>
+<!-- END: Android Top Status Bar -->
+<!-- BEGIN: Navigation and Main Content -->
+<div class="flex-1 overflow-y-auto no-scrollbar px-6 pt-5 pb-24 flex flex-col" data-purpose="nav-drawer-content">
+<!-- Claude Serif Wordmark Header -->
+<div class="mb-7 pl-1">
+<h1 class="font-serif text-[42px] leading-tight font-normal text-[#faf9f5] tracking-normal">Claude</h1>
+</div>
+<!-- Main Navigation Menu Links -->
+<nav class="space-y-6 mb-6" data-purpose="primary-navigation">
+<!-- Chats Item -->
+<a class="flex items-center space-x-4 text-[#faf9f5] group" href="#">
+<!-- Chat bubble outline icon -->
+<svg class="w-[23px] h-[23px] stroke-[1.8] stroke-current fill-none text-[#faf9f5]" viewbox="0 0 24 24">
+<path d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a.75.75 0 01-1.074-.85 9.97 9.97 0 001.38-3.766A7.902 7.902 0 013 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="text-[21px] font-normal tracking-wide text-[#faf9f5]">Chats</span>
+</a>
+<!-- Projects Item -->
+<a class="flex items-center space-x-4 text-[#faf9f5] group" href="#">
+<!-- Projects Drawer Box icon -->
+<svg class="w-[23px] h-[23px] stroke-[1.8] stroke-current fill-none text-[#faf9f5]" viewbox="0 0 24 24">
+<path d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3.75h.008v.008H12v-.008zM3.75 7.5h16.5M5.25 7.5V5.25A2.25 2.25 0 017.5 3h9a2.25 2.25 0 012.25 2.25V7.5" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="text-[21px] font-normal tracking-wide text-[#faf9f5]">Projects</span>
+</a>
+<!-- Code Item -->
+<a class="flex items-center space-x-4 text-[#faf9f5] group" href="#">
+<!-- Code bracket icon -->
+<svg class="w-[23px] h-[23px] stroke-[1.8] stroke-current fill-none text-[#faf9f5]" viewbox="0 0 24 24">
+<path d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="text-[21px] font-normal tracking-wide text-[#faf9f5]">Code</span>
+</a>
+<!-- Artifacts Item -->
+<a class="flex items-center space-x-4 text-[#faf9f5] group" href="#">
+<!-- Artifacts / Interlocking geometric shapes icon -->
+<svg class="w-[23px] h-[23px] stroke-[1.8] stroke-current fill-none text-[#faf9f5]" viewbox="0 0 24 24">
+<circle cx="7" cy="17" r="4" stroke-linecap="round" stroke-linejoin="round"></circle>
+<rect height="8" rx="1.5" stroke-linecap="round" stroke-linejoin="round" width="8" x="13" y="11"></rect>
+<path d="M12 4a4.5 4.5 0 014.5 4.5v1.5H7.5A4.5 4.5 0 0112 4z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="text-[21px] font-normal tracking-wide text-[#faf9f5]">Artifacts</span>
+</a>
+</nav>
+<!-- Section Divider -->
+<div class="h-[1px] bg-[#292826] w-full my-3"></div>
+<!-- BEGIN: Pinned Chats Section -->
+<section class="py-2" data-purpose="pinned-section">
+<h2 class="text-[#8c8b85] text-[17px] font-normal mb-3 pl-0.5 tracking-tight">Pinned</h2>
+<div class="py-1">
+<a class="block text-[19px] leading-snug font-normal text-[#faf9f5] truncate tracking-tight hover:opacity-85" href="#">
+            Resume optimization for ATS score i...
+          </a>
+</div>
+</section>
+<!-- END: Pinned Chats Section -->
+<!-- Section Divider -->
+<div class="h-[1px] bg-[#292826] w-full my-3"></div>
+<!-- BEGIN: Recent Chats Section -->
+<section class="py-2 space-y-4" data-purpose="recents-section">
+<h2 class="text-[#8c8b85] text-[17px] font-normal mb-1 pl-0.5 tracking-tight">Recents</h2>
+<a class="block text-[19px] leading-snug font-normal text-[#faf9f5] truncate tracking-tight hover:opacity-85" href="#">
+          Free Docker hosting platforms 24/7
+        </a>
+<a class="block text-[19px] leading-snug font-normal text-[#faf9f5] truncate tracking-tight hover:opacity-85" href="#">
+          Untitled
+        </a>
+<a class="block text-[19px] leading-snug font-normal text-[#faf9f5] truncate tracking-tight hover:opacity-85" href="#">
+          Plan execution
+        </a>
+<a class="block text-[19px] leading-snug font-normal text-[#faf9f5] truncate tracking-tight hover:opacity-85" href="#">
+          Greeting exchange
+        </a>
+<a class="block text-[19px] leading-snug font-normal text-[#faf9f5] truncate tracking-tight hover:opacity-85" href="#">
+          Untitled
+        </a>
+</section>
+<!-- END: Recent Chats Section -->
+</div>
+<!-- END: Navigation and Main Content -->
+<!-- BEGIN: Bottom Action Bar & Floating Buttons -->
+<footer class="absolute bottom-10 left-0 right-0 px-6 flex items-center justify-between pointer-events-none z-30" data-purpose="floating-action-footer">
+<!-- User Profile Avatar Pill -->
+<button class="w-13 h-13 min-w-[52px] min-h-[52px] rounded-full bg-[#d97757] flex items-center justify-center pointer-events-auto shadow-md transition active:scale-95 focus:outline-none" data-purpose="user-avatar-button">
+<span class="text-white text-xl font-medium tracking-tight">J</span>
+</button>
+<!-- New Chat Button -->
+<button class="flex items-center space-x-2 bg-white text-[#141413] px-5 py-3.5 rounded-full font-normal shadow-lg pointer-events-auto transition active:scale-95 hover:bg-neutral-100" data-purpose="new-chat-button">
+<!-- Plus Icon -->
+<svg class="w-5 h-5 stroke-[2.2] stroke-[#141413]" fill="none" viewbox="0 0 24 24">
+<path d="M12 4.5v15m7.5-7.5h-15" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="text-[17px] font-medium tracking-tight">New chat</span>
+</button>
+</footer>
+<!-- END: Bottom Action Bar & Floating Buttons -->
+<!-- BEGIN: Android System Navigation Bar (Bottom Keys) -->
+<nav class="w-full h-10 px-12 flex justify-between items-center text-[#8c8b85] shrink-0 pb-2 z-40" data-purpose="android-system-nav">
+<!-- Recent Apps (Hamburger lines) -->
+<button aria-label="Recent apps" class="p-2 opacity-70 hover:opacity-100 focus:outline-none">
+<svg class="w-5 h-5 stroke-[1.8] stroke-current fill-none" viewbox="0 0 24 24">
+<path d="M4 7h16M4 12h16M4 17h16" stroke-linecap="round"></path>
+</svg>
+</button>
+<!-- Home (Square/Rounded Square) -->
+<button aria-label="Home screen" class="p-2 opacity-70 hover:opacity-100 focus:outline-none">
+<div class="w-4 h-4 border-[1.8px] border-current rounded-[3px]"></div>
+</button>
+<!-- Back (Chevron / Left Arrow) -->
+<button aria-label="Back button" class="p-2 opacity-70 hover:opacity-100 focus:outline-none">
+<svg class="w-5 h-5 stroke-[1.8] stroke-current fill-none" viewbox="0 0 24 24">
+<path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</button>
+</nav>
+<!-- END: Android System Navigation Bar -->
+</main>
+<!-- END: Mobile Frame Container -->
+</body></html>

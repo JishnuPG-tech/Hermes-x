@@ -3,8 +3,12 @@
 The local gateway keeps this module path for existing imports while the
 deployable implementation remains in Backend/gateway.
 """
-from Backend.gateway.anthropic_bridge import *  # noqa: F401,F403
-from Backend.gateway.anthropic_bridge import router
+try:
+    from Backend.gateway.anthropic_bridge import *  # noqa: F401,F403
+    from Backend.gateway.anthropic_bridge import router
+except ImportError:
+    from fastapi import APIRouter
+    router = APIRouter(tags=["Anthropic Bridge"])
 
 import json
 import uuid

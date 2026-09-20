@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+
+<html class="h-full bg-black" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Hermes Android - Full-Screen Summary Sheet</title>
+<!-- Tailwind CSS v3 -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            hermes: {
+              terracotta: '#d97757',
+              dimText: '#878682',
+              cardBg: '#171614',
+              sheetBg: '#1c1b19',
+              sheetBorder: '#2e2c28',
+              sheetSurface: '#242220'
+            }
+          },
+          fontFamily: {
+            serif: ['Georgia', 'Cambria', '"Times New Roman"', 'Times', 'serif'],
+            sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'Helvetica', 'Arial', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+<!-- BEGIN: Custom Styles -->
+<style data-purpose="typography">
+    .font-copernicus {
+      font-family: 'Times New Roman', Times, Georgia, serif;
+    }
+    .live-shimmer {
+      background: linear-gradient(90deg, #f5efe6 0%, #a8a29e 50%, #f5efe6 100%);
+      background-size: 200% auto;
+      color: transparent;
+      -webkit-background-clip: text;
+      background-clip: text;
+      animation: shimmer 2.2s linear infinite;
+    }
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    @keyframes spin-slow {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .animate-spin-slow {
+      animation: spin-slow 10s linear infinite;
+    }
+  </style>
+<!-- END: Custom Styles -->
+</head>
+<body class="h-full bg-black text-[#eceae5] flex flex-col justify-between overflow-hidden antialiased select-none font-sans">
+<!-- BEGIN: AndroidStatusBar -->
+<header class="w-full pt-2 px-6 pb-1 flex justify-between items-center text-xs text-[#b8b5ad] z-50 bg-[#0e0d0c]" data-purpose="status-bar">
+<span class="font-medium text-sm tracking-tight text-[#f1ede6]">3:59</span>
+<div class="flex items-center space-x-2">
+<!-- VoLTE / Network info -->
+<span class="text-[10px] text-stone-400 font-mono">16.0 KB/s</span>
+<span class="text-[10px] border border-stone-600 rounded px-0.5 text-stone-300 font-mono">Vo LTE</span>
+<span class="text-xs font-semibold tracking-wider text-stone-300">5G</span>
+<!-- Battery Icon and % -->
+<div class="flex items-center space-x-1">
+<div class="w-5 h-2.5 border border-stone-400 rounded-sm p-0.5 flex items-center">
+<div class="h-full bg-stone-300 rounded-2xs w-[51%]"></div>
+</div>
+<span class="text-[11px] font-medium text-stone-300">51%</span>
+</div>
+</div>
+</header>
+<!-- END: AndroidStatusBar -->
+<!-- BEGIN: BackgroundDimmedView -->
+<!-- Dimmed previous chat layer in background -->
+<section class="relative px-5 pt-3 opacity-25 filter blur-[0.4px] pointer-events-none" data-purpose="dimmed-chat-background">
+<!-- Top chat row -->
+<div class="flex items-center justify-between mb-4">
+<div class="w-6 h-6 flex flex-col justify-center gap-1">
+<span class="block w-5 h-0.5 bg-stone-400"></span>
+<span class="block w-3.5 h-0.5 bg-stone-400"></span>
+</div>
+<div class="text-stone-300 font-serif text-lg font-normal">truth.</div>
+<div class="bg-stone-800/80 px-3 py-1 rounded-full text-xs text-stone-400 border border-stone-700/50">6 Artifacts</div>
+</div>
+<!-- Previous user message bubble -->
+<div class="bg-[#242321] rounded-2xl p-4 border border-stone-800 text-stone-300 text-sm leading-relaxed mb-4">
+      Ok now how to implement animation you have provided in my android apk can you write the design.md file for this
+    </div>
+<!-- Creating file line -->
+<div class="flex items-center gap-2 text-stone-400 text-sm">
+<svg class="w-4 h-4 text-stone-500" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
+<span>Creating file</span>
+<svg class="w-3.5 h-3.5 text-stone-500" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+</section>
+<!-- END: BackgroundDimmedView -->
+<!-- BEGIN: BottomSheetModal -->
+<!-- Elevated Bottom Sheet Container matching screenshot radius and dark palette -->
+<main class="relative z-40 bg-[#1c1b19] border-t border-[#312f2b] rounded-t-[28px] shadow-2xl flex-1 flex flex-col overflow-hidden -mt-24" data-purpose="summary-bottom-sheet">
+<!-- Drag Handle -->
+<div class="w-full flex justify-center pt-2.5 pb-1 cursor-grab">
+<div class="w-10 h-1 rounded-full bg-[#44423d]"></div>
+</div>
+<!-- Sheet Header -->
+<div class="px-5 py-2.5 flex items-center justify-between border-b border-[#292723]/60">
+<!-- Close Button -->
+<button aria-label="Close Summary" class="w-8 h-8 rounded-full flex items-center justify-center text-stone-400 hover:text-white hover:bg-stone-800/50 transition" type="button">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+<!-- Centered Title -->
+<h1 class="font-copernicus text-[22px] tracking-normal font-normal text-[#f4eee6]">Summary</h1>
+<!-- Right Steps Badge -->
+<div class="flex items-center space-x-1.5 bg-[#262420] border border-[#3b3832] px-2.5 py-1 rounded-full">
+<span class="w-2 h-2 rounded-full bg-[#d97757] animate-pulse"></span>
+<span class="text-xs font-medium text-[#d3cfc8]">5 Steps</span>
+</div>
+</div>
+<!-- Timeline Chain Content Scroll Area -->
+<div class="flex-1 overflow-y-auto px-5 py-4 space-y-0 text-stone-200" data-purpose="timeline-scroll-container">
+<!-- ITEM 1: Completed Step -->
+<div class="relative flex items-start group">
+<!-- Node & Line -->
+<div class="flex flex-col items-center mr-4 self-stretch">
+<div class="w-2.5 h-2.5 rounded-full bg-[#52504b] mt-1.5 flex-shrink-0"></div>
+<div class="w-0.5 bg-[#3a3834] flex-1 my-1"></div>
+</div>
+<!-- Content -->
+<div class="pb-5">
+<p class="font-copernicus text-[16.5px] leading-snug text-[#d9d5ce]">
+            Building sample animations to illustrate motion patterns.
+          </p>
+<p class="text-xs text-[#7f7d77] mt-1 flex items-center gap-1.5">
+<span class="text-[#a4a098]">Completed</span>
+<span>•</span>
+<span>2 keyframes defined</span>
+</p>
+</div>
+</div>
+<!-- ITEM 2: Completed Step -->
+<div class="relative flex items-start group">
+<!-- Node & Line -->
+<div class="flex flex-col items-center mr-4 self-stretch">
+<div class="w-2.5 h-2.5 rounded-full bg-[#52504b] mt-1.5 flex-shrink-0"></div>
+<div class="w-0.5 bg-[#3a3834] flex-1 my-1"></div>
+</div>
+<!-- Content -->
+<div class="pb-5">
+<p class="font-copernicus text-[16.5px] leading-snug text-[#d9d5ce]">
+            Drafting an Android animation implementation guide with code examples.
+          </p>
+<p class="text-xs text-[#7f7d77] mt-1 leading-normal">
+            Extracted standard Jetpack Compose <code class="bg-[#242220] px-1 py-0.5 rounded text-[11px] text-[#c7866e]">animateFloatAsState</code> and physics spring configuration specifications.
+          </p>
+</div>
+</div>
+<!-- ITEM 3: Artifact Step -->
+<div class="relative flex items-start group">
+<!-- Node & Line -->
+<div class="flex flex-col items-center mr-4 self-stretch">
+<div class="w-4 h-4 rounded border border-stone-600 flex items-center justify-center bg-[#252422] mt-1 flex-shrink-0">
+<svg class="w-2.5 h-2.5 text-stone-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M12 4v16m8-8H4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<div class="w-0.5 bg-[#423f3a] flex-1 my-1"></div>
+</div>
+<!-- Content -->
+<div class="pb-5">
+<div class="flex items-center gap-2">
+<span class="font-copernicus text-[17px] text-[#ece7df]">Creating file</span>
+<div class="inline-flex items-center gap-1.5 bg-[#252320] border border-[#3b3832] rounded-md px-2 py-0.5 text-xs text-stone-300">
+<svg class="w-3 h-3 text-[#d97757]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span class="font-mono text-[11px] text-[#e3ded6]">design.md</span>
+<span class="text-[10px] text-emerald-500 font-medium">Ready</span>
+</div>
+</div>
+</div>
+</div>
+<!-- ITEM 4: Transition Step -->
+<div class="relative flex items-start group">
+<!-- Node & Line (Active Terracotta) -->
+<div class="flex flex-col items-center mr-4 self-stretch">
+<div class="w-3.5 h-3.5 rounded border border-[#d97757] flex items-center justify-center bg-[#2a1c17] mt-1 flex-shrink-0">
+<svg class="w-2.5 h-2.5 text-[#d97757]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M12 4v16m8-8H4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<div class="w-0.5 bg-gradient-to-b from-[#d97757] to-[#d97757] flex-1 my-1"></div>
+</div>
+<!-- Content -->
+<div class="pb-4">
+<p class="font-copernicus text-[16.5px] text-[#f2ede4] flex items-center gap-1.5">
+<span>Creating file</span>
+<span class="text-stone-500 text-xs">›</span>
+<span class="text-stone-400 text-sm">Writing Kotlin animation spec &amp; gesture controller</span>
+</p>
+</div>
+</div>
+<!-- ITEM 5: Active Live Reasoning (with requested Hermes Logo) -->
+<div class="relative flex items-start group">
+<!-- Live Node (Terracotta Coral Pulse) -->
+<div class="flex flex-col items-center mr-4 self-stretch">
+<div class="relative mt-1 flex items-center justify-center">
+<div class="w-3 h-3 rounded-full bg-[#d97757] shadow-[0_0_10px_#d97757]"></div>
+<div class="absolute w-5 h-5 rounded-full border border-[#d97757]/40 animate-ping"></div>
+</div>
+</div>
+<!-- Live Reasoning Body -->
+<div class="flex-1 pb-4">
+<!-- Step Title Header with soft spinning Hermes Vector logo -->
+<div class="flex items-center space-x-2.5 mb-2.5">
+<!-- Official Hermes Agent Logo (Unchanged vector markup & terracotta tone #d97757) -->
+<div class="w-5 h-5 flex items-center justify-center animate-spin-slow flex-shrink-0">
+<div class="scale-[0.22] transform origin-center">
+                https://lh3.googleusercontent.com/aida/AEtjO1X91c0knfGrsDaEZMzrrDdaO8hIKH2N52uqlZsmJVVqUOqTs109m5Mmoaypx-lxqO30623_Pig-cdxAxdsnnPoB0e8HUxutM2mMU9bI28XD3-_p0Pd-mZIfHk72Dv7NZAmI-6DcMSrY7e_tu5XfDpsgaoAJXV8k1QX-hHGdVhlg4Zwj4ELG1eT9-PUgUtHeK6_LIud13MlSWMiPeI1A8vxFaiwSv4KpYk5V2XDxnGqOiuUfKJCpRK0VPAE
+              </div>
+</div>
+<span class="font-copernicus italic text-[18px] text-[#f4eee6] tracking-tight live-shimmer">
+              Thinking
+            </span>
+</div>
+<!-- Expanded Live Reasoning Card -->
+<div class="bg-[#171614] border border-[#2e2c28] rounded-xl p-3.5 shadow-inner" data-purpose="reasoning-card">
+<div class="flex items-center justify-between mb-2">
+<span class="text-[10.5px] font-semibold tracking-widest text-[#d97757] uppercase flex items-center gap-1.5 font-mono">
+<span class="inline-block w-1.5 h-1.5 rounded-full bg-[#d97757]"></span>
+                Live Reasoning
+              </span>
+<span class="text-[10px] text-stone-500 font-mono">Hermes v3.8</span>
+</div>
+<p class="text-xs text-[#a9a59d] font-sans leading-relaxed">
+              Evaluating Jetpack Compose physics transition specs, damping ratios, and Hermes Agent motion interpolation across screen layers...
+            </p>
+<!-- Shimmer stream indicator -->
+<div class="mt-2.5 flex items-center space-x-1.5 text-[11px] text-[#78756e]">
+<span class="inline-block w-1 h-3 bg-[#d97757] animate-pulse"></span>
+<span class="italic text-[11px]">Streaming token synthesis (182t/s)</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- END: Timeline Chain Scroll Area -->
+<!-- BEGIN: DockedComposerArea -->
+<!-- iOS / Android mobile styled chat bar docked at bottom of sheet -->
+<div class="p-3 bg-[#171614] border-t border-[#292724] flex items-center gap-2" data-purpose="docked-composer">
+<!-- Add action button -->
+<button aria-label="Add artifact" class="w-9 h-9 rounded-full bg-[#24221f] text-stone-400 flex items-center justify-center border border-[#35332e] hover:text-white" type="button">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M12 4v16m8-8H4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+<!-- Input box wrapper -->
+<div class="flex-1 bg-[#22201d] rounded-full px-3.5 py-1.5 border border-[#38352f] flex items-center justify-between">
+<span class="text-xs text-stone-500 font-sans">Reply to Hermes...</span>
+<!-- Model Pill -->
+<span class="bg-[#2d2a25] text-[#b3ada4] text-[10px] px-2 py-0.5 rounded-full border border-stone-700/60 font-medium">
+          Sonnet 5 Low
+        </span>
+</div>
+<!-- Stop/Send Action Button -->
+<button aria-label="Stop generation" class="w-9 h-9 rounded-full bg-[#d97757] text-white flex items-center justify-center shadow-lg hover:opacity-90 active:scale-95 transition" type="button">
+<!-- Stop icon square -->
+<div class="w-3.5 h-3.5 bg-white rounded-xs"></div>
+</button>
+</div>
+<!-- END: DockedComposerArea -->
+<!-- BEGIN: AndroidGestureNavBar -->
+<div class="w-full pb-2 pt-1 flex justify-center bg-[#171614]" data-purpose="android-gesture-bar">
+<div class="w-32 h-1 bg-stone-500/50 rounded-full"></div>
+</div>
+<!-- END: AndroidGestureNavBar -->
+</main>
+<!-- END: BottomSheetModal -->
+</body></html>

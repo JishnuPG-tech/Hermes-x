@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><title>Hermes</title><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Copernicus:ital,wght@0,400;0,700;1,400&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100%;min-height:100%;margin:0;padding:0;}body{overscroll-behavior-y:none;-webkit-tap-highlight-color:transparent;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "primary-fixed-dim": "#ffb59d", "on-background": "#e5e2e0", "surface-dark-soft": "#232220", "tertiary-container": "#d87656", "surface-container-lowest": "#0e0e0d", "on-surface-variant": "#dcc1b8", "on-primary-fixed": "#390b00", "on-tertiary": "#5c1902", "outline": "#a48b84", "primary": "#ffb59d", "surface-card": "#1f1e1c", "on-primary-fixed-variant": "#7e2c0e", "error-container": "#93000a", "surface": "#131312", "secondary-fixed": "#d1e4ff", "surface-container-high": "#2a2a29", "outline-variant": "#56423c", "surface-dim": "#131312", "on-error": "#690005", "hairline": "#302f2c", "inverse-surface": "#e5e2e0", "on-surface": "#e5e2e0", "surface-tint": "#ffb59d", "tertiary-fixed": "#ffdbd0", "tertiary": "#ffb59e", "accent-warning": "#eab308", "surface-container": "#20201e", "on-primary-container": "#521400", "secondary-fixed-dim": "#9dcaff", "accent-green": "#22c55e", "secondary": "#9dcaff", "on-error-container": "#ffdad6", "text-secondary": "#8e8b82", "tertiary-fixed-dim": "#ffb59e", "inverse-primary": "#9d4324", "surface-variant": "#353533", "on-tertiary-fixed-variant": "#7a2f15", "secondary-container": "#3495e9", "inverse-on-surface": "#31302f", "text-muted": "#b0aea5", "surface-elevated": "#2a2927", "surface-container-low": "#1c1c1a", "on-tertiary-fixed": "#390b00", "on-secondary-fixed-variant": "#00497c", "surface-bright": "#3a3938", "surface-container-highest": "#353533", "accent-blue-soft": "rgba(56, 152, 236, 0.15)", "accent-danger": "#e2726e", "primary-container": "#dc7350", "on-secondary-container": "#002b4c", "ink": "#faf9f5", "on-primary": "#5d1800", "on-tertiary-container": "#521400", "on-secondary-fixed": "#001d35", "on-secondary": "#003257", "primary-fixed": "#ffdbd0", "error": "#ffb4ab", "background": "#131312" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "margin": "1rem", "gutter": "1rem", "space-sm": "0.5rem", "space-lg": "1.5rem", "space-xl": "2rem", "space-md": "1rem", "space-xs": "0.25rem" }, fontFamily: { "caption-sans": ["Inter, Roboto, sans-serif"], "display-title": ["Copernicus, Georgia, serif"], "label-md": ["Inter"], "label-sm": ["Inter"], "code": ["JetBrains Mono, monospace"], "headline-serif": ["Newsreader"], "body-sm": ["Inter"], "body-sans": ["Inter, Roboto, sans-serif"], "title-sans": ["Inter, Roboto, sans-serif"], "title-serif": ["Copernicus, Georgia, serif"] }, fontSize: { "caption-sans": ["12px", { "lineHeight": "16px", "fontWeight": "400" }], "display-title": ["28px", { "lineHeight": "36px", "fontWeight": "400" }], "label-md": ["13px", { "lineHeight": "18px", "fontWeight": "500" }], "label-sm": ["11px", { "lineHeight": "14px", "fontWeight": "600" }], "code": ["13px", { "lineHeight": "20px", "fontWeight": "400" }], "headline-serif": ["20px", { "lineHeight": "28px", "fontWeight": "400" }], "body-sm": ["13px", { "lineHeight": "20px", "fontWeight": "400" }], "body-sans": ["14px", { "lineHeight": "22px", "fontWeight": "400" }], "title-sans": ["16px", { "lineHeight": "24px", "fontWeight": "500" }], "title-serif": ["20px", { "fontWeight": "400" }] } } } };</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-sans text-body-sans text-on-surface flex flex-col min-h-screen selection:bg-primary-container selection:text-ink antialiased"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-6 px-margin flex items-center justify-between text-caption-sans font-caption-sans text-text-muted select-none"><span class="tracking-tight font-medium text-ink">12:24</span><div class="flex items-center gap-space-xs"><span class="text-[10px] tracking-wide font-medium">VoLTE</span><span class="text-[10px] font-semibold tracking-tighter">5G</span><span class="material-symbols-outlined text-[14px] leading-none">signal_cellular_alt</span><span class="material-symbols-outlined text-[14px] leading-none">wifi</span><div class="flex items-center gap-0.5 ml-0.5"><span class="text-[11px] leading-none font-medium">63%</span><span class="material-symbols-outlined text-[16px] leading-none rotate-90">battery_charging_60</span></div></div></div><div class="h-14 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><button aria-label="Open drawer" class="min-w-[44px] min-h-[44px] flex items-center justify-center -ml-space-sm rounded-full text-text-muted hover:text-ink hover:bg-surface-elevated active:bg-surface-dark-soft transition-colors"><span class="material-symbols-outlined text-[24px]">menu</span></button><h1 class="font-title-serif text-title-serif tracking-tight text-ink">Tasks</h1></div><div class="flex items-center gap-space-xs"><button aria-label="New conversation" class="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full text-text-muted hover:text-ink hover:bg-surface-elevated transition-colors"><span class="material-symbols-outlined text-[20px]">edit_square</span></button><button aria-label="Account profile" class="min-w-[44px] min-h-[44px] flex items-center justify-center"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></button></div></div></header><main class="flex-1 flex flex-col relative w-full pt-20 pb-20 px-margin bg-surface max-w-3xl mx-auto"><div class="flex flex-col w-full gap-space-md">
+<!-- Top App Sub-Bar / Context Header -->
+<div class="flex items-center justify-between pb-space-xs">
+<button aria-label="Go back" class="min-w-[44px] min-h-[44px] flex items-center justify-center -ml-space-sm rounded-full text-text-muted hover:text-ink active:bg-surface-elevated transition-colors">
+<span class="material-symbols-outlined text-[22px]">arrow_back</span>
+</button>
+<div class="flex flex-col items-center">
+<h2 class="font-headline-serif text-headline-serif text-ink tracking-tight">Autonomous Tasks</h2>
+<span class="font-caption-sans text-caption-sans text-text-muted tracking-wide flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-accent-green animate-pulse"></span>
+        Hermes Engine v2.4 · Live
+      </span>
+</div>
+<div class="flex items-center gap-space-xs">
+<button aria-label="Filter tasks" class="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full text-text-muted hover:text-ink active:bg-surface-elevated transition-colors">
+<span class="material-symbols-outlined text-[20px]">filter_list</span>
+</button>
+<button aria-label="New task dispatch" class="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full text-text-muted hover:text-ink active:bg-surface-elevated transition-colors">
+<span class="material-symbols-outlined text-[20px]">add</span>
+</button>
+</div>
+</div>
+<!-- Agent Team Live Status Strip -->
+<section class="bg-surface-card rounded-xl p-space-md shadow-sm">
+<div class="flex items-center justify-between mb-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-secondary text-[18px]">hub</span>
+<span class="font-label-md text-label-md text-ink tracking-wide uppercase text-[11px]">Active Agent Swarm</span>
+</div>
+<span class="font-code text-caption-sans text-secondary-container bg-secondary-container/15 px-2 py-0.5 rounded-full font-medium">4 Online</span>
+</div>
+<div class="grid grid-cols-4 gap-space-xs pt-space-xs pb-space-xs">
+<!-- Backend Agent -->
+<div class="flex flex-col items-center text-center p-space-xs rounded-lg bg-surface-container-low transition-all">
+<div class="relative mb-1">
+<div class="w-9 h-9 rounded-full bg-surface-elevated flex items-center justify-center">
+<span class="material-symbols-outlined text-text-muted text-[19px]">dns</span>
+</div>
+<span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-text-secondary"></span>
+</div>
+<span class="font-caption-sans text-caption-sans text-ink font-medium truncate w-full">Backend</span>
+<span class="font-caption-sans text-[10px] text-text-secondary leading-none mt-0.5">Idle</span>
+</div>
+<!-- UI/UX Agent -->
+<div class="flex flex-col items-center text-center p-space-xs rounded-lg bg-surface-container-low transition-all">
+<div class="relative mb-1">
+<div class="w-9 h-9 rounded-full bg-surface-elevated flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary text-[19px]">draw</span>
+</div>
+<span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-secondary-container"></span>
+</div>
+<span class="font-caption-sans text-caption-sans text-ink font-medium truncate w-full">UI / UX</span>
+<span class="font-caption-sans text-[10px] text-secondary leading-none mt-0.5">Active</span>
+</div>
+<!-- QA Agent -->
+<div class="flex flex-col items-center text-center p-space-xs rounded-lg bg-surface-container-low transition-all">
+<div class="relative mb-1">
+<div class="w-9 h-9 rounded-full bg-surface-elevated flex items-center justify-center">
+<span class="material-symbols-outlined text-accent-green text-[19px]">rule</span>
+</div>
+<span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-accent-green animate-ping"></span>
+<span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-accent-green"></span>
+</div>
+<span class="font-caption-sans text-caption-sans text-ink font-medium truncate w-full">QA Lead</span>
+<span class="font-caption-sans text-[10px] text-accent-green leading-none mt-0.5 font-medium">Running</span>
+</div>
+<!-- Security Agent -->
+<div class="flex flex-col items-center text-center p-space-xs rounded-lg bg-surface-container-low transition-all">
+<div class="relative mb-1">
+<div class="w-9 h-9 rounded-full bg-surface-elevated flex items-center justify-center">
+<span class="material-symbols-outlined text-accent-warning text-[19px]">verified_user</span>
+</div>
+<span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-accent-warning"></span>
+</div>
+<span class="font-caption-sans text-caption-sans text-ink font-medium truncate w-full">Security</span>
+<span class="font-caption-sans text-[10px] text-accent-warning leading-none mt-0.5">Guarding</span>
+</div>
+</div>
+<div class="mt-space-sm pt-space-xs flex items-center justify-between font-caption-sans text-[11px] text-text-muted">
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[13px] text-accent-green">check_circle</span>
+        Agent OS: Healthy · 0 memory leaks
+      </span>
+<span class="font-code text-[11px] text-text-secondary">Load: 28%</span>
+</div>
+</section>
+<!-- Active Task Section Header -->
+<div class="flex items-center justify-between pt-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="font-title-serif text-title-serif text-ink">In Flight Execution</span>
+<span class="w-2 h-2 rounded-full bg-accent-green"></span>
+</div>
+<span class="font-caption-sans text-caption-sans text-text-muted">Priority: Critical</span>
+</div>
+<!-- Large Elevated Active Task Card -->
+<article class="bg-surface-card rounded-xl p-space-md shadow-md flex flex-col gap-space-md transition-all">
+<!-- Card Header Row -->
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-2 mb-1.5">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-accent-green/15 text-accent-green font-label-sm text-[10px] uppercase tracking-wider font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-accent-green animate-pulse"></span>
+            Running
+          </span>
+<span class="font-code text-[11px] text-text-secondary">#TSK-8921</span>
+</div>
+<h3 class="font-headline-serif text-headline-serif text-ink tracking-tight leading-snug">
+          Android Client Integration &amp; Verification
+        </h3>
+</div>
+<button aria-label="Task context menu" class="min-w-[36px] min-h-[36px] flex items-center justify-center rounded-full text-text-muted hover:text-ink active:bg-surface-elevated transition-colors -mr-1">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+<!-- Agent Ownership Hierarchy -->
+<div class="bg-surface-container-low rounded-lg p-space-sm flex flex-col gap-1.5 font-caption-sans text-caption-sans">
+<div class="flex items-center gap-1.5 text-text-muted">
+<span class="material-symbols-outlined text-[15px] text-primary">psychology</span>
+<span class="text-text-secondary">Supervised by:</span>
+<span class="text-ink font-medium">Hermes Supervisor</span>
+</div>
+<div class="flex items-center gap-1.5 text-text-muted">
+<span class="material-symbols-outlined text-[15px] text-secondary">group_work</span>
+<span class="text-text-secondary">Assigned to:</span>
+<span class="text-ink font-medium">QA Agent &amp; Backend Agent</span>
+</div>
+</div>
+<!-- Objective Statement -->
+<div class="flex flex-col gap-1">
+<span class="font-label-sm text-[11px] uppercase tracking-wider text-text-secondary">Autonomous Directive</span>
+<p class="font-body-sans text-body-sans text-on-surface leading-relaxed">
+        Compile Compose UI, execute visual regression tests, verify remote state on Hugging Face space.
+      </p>
+</div>
+<!-- Live Execution Step & Progress -->
+<div class="flex flex-col gap-2 bg-surface-container-lowest rounded-lg p-space-sm">
+<div class="flex items-center justify-between text-caption-sans">
+<span class="font-label-md text-label-md text-ink flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[16px] animate-spin">progress_activity</span>
+          Step 3 of 5
+        </span>
+<span class="font-code text-secondary font-medium">78%</span>
+</div>
+<!-- Linear Progress Bar -->
+<div class="w-full h-1.5 bg-surface-elevated rounded-full overflow-hidden">
+<div class="h-full bg-secondary-container rounded-full transition-all duration-500" style="width: 78%;"></div>
+</div>
+<!-- Terminal Command Snippet -->
+<div class="font-code text-code text-text-muted truncate pt-1 flex items-center gap-1.5">
+<span class="text-secondary">$</span>
+<span class="text-on-surface truncate">./gradlew connectedAndroidTest</span>
+<span class="text-accent-green text-[11px] font-medium shrink-0 bg-accent-green/10 px-1.5 py-0.5 rounded">(14/18 passed)</span>
+</div>
+</div>
+<!-- Checkpoint Banner -->
+<div class="flex items-center gap-2 px-space-sm py-2 rounded-lg bg-surface-container-low text-caption-sans text-text-muted">
+<span class="material-symbols-outlined text-secondary text-[16px] shrink-0">bookmark_added</span>
+<span class="truncate">Last checkpoint: <span class="font-code text-ink">cp-android-v1.4</span> <span class="text-text-secondary">(safe rollback available)</span></span>
+</div>
+<!-- Quick Action Tray -->
+<div class="flex items-center gap-space-xs pt-space-xs">
+<button class="flex-1 min-h-[44px] px-space-sm rounded-full bg-surface-elevated hover:bg-surface-bright active:bg-surface-dark-soft text-ink font-label-md text-label-md flex items-center justify-center gap-1.5 transition-colors" id="taskPauseBtn">
+<span class="material-symbols-outlined text-[18px]">pause</span>
+<span>Pause</span>
+</button>
+<button class="flex-1 min-h-[44px] px-space-sm rounded-full bg-surface-elevated hover:bg-surface-bright active:bg-surface-dark-soft text-ink font-label-md text-label-md flex items-center justify-center gap-1.5 transition-colors" id="liveLogsBtn">
+<span class="material-symbols-outlined text-[18px] text-secondary">terminal</span>
+<span>Live Logs</span>
+</button>
+<button class="min-w-[44px] min-h-[44px] px-space-md rounded-full bg-surface-elevated hover:bg-surface-bright active:bg-surface-dark-soft text-ink font-label-md text-label-md flex items-center justify-center gap-1.5 transition-colors" id="viewArtifactsBtn">
+<span class="material-symbols-outlined text-[18px]">folder_open</span>
+<span class="hidden sm:inline">Artifacts</span>
+</button>
+</div>
+</article>
+<!-- Background Delegated Tasks Section Header -->
+<div class="flex items-center justify-between pt-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="font-title-serif text-title-serif text-ink">Delegated Queue</span>
+<span class="font-caption-sans text-caption-sans text-text-secondary bg-surface-card px-2 py-0.5 rounded-full font-medium">3</span>
+</div>
+<button class="font-caption-sans text-caption-sans text-secondary hover:underline">View History</button>
+</div>
+<!-- Background Delegated Tasks Grouped Card -->
+<div class="bg-surface-card rounded-xl shadow-sm flex flex-col divide-y-0 overflow-hidden">
+<!-- Task Row 1: Completed Cron -->
+<div class="p-space-md flex items-center justify-between gap-space-sm hover:bg-surface-container-low transition-colors cursor-pointer">
+<div class="flex items-center gap-space-sm min-w-0 flex-1">
+<div class="w-10 h-10 rounded-full bg-accent-green/15 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-accent-green text-[20px]">check</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-1.5">
+<span class="font-caption-sans text-[11px] text-text-secondary uppercase tracking-wider font-medium">Cron</span>
+<span class="w-1 h-1 rounded-full bg-text-muted"></span>
+<span class="font-caption-sans text-[11px] text-text-muted">Completed 2h ago</span>
+</div>
+<span class="font-headline-serif text-[15px] text-ink font-normal truncate mt-0.5">Nightly Hugging Face space backup</span>
+<span class="font-code text-[11px] text-text-secondary truncate mt-0.5">hf_spaces/hermes-core · 1.84 GB archived</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-text-muted text-[20px] shrink-0">chevron_right</span>
+</div>
+<!-- Visual Separator with tonal contrast -->
+<div class="h-px bg-surface-container-low mx-space-md"></div>
+<!-- Task Row 2: Scheduled Latency Benchmark -->
+<div class="p-space-md flex items-center justify-between gap-space-sm hover:bg-surface-container-low transition-colors cursor-pointer">
+<div class="flex items-center gap-space-sm min-w-0 flex-1">
+<div class="w-10 h-10 rounded-full bg-secondary-container/15 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-secondary text-[20px]">schedule</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-1.5">
+<span class="font-caption-sans text-[11px] text-secondary uppercase tracking-wider font-semibold">Scheduled</span>
+<span class="w-1 h-1 rounded-full bg-text-muted"></span>
+<span class="font-caption-sans text-[11px] text-text-muted">Today at 02:00 UTC</span>
+</div>
+<span class="font-headline-serif text-[15px] text-ink font-normal truncate mt-0.5">OmniRoute Latency Benchmark</span>
+<span class="font-code text-[11px] text-text-secondary truncate mt-0.5">Multi-region mesh ping (12 edge nodes)</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-text-muted text-[20px] shrink-0">chevron_right</span>
+</div>
+<!-- Visual Separator with tonal contrast -->
+<div class="h-px bg-surface-container-low mx-space-md"></div>
+<!-- Task Row 3: Awaiting Security Approval -->
+<div class="p-space-md flex items-center justify-between gap-space-sm hover:bg-surface-container-low transition-colors cursor-pointer">
+<div class="flex items-center gap-space-sm min-w-0 flex-1">
+<div class="w-10 h-10 rounded-full bg-accent-warning/15 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-accent-warning text-[20px]">shield_person</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-1.5">
+<span class="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-accent-warning/20 text-accent-warning font-label-sm text-[10px] uppercase font-bold tracking-wider">
+<span class="material-symbols-outlined text-[11px]">warning</span>
+              Approval Required
+            </span>
+</div>
+<span class="font-headline-serif text-[15px] text-ink font-normal truncate mt-0.5">Security Policy Audit &amp; Port Rebind</span>
+<span class="font-caption-sans text-caption-sans text-text-muted truncate mt-0.5">Requires elevated root key confirmation</span>
+</div>
+</div>
+<button class="min-h-[36px] px-3 rounded-full bg-accent-warning text-surface-container-lowest font-label-md text-label-md font-semibold shrink-0 hover:bg-accent-warning/90 transition-colors">
+        Review
+      </button>
+</div>
+</div>
+<!-- Subtle Insight Toast / Micro-Delight Footnote -->
+<div class="mt-space-xs p-space-sm rounded-xl bg-surface-container-low flex items-start gap-space-sm">
+<span class="material-symbols-outlined text-tertiary text-[18px] mt-0.5 shrink-0">auto_awesome</span>
+<div class="flex flex-col min-w-0 font-caption-sans text-caption-sans">
+<span class="text-ink font-medium">Autonomous Supervisor Note</span>
+<p class="text-text-muted leading-relaxed mt-0.5">
+        Android test harness runs 14% faster than yesterday due to cached Gradle build transforms on local NVMe.
+      </p>
+</div>
+</div>
+</div>
+<script>
+  // Simple micro-interactions for buttons
+  document.getElementById('taskPauseBtn')?.addEventListener('click', function() {
+    const isPaused = this.dataset.paused === 'true';
+    if (!isPaused) {
+      this.dataset.paused = 'true';
+      this.innerHTML = '<span class="material-symbols-outlined text-[18px] text-accent-green">play_arrow</span><span>Resume</span>';
+    } else {
+      this.dataset.paused = 'false';
+      this.innerHTML = '<span class="material-symbols-outlined text-[18px]">pause</span><span>Pause</span>';
+    }
+  });
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/85 backdrop-blur-xl shadow-[0_-1px_12px_rgba(0,0,0,0.12)]" data-active-classes="text-primary font-medium"><div class="flex justify-around items-center h-14 px-space-md"><a class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-text-muted hover:text-ink transition-colors" data-path="chat" href="#"><span class="material-symbols-outlined text-[22px]">forum</span><span class="font-label-sm text-label-sm mt-0.5">Chat</span></a><a aria-current="page" class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] transition-colors text-primary font-medium" data-path="tasks" href="#"><span class="material-symbols-outlined text-[22px]">precision_manufacturing</span><span class="font-label-sm text-label-sm mt-0.5">Tasks</span></a><a class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-text-muted hover:text-ink transition-colors" data-path="artifacts" href="#"><span class="material-symbols-outlined text-[22px]">history_edu</span><span class="font-label-sm text-label-sm mt-0.5">Artifacts</span></a><a class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-text-muted hover:text-ink transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[22px]">tune</span><span class="font-label-sm text-label-sm mt-0.5">Config</span></a></div><div class="w-full flex justify-center pb-2 pt-1 pointer-events-none"><div class="w-32 h-1 rounded-full bg-on-surface/30"></div></div></nav></body></html>
