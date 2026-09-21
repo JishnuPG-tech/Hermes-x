@@ -123,48 +123,66 @@ fun SettingsScreen(
                     .padding(top = 4.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // User Account Pill Card
+                // User Account Card — Claude-authentic style
                 item {
                     val isAdmin = com.example.hermes.data.PreferencesManager.isUserAdmin(userEmail)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(22.dp))
+                            .clip(RoundedCornerShape(20.dp))
                             .background(Color(0xFF1F1E1C))
-                            .border(1.dp, if (isAdmin) Color(0xFFE27D60).copy(alpha = 0.5f) else BorderSubtle, RoundedCornerShape(22.dp))
+                            .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp))
                             .clickable(onClick = onNavigateProfile)
-                            .padding(horizontal = 18.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                            .padding(horizontal = 18.dp, vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
-                            Text(
-                                text = userEmail.ifBlank { "hermes-user" },
-                                style = HermesTypography.titleLarge.copy(fontSize = 15.sp, color = TextPrimaryWarm)
-                            )
-                            if (isAdmin) {
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = "Administrator • Full Max Access",
-                                    style = HermesTypography.bodySmall.copy(fontSize = 12.sp, color = Color(0xFFE27D60))
-                                )
-                            }
-                        }
+                        // Avatar circle
+                        val initial = userEmail.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "H"
                         Box(
                             modifier = Modifier
+                                .size(42.dp)
                                 .clip(CircleShape)
-                                .background(if (isAdmin) Color(0xFFE27D60) else PureWhite)
-                                .padding(horizontal = 12.dp, vertical = 3.dp)
+                                .background(AvatarSalmon),
+                            contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = if (isAdmin) "Admin Max" else "Free",
-                                style = HermesTypography.labelSmall.copy(
-                                    color = if (isAdmin) PureWhite else TextInk,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                    fontSize = 12.sp
+                                text = initial,
+                                style = HermesTypography.headlineMedium.copy(
+                                    color = PureWhite,
+                                    fontSize = 18.sp,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
                                 )
                             )
                         }
+                        Spacer(modifier = Modifier.width(14.dp))
+                        // Email and plan
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = userEmail.ifBlank { "hermes-user" },
+                                style = HermesTypography.bodyLarge.copy(
+                                    fontSize = 15.sp,
+                                    color = TextPrimaryWarm,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Normal
+                                ),
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Text(
+                                text = if (isAdmin) "Hermes Max · Admin" else "Free plan",
+                                style = HermesTypography.bodySmall.copy(
+                                    fontSize = 13.sp,
+                                    color = if (isAdmin) Color(0xFFE27D60).copy(alpha = 0.85f) else TextMuted
+                                )
+                            )
+                        }
+                        // Chevron
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = TextSubtle,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 }
 

@@ -184,7 +184,12 @@ fun ChatScreen(
     }
 
     val isScrolledUp by remember {
-        derivedStateOf { listState.firstVisibleItemIndex > 0 }
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            val totalItems = layoutInfo.totalItemsCount
+            messages.isNotEmpty() && (totalItems - 1 - lastVisibleIndex > 1)
+        }
     }
 
     Box(
@@ -473,7 +478,12 @@ fun ChatScreen(
                             //    Show the discreet status line + 8-frame sequential coral starburst thinking animation!
                             // 2. Once response starts, hide the thinking animation and show artifact card + clean response!
                             if (isMessageStreaming && !hasContent) {
-                                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp)),
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
                                     // Stepper Line
                                     Row(
                                         modifier = Modifier
@@ -826,16 +836,21 @@ fun ChatScreen(
             )
         }
 
-        // Floating Scroll-To-Bottom Button (Screenshot 4)
-        if (isScrolledUp) {
+        // Floating Scroll-To-Bottom Button — only visible when user scrolled up
+        AnimatedVisibility(
+            visible = isScrolledUp,
+            enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it / 2 }) + fadeOut(),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 90.dp)
+        ) {
             Box(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 82.dp)
-                    .size(34.dp)
+                    .size(36.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF262523))
-                    .border(1.dp, Color(0xFF383632), CircleShape)
+                    .background(Color(0xFF2A2826))
+                    .border(1.dp, Color(0xFF3A3834), CircleShape)
                     .clickable {
                         coroutineScope.launch {
                             if (messages.isNotEmpty()) {
@@ -847,7 +862,7 @@ fun ChatScreen(
             ) {
                 Icon(
                     imageVector = Icons.Default.KeyboardArrowDown,
-                    contentDescription = "Scroll down",
+                    contentDescription = "Scroll to bottom",
                     tint = TextPrimaryWarm,
                     modifier = Modifier.size(20.dp)
                 )

@@ -61,17 +61,17 @@ fun ClaudeDrawerContent(
                 .fillMaxSize()
                 .padding(horizontal = 24.dp, vertical = 16.dp)
         ) {
-            // Hermes Serif Wordmark (12-01-18)
+            // Hermes Serif Wordmark — Claude-authentic compact size
             Text(
                 text = "Hermes",
                 style = HermesTypography.displayLarge.copy(
-                    fontSize = 40.sp,
+                    fontSize = 26.sp,
                     color = TextPrimaryWarm,
-                    lineHeight = 44.sp,
+                    lineHeight = 30.sp,
                     fontWeight = FontWeight.Normal
                 ),
                 modifier = Modifier
-                    .padding(top = 8.dp, bottom = 28.dp)
+                    .padding(top = 8.dp, bottom = 20.dp)
                     .clickable(onClick = onNavigateHome)
             )
 
@@ -296,28 +296,19 @@ fun ClaudeDrawerContent(
                             text = userName.ifBlank { "Jishnu" },
                             style = HermesTypography.bodyMedium.copy(
                                 color = TextPrimaryWarm,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Medium,
                                 fontSize = 14.sp
                             ),
                             maxLines = 1
                         )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(Color(0xFFE27D60).copy(alpha = 0.2f))
-                                .border(1.dp, Color(0xFFE27D60).copy(alpha = 0.6f), RoundedCornerShape(6.dp))
-                                .padding(horizontal = 6.dp, vertical = 1.dp)
-                        ) {
-                            Text(
-                                text = "Admin • Max",
-                                style = HermesTypography.labelSmall.copy(
-                                    color = Color(0xFFE27D60),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 10.sp
-                                )
+                        Spacer(modifier = Modifier.height(1.dp))
+                        Text(
+                            text = "Hermes Max",
+                            style = HermesTypography.labelSmall.copy(
+                                color = TextMuted,
+                                fontSize = 11.sp
                             )
-                        }
+                        )
                     }
                 }
             }
