@@ -2,10 +2,12 @@ package com.example.hermes.ui.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
@@ -259,26 +261,65 @@ fun ClaudeDrawerContent(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Salmon Circle Avatar with User Initial
+            val isAdmin = com.example.hermes.data.PreferencesManager.isUserAdmin(userEmail)
+            // Salmon Circle Avatar with User Initial & Admin info
             val initial = userName.trim().firstOrNull()?.uppercaseChar()?.toString()
                 ?: userEmail.trim().firstOrNull()?.uppercaseChar()?.toString()
                 ?: "U"
-            Box(
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .size(46.dp)
-                    .clip(CircleShape)
-                    .background(AvatarSalmon)
-                    .clickable(onClick = onNavigateSettings),
-                contentAlignment = Alignment.Center
+                    .clip(RoundedCornerShape(16.dp))
+                    .clickable(onClick = onNavigateSettings)
+                    .padding(end = 8.dp)
             ) {
-                Text(
-                    text = initial,
-                    style = HermesTypography.headlineMedium.copy(
-                        color = PureWhite,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Medium
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(AvatarSalmon),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = initial,
+                        style = HermesTypography.headlineMedium.copy(
+                            color = PureWhite,
+                            fontSize = 19.sp,
+                            fontWeight = FontWeight.Medium
+                        )
                     )
-                )
+                }
+                if (isAdmin) {
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = userName.ifBlank { "Jishnu" },
+                            style = HermesTypography.bodyMedium.copy(
+                                color = TextPrimaryWarm,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 14.sp
+                            ),
+                            maxLines = 1
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xFFE27D60).copy(alpha = 0.2f))
+                                .border(1.dp, Color(0xFFE27D60).copy(alpha = 0.6f), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 6.dp, vertical = 1.dp)
+                        ) {
+                            Text(
+                                text = "Admin • Max",
+                                style = HermesTypography.labelSmall.copy(
+                                    color = Color(0xFFE27D60),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp
+                                )
+                            )
+                        }
+                    }
+                }
             }
 
             // New Chat Solid White Pill (12-01-18)

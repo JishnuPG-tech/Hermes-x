@@ -134,6 +134,7 @@ fun MainNavigation(
                     val availableModels by chatViewModel.availableModels.collectAsStateWithLifecycle()
                     HomeScreen(
                         userName = currentUserName.substringBefore(' ').ifBlank { "User" },
+                        userEmail = currentUserEmail,
                         availableModels = availableModels,
                         onOpenDrawer = { scope.launch { drawerState.open() } },
                         onNavigateChat = { prompt, model ->
@@ -256,6 +257,7 @@ fun MainNavigation(
                 }
                 entry<NavBilling> {
                     BillingScreen(
+                        userEmail = currentUserEmail,
                         onBack = { backStack.removeLastOrNull() }
                     )
                 }

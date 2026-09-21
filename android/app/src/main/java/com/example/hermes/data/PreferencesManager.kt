@@ -31,6 +31,11 @@ class PreferencesManager(private val context: Context) {
         val KEY_USER_AVATAR = stringPreferencesKey("user_avatar")
 
         const val DEFAULT_GOOGLE_CLIENT_ID = "292824298430-113kq16cbpq6i02jin424gb1mk5ebm40.apps.googleusercontent.com"
+        const val ADMIN_EMAIL = "jishnupg2005@gmail.com"
+
+        fun isUserAdmin(email: String?): Boolean {
+            return email?.trim()?.equals(ADMIN_EMAIL, ignoreCase = true) == true
+        }
 
         @Volatile
         private var INSTANCE: PreferencesManager? = null

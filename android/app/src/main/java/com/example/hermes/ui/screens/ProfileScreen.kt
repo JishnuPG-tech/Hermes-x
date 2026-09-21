@@ -80,6 +80,49 @@ fun ProfileScreen(
                     .padding(top = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
+                val isAdmin = com.example.hermes.data.PreferencesManager.isUserAdmin(savedEmail)
+                if (isAdmin) {
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color(0xFF1F1E1C))
+                                .border(1.dp, Color(0xFFE27D60).copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Account Role & Tier",
+                                    style = HermesTypography.labelMedium.copy(color = TextSubtle, fontSize = 12.sp)
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Hermes Max (Administrator)",
+                                    style = HermesTypography.titleMedium.copy(color = TextPrimaryWarm, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFE27D60))
+                                    .padding(horizontal = 10.dp, vertical = 3.dp)
+                            ) {
+                                Text(
+                                    text = "Admin",
+                                    style = HermesTypography.labelSmall.copy(
+                                        color = PureWhite,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.5.sp
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+
                 // Name Section
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

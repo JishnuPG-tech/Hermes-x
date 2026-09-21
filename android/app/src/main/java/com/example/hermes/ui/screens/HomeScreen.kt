@@ -24,6 +24,7 @@ import com.example.hermes.ui.components.*
 @Composable
 fun HomeScreen(
     userName: String = "Jishnu",
+    userEmail: String = "",
     availableModels: List<com.example.hermes.data.ModelOptionDto> = emptyList(),
     onOpenDrawer: () -> Unit,
     onNavigateChat: (String?, String) -> Unit,
@@ -33,6 +34,7 @@ fun HomeScreen(
     onNavigateConnectors: () -> Unit = {},
     chatViewModel: ChatViewModel = viewModel()
 ) {
+    val isAdmin = remember(userEmail) { com.example.hermes.data.PreferencesManager.isUserAdmin(userEmail) }
     var composerText by remember { mutableStateOf("") }
     var attachments by remember { mutableStateOf<List<ChatAttachment>>(emptyList()) }
     var selectedModel by remember { mutableStateOf("Hermes Smart") }
@@ -174,35 +176,37 @@ fun HomeScreen(
                 }
             }
 
-            // Sleek Pro Banner (above composer, full width, uncompressed)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFF22211F))
-                    .border(1.dp, Color(0xFF33312E), RoundedCornerShape(16.dp))
-                    .clickable(onClick = onUpgradeClick)
-                    .padding(horizontal = 16.dp, vertical = 11.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Get more with Hermes Pro",
-                    style = HermesTypography.bodyMedium.copy(
-                        color = Color(0xFFC4C2BA),
-                        fontSize = 13.5.sp
+            // Sleek Pro Banner (above composer, full width, uncompressed) - Hidden for Admin account
+            if (!isAdmin) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFF22211F))
+                        .border(1.dp, Color(0xFF33312E), RoundedCornerShape(16.dp))
+                        .clickable(onClick = onUpgradeClick)
+                        .padding(horizontal = 16.dp, vertical = 11.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Get more with Hermes Pro",
+                        style = HermesTypography.bodyMedium.copy(
+                            color = Color(0xFFC4C2BA),
+                            fontSize = 13.5.sp
+                        )
                     )
-                )
-                Text(
-                    text = "Upgrade to Pro",
-                    style = HermesTypography.bodyMedium.copy(
-                        color = Color(0xFFB395F7),
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                        fontSize = 13.5.sp
+                    Text(
+                        text = "Upgrade to Pro",
+                        style = HermesTypography.bodyMedium.copy(
+                            color = Color(0xFFB395F7),
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                            fontSize = 13.5.sp
+                        )
                     )
-                )
+                }
+                Spacer(modifier = Modifier.height(10.dp))
             }
-            Spacer(modifier = Modifier.height(10.dp))
 
             // Docked Bottom Claude Home Composer
             ClaudeHomeComposer(

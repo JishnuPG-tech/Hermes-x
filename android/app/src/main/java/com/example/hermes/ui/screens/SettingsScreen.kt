@@ -88,32 +88,42 @@ fun SettingsScreen(
             ) {
                 // User Account Pill Card
                 item {
+                    val isAdmin = com.example.hermes.data.PreferencesManager.isUserAdmin(userEmail)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(22.dp))
                             .background(Color(0xFF1F1E1C))
-                            .border(1.dp, BorderSubtle, RoundedCornerShape(22.dp))
+                            .border(1.dp, if (isAdmin) Color(0xFFE27D60).copy(alpha = 0.5f) else BorderSubtle, RoundedCornerShape(22.dp))
                             .clickable(onClick = onNavigateProfile)
                             .padding(horizontal = 18.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(
-                            text = userEmail.ifBlank { "hermes-user" },
-                            style = HermesTypography.titleLarge.copy(fontSize = 15.sp, color = TextPrimaryWarm)
-                        )
+                        Column {
+                            Text(
+                                text = userEmail.ifBlank { "hermes-user" },
+                                style = HermesTypography.titleLarge.copy(fontSize = 15.sp, color = TextPrimaryWarm)
+                            )
+                            if (isAdmin) {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Administrator • Full Max Access",
+                                    style = HermesTypography.bodySmall.copy(fontSize = 12.sp, color = Color(0xFFE27D60))
+                                )
+                            }
+                        }
                         Box(
                             modifier = Modifier
                                 .clip(CircleShape)
-                                .background(PureWhite)
+                                .background(if (isAdmin) Color(0xFFE27D60) else PureWhite)
                                 .padding(horizontal = 12.dp, vertical = 3.dp)
                         ) {
                             Text(
-                                text = "Free",
+                                text = if (isAdmin) "Admin Max" else "Free",
                                 style = HermesTypography.labelSmall.copy(
-                                    color = TextInk,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                                    color = if (isAdmin) PureWhite else TextInk,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                                     fontSize = 12.sp
                                 )
                             )
@@ -121,40 +131,43 @@ fun SettingsScreen(
                     }
                 }
 
-                // Promo Card: "Want more Claude?" (12-01-20)
-                item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(22.dp))
-                            .background(Color(0xFF1F1E1C))
-                            .border(1.dp, BorderSubtle, RoundedCornerShape(22.dp))
-                            .padding(18.dp)
-                    ) {
-                        Text(
-                            text = "Want more Hermes?",
-                            style = HermesTypography.headlineMedium.copy(fontSize = 19.sp, color = TextPrimaryWarm)
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "Upgrade for more usage and capabilities.",
-                            style = HermesTypography.bodyMedium.copy(color = TextMuted, fontSize = 14.sp)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(
-                            onClick = onUpgradeClick,
-                            shape = CircleShape,
-                            colors = ButtonDefaults.buttonColors(containerColor = PureWhite, contentColor = PureBlack),
-                            modifier = Modifier.height(42.dp)
+                // Promo Card: "Want more Claude?" (12-01-20) - Hidden for Admin Max
+                val isAdmin = com.example.hermes.data.PreferencesManager.isUserAdmin(userEmail)
+                if (!isAdmin) {
+                    item {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(22.dp))
+                                .background(Color(0xFF1F1E1C))
+                                .border(1.dp, BorderSubtle, RoundedCornerShape(22.dp))
+                                .padding(18.dp)
                         ) {
                             Text(
-                                text = "Upgrade",
-                                style = HermesTypography.titleLarge.copy(
-                                    fontSize = 14.sp,
-                                    color = PureBlack,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
-                                )
+                                text = "Want more Hermes?",
+                                style = HermesTypography.headlineMedium.copy(fontSize = 19.sp, color = TextPrimaryWarm)
                             )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Upgrade for more usage and capabilities.",
+                                style = HermesTypography.bodyMedium.copy(color = TextMuted, fontSize = 14.sp)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = onUpgradeClick,
+                                shape = CircleShape,
+                                colors = ButtonDefaults.buttonColors(containerColor = PureWhite, contentColor = PureBlack),
+                                modifier = Modifier.height(42.dp)
+                            ) {
+                                Text(
+                                    text = "Upgrade",
+                                    style = HermesTypography.titleLarge.copy(
+                                        fontSize = 14.sp,
+                                        color = PureBlack,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                                    )
+                                )
+                            }
                         }
                     }
                 }
@@ -170,7 +183,12 @@ fun SettingsScreen(
                     ) {
                         SettingOptionRow("Profile", icon = Icons.Outlined.AccountCircle, onClick = onNavigateProfile)
                         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
-                        SettingOptionRow("Billing", icon = Icons.Outlined.MonetizationOn, onClick = onNavigateBilling)
+                        SettingOptionRow(
+                            "Billing",
+                            subtitle = if (isAdmin) "Hermes Max (Admin Plan)" else "Free plan",
+                            icon = Icons.Outlined.MonetizationOn,
+                            onClick = onNavigateBilling
+                        )
                     }
                 }
 

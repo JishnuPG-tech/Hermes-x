@@ -22,8 +22,11 @@ import com.example.hermes.theme.*
 
 @Composable
 fun BillingScreen(
+    userEmail: String = "",
     onBack: () -> Unit
 ) {
+    val isAdmin = com.example.hermes.data.PreferencesManager.isUserAdmin(userEmail)
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -52,7 +55,7 @@ fun BillingScreen(
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Billing",
+                    text = "Billing & Subscription",
                     style = HermesTypography.headlineMedium.copy(
                         fontSize = 20.sp,
                         color = TextPrimaryWarm,
@@ -75,7 +78,7 @@ fun BillingScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(20.dp))
                             .background(Color(0xFF1F1E1C))
-                            .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp))
+                            .border(1.dp, if (isAdmin) Color(0xFFE27D60).copy(alpha = 0.5f) else BorderSubtle, RoundedCornerShape(20.dp))
                             .padding(20.dp)
                     ) {
                         Row(
@@ -93,13 +96,13 @@ fun BillingScreen(
                             Box(
                                 modifier = Modifier
                                     .clip(CircleShape)
-                                    .background(PureWhite)
+                                    .background(if (isAdmin) Color(0xFFE27D60) else PureWhite)
                                     .padding(horizontal = 12.dp, vertical = 3.dp)
                             ) {
                                 Text(
-                                    text = "Free",
+                                    text = if (isAdmin) "Admin • Max" else "Free",
                                     style = HermesTypography.labelSmall.copy(
-                                        color = PureBlack,
+                                        color = if (isAdmin) PureWhite else PureBlack,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 12.sp
                                     )
@@ -110,7 +113,7 @@ fun BillingScreen(
                         Spacer(modifier = Modifier.height(10.dp))
 
                         Text(
-                            text = "Standard Tier",
+                            text = if (isAdmin) "Hermes Max (Admin Account)" else "Standard Tier",
                             style = HermesTypography.headlineMedium.copy(
                                 fontSize = 22.sp,
                                 color = TextPrimaryWarm
@@ -120,7 +123,10 @@ fun BillingScreen(
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
-                            text = "Standard usage limits on Hermes models. Resets regularly every 5 hours.",
+                            text = if (isAdmin)
+                                "Unlimited usage limits across all models, full administrative permissions, and zero rate limits."
+                            else
+                                "Standard usage limits on Hermes models. Resets regularly every 5 hours.",
                             style = HermesTypography.bodyMedium.copy(
                                 fontSize = 13.5.sp,
                                 color = TextMuted,
@@ -130,111 +136,198 @@ fun BillingScreen(
                     }
                 }
 
-                // Upgrade Card (12-01-30)
-                item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(22.dp))
-                            .background(Color(0xFF1F1E1C))
-                            .border(1.dp, BorderSubtle, RoundedCornerShape(22.dp))
-                            .padding(20.dp)
-                    ) {
-                        Text(
-                            text = "Hermes Pro",
-                            style = HermesTypography.headlineMedium.copy(
-                                fontSize = 22.sp,
-                                color = TextPrimaryWarm
-                            )
-                        )
-
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        Row(verticalAlignment = Alignment.Bottom) {
-                            Text(
-                                text = "$20",
-                                style = HermesTypography.displayLarge.copy(
-                                    fontSize = 32.sp,
-                                    color = TextPrimaryWarm,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "/ month",
-                                style = HermesTypography.bodyMedium.copy(
-                                    fontSize = 14.sp,
-                                    color = TextSubtle
-                                ),
-                                modifier = Modifier.padding(bottom = 4.dp)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        val benefits = listOf(
-                            "5x more usage versus Free plan",
-                            "Priority access during high-traffic peak hours",
-                            "Access to Hermes reasoning & advanced models",
-                            "Create and manage Projects with custom docs",
-                            "Artifacts interactive preview & code workbench"
-                        )
-
-                        benefits.forEach { benefit ->
+                // Privileges Card for Admin / Upgrade Card for Free
+                if (isAdmin) {
+                    item {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(22.dp))
+                                .background(Color(0xFF1F1E1C))
+                                .border(1.dp, Color(0xFFE27D60).copy(alpha = 0.4f), RoundedCornerShape(22.dp))
+                                .padding(20.dp)
+                        ) {
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 5.dp),
-                                verticalAlignment = Alignment.Top
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
+                                Text(
+                                    text = "Hermes Max Privileges",
+                                    style = HermesTypography.headlineMedium.copy(
+                                        fontSize = 20.sp,
+                                        color = TextPrimaryWarm
+                                    )
+                                )
                                 Box(
                                     modifier = Modifier
-                                        .padding(top = 2.dp)
-                                        .size(18.dp)
                                         .clip(CircleShape)
-                                        .background(BrandCoral.copy(alpha = 0.2f)),
-                                    contentAlignment = Alignment.Center
+                                        .background(Color(0xFF2E7D32).copy(alpha = 0.2f))
+                                        .border(1.dp, Color(0xFF2E7D32), CircleShape)
+                                        .padding(horizontal = 10.dp, vertical = 2.dp)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Check,
-                                        contentDescription = null,
-                                        tint = BrandCoral,
-                                        modifier = Modifier.size(12.dp)
+                                    Text(
+                                        text = "Active",
+                                        style = HermesTypography.labelSmall.copy(
+                                            color = Color(0xFF81C784),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 11.5.sp
+                                        )
                                     )
                                 }
-                                Spacer(modifier = Modifier.width(10.dp))
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            val adminBenefits = listOf(
+                                "Unlimited generation with all reasoning & smart models",
+                                "Super-Admin priority access during peak hours",
+                                "Full autonomous server-side background execution",
+                                "Access to all specialized agent tools & connectors",
+                                "Permanent unlimited lifetime license for jishnupg2005@gmail.com"
+                            )
+
+                            adminBenefits.forEach { benefit ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 5.dp),
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .padding(top = 2.dp)
+                                            .size(18.dp)
+                                            .clip(CircleShape)
+                                            .background(BrandCoral.copy(alpha = 0.2f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = null,
+                                            tint = BrandCoral,
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Text(
+                                        text = benefit,
+                                        style = HermesTypography.bodyMedium.copy(
+                                            fontSize = 13.5.sp,
+                                            color = TextPrimaryWarm,
+                                            lineHeight = 18.sp
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    item {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(22.dp))
+                                .background(Color(0xFF1F1E1C))
+                                .border(1.dp, BorderSubtle, RoundedCornerShape(22.dp))
+                                .padding(20.dp)
+                        ) {
+                            Text(
+                                text = "Hermes Pro",
+                                style = HermesTypography.headlineMedium.copy(
+                                    fontSize = 22.sp,
+                                    color = TextPrimaryWarm
+                                )
+                            )
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Row(verticalAlignment = Alignment.Bottom) {
                                 Text(
-                                    text = benefit,
-                                    style = HermesTypography.bodyMedium.copy(
-                                        fontSize = 13.5.sp,
+                                    text = "$20",
+                                    style = HermesTypography.displayLarge.copy(
+                                        fontSize = 32.sp,
                                         color = TextPrimaryWarm,
-                                        lineHeight = 18.sp
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "/ month",
+                                    style = HermesTypography.bodyMedium.copy(
+                                        fontSize = 14.sp,
+                                        color = TextSubtle
+                                    ),
+                                    modifier = Modifier.padding(bottom = 4.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            val benefits = listOf(
+                                "5x more usage versus Free plan",
+                                "Priority access during high-traffic peak hours",
+                                "Access to Hermes reasoning & advanced models",
+                                "Create and manage Projects with custom docs",
+                                "Artifacts interactive preview & code workbench"
+                            )
+
+                            benefits.forEach { benefit ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 5.dp),
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .padding(top = 2.dp)
+                                            .size(18.dp)
+                                            .clip(CircleShape)
+                                            .background(BrandCoral.copy(alpha = 0.2f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = null,
+                                            tint = BrandCoral,
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Text(
+                                        text = benefit,
+                                        style = HermesTypography.bodyMedium.copy(
+                                            fontSize = 13.5.sp,
+                                            color = TextPrimaryWarm,
+                                            lineHeight = 18.sp
+                                        )
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            Button(
+                                onClick = {},
+                                shape = CircleShape,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = PureWhite,
+                                    contentColor = PureBlack
+                                ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp)
+                            ) {
+                                Text(
+                                    text = "Upgrade to Pro",
+                                    style = HermesTypography.titleMedium.copy(
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = PureBlack
                                     )
                                 )
                             }
-                        }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        Button(
-                            onClick = {},
-                            shape = CircleShape,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = PureWhite,
-                                contentColor = PureBlack
-                            ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(48.dp)
-                        ) {
-                            Text(
-                                text = "Upgrade to Pro",
-                                style = HermesTypography.titleMedium.copy(
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = PureBlack
-                                )
-                            )
                         }
                     }
                 }
