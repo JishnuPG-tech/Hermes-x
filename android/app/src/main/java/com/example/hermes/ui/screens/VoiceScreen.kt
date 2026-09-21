@@ -38,6 +38,25 @@ fun VoiceScreen(
     val captionText by voiceViewModel.statusText.collectAsStateWithLifecycle()
     val isMuted by voiceViewModel.isMuted.collectAsStateWithLifecycle()
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            voiceViewModel.startListening()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (androidx.core.content.ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.RECORD_AUDIO
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
     // Rhythmic breathing pulse for starburst avatar
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseScale by infiniteTransition.animateFloat(
@@ -113,10 +132,16 @@ fun VoiceScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(
-                modifier = Modifier.scale(if (voiceState == VoiceState.SPEAKING) pulseScale else 1.0f),
+                modifier = Modifier
+                    .scale(if (voiceState == VoiceState.SPEAKING) pulseScale else 1.0f)
+                    .clickable {
+                        if (voiceState == VoiceState.SPEAKING) {
+                            voiceViewModel.interruptAndBargeIn()
+                        }
+                    },
                 contentAlignment = Alignment.Center
             ) {
-                if (voiceState == VoiceState.CONNECTING) {
+                if (voiceState == VoiceState.CONNECTING || voiceState == VoiceState.THINKING) {
                     ClaudeSparkThinkingAnimation(size = 54.dp, tint = BrandCoral)
                 } else {
                     ClaudeSpark(size = 54.dp, tint = BrandCoral)

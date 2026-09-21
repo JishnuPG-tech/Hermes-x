@@ -31,6 +31,9 @@ import com.example.hermes.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.example.hermes.data.FtsSearchResultDto
+
 @Composable
 fun ChatsScreen(
     onOpenDrawer: () -> Unit,
@@ -40,9 +43,14 @@ fun ChatsScreen(
 ) {
     var searchQuery by remember { mutableStateOf("") }
     val sessions by chatViewModel.sessions.collectAsStateWithLifecycle()
+    val ftsResults by chatViewModel.ftsSearchResults.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         chatViewModel.fetchSessions()
+    }
+
+    LaunchedEffect(searchQuery) {
+        chatViewModel.searchMessagesFts(searchQuery)
     }
 
     Box(
@@ -140,7 +148,7 @@ fun ChatsScreen(
                         Box(contentAlignment = Alignment.CenterStart) {
                             if (searchQuery.isEmpty()) {
                                 Text(
-                                    text = "Search Chats",
+                                    text = "Search Chats & Message Contents",
                                     style = HermesTypography.bodyLarge.copy(
                                         fontSize = 15.5.sp,
                                         color = TextSubtle
@@ -168,12 +176,14 @@ fun ChatsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Live filtered sessions list
             val filteredSessions = sessions.filter {
                 it.title.contains(searchQuery, ignoreCase = true)
             }
 
-            if (filteredSessions.isEmpty()) {
+            val isSearchActive = searchQuery.isNotBlank()
+            val noResults = isSearchActive && filteredSessions.isEmpty() && ftsResults.isEmpty()
+
+            if (sessions.isEmpty() && !isSearchActive) {
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -181,11 +191,20 @@ fun ChatsScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (searchQuery.isBlank()) "No conversations yet. Start a new chat." else "No matching chats found.",
-                        style = HermesTypography.bodyLarge.copy(
-                            fontSize = 15.sp,
-                            color = TextSubtle
-                        )
+                        text = "No conversations yet. Start a new chat.",
+                        style = HermesTypography.bodyLarge.copy(fontSize = 15.sp, color = TextSubtle)
+                    )
+                }
+            } else if (noResults) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No matching chats or messages found.",
+                        style = HermesTypography.bodyLarge.copy(fontSize = 15.sp, color = TextSubtle)
                     )
                 }
             } else {
@@ -193,8 +212,23 @@ fun ChatsScreen(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
+                    if (isSearchActive && filteredSessions.isNotEmpty()) {
+                        item {
+                            Text(
+                                text = "MATCHED SESSIONS (${filteredSessions.size})",
+                                style = HermesTypography.labelSmall.copy(
+                                    color = TextSubtle,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    letterSpacing = 1.sp
+                                ),
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
                     items(filteredSessions, key = { it.session_id }) { session ->
                         Row(
                             modifier = Modifier
@@ -240,9 +274,81 @@ fun ChatsScreen(
                             }
                         }
                     }
+
+                    if (isSearchActive && ftsResults.isNotEmpty()) {
+                        item {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "MATCHED MESSAGE CONTENTS (${ftsResults.size})",
+                                style = HermesTypography.labelSmall.copy(
+                                    color = TextSubtle,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    letterSpacing = 1.sp
+                                ),
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
+                        }
+
+                        items(ftsResults) { fts ->
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(Color(0xFF1F1E1C))
+                                    .border(1.dp, BorderSubtle, RoundedCornerShape(14.dp))
+                                    .clickable { onNavigateChat(fts.sessionId) }
+                                    .padding(14.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(CircleShape)
+                                            .background(CanvasNearBlack)
+                                            .border(1.dp, BorderSubtle, CircleShape)
+                                            .padding(horizontal = 10.dp, vertical = 3.dp)
+                                    ) {
+                                        Text(
+                                            text = fts.sessionTitle,
+                                            style = HermesTypography.labelSmall.copy(
+                                                color = BrandCoral,
+                                                fontSize = 11.5.sp,
+                                                fontWeight = FontWeight.Medium
+                                            ),
+                                            maxLines = 1
+                                        )
+                                    }
+
+                                    Text(
+                                        text = if (fts.role == "user") "You" else "Hermes",
+                                        style = HermesTypography.bodySmall.copy(
+                                            color = TextMuted,
+                                            fontSize = 11.sp
+                                        )
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Text(
+                                    text = fts.snippet,
+                                    style = HermesTypography.bodyMedium.copy(
+                                        color = TextPrimaryWarm,
+                                        fontSize = 13.5.sp,
+                                        lineHeight = 18.sp
+                                    )
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
+
 
         // Floating Action Button
         FloatingActionButton(

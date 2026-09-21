@@ -34,6 +34,8 @@ fun SettingsScreen(
     onNavigateTimeFocus: () -> Unit = {},
     onNavigatePrivacy: () -> Unit = {},
     onNavigateSharing: () -> Unit = {},
+    onNavigateChannels: () -> Unit = {},
+    onNavigateOmniRoute: () -> Unit = {},
     onNavigateAuth: () -> Unit = {},
     onUpgradeClick: () -> Unit = onNavigateBilling,
     settingsViewModel: SettingsViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
@@ -218,6 +220,10 @@ fun SettingsScreen(
                         SettingOptionRow("Capabilities", subtitle = "5 enabled", icon = Icons.Outlined.Tune, onClick = onNavigateCapabilities)
                         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
                         SettingOptionRow("Connectors", subtitle = "2 connected", icon = Icons.Outlined.AttachFile, onClick = onNavigateConnectors)
+                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
+                        SettingOptionRow("Channels Hub", subtitle = "Telegram, Email, Discord", icon = Icons.Outlined.Forum, onClick = onNavigateChannels)
+                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
+                        SettingOptionRow("OmniRoute HUD", subtitle = "Model telemetry & fleet", icon = Icons.Outlined.AltRoute, onClick = onNavigateOmniRoute)
                         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
                         SettingOptionRow("Permissions", icon = Icons.Outlined.Security, onClick = onNavigatePermissions)
                         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))

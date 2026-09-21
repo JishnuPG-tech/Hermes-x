@@ -38,3 +38,5 @@ import kotlinx.serialization.Serializable
 @Serializable data object NavPrivacy : NavKey
 @Serializable data object NavSharing : NavKey
 @Serializable data object NavTerminal : NavKey
+@Serializable data object NavChannels : NavKey
+@Serializable data object NavOmniRoute : NavKey

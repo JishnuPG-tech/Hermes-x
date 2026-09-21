@@ -74,6 +74,13 @@ fun ChatScreen(
     val memoryEnabled by chatViewModel.memoryEnabled.collectAsStateWithLifecycle()
     val selectedProject by chatViewModel.selectedProject.collectAsStateWithLifecycle()
     val projects by chatViewModel.projects.collectAsStateWithLifecycle()
+    val approvals by chatViewModel.approvals.collectAsStateWithLifecycle()
+    val pendingApprovals = remember(approvals) { approvals.filter { it.status.equals("PENDING", ignoreCase = true) } }
+    var activeApprovalToReview by remember { mutableStateOf<com.example.hermes.data.ApprovalDto?>(null) }
+
+    LaunchedEffect(Unit) {
+        chatViewModel.fetchApprovals()
+    }
 
     val cameraLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.TakePicturePreview()
@@ -686,10 +693,9 @@ fun ChatScreen(
                                         .fillMaxWidth()
                                         .padding(vertical = 10.dp),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                    horizontalArrangement = Arrangement.Center
                                 ) {
-                                    ClaudeStarburst(size = 20.dp, color = BrandCoral)
-                                    Column(horizontalAlignment = Alignment.End) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Text(
                                             text = "Hermes is AI and can make mistakes.",
                                             style = HermesTypography.labelSmall.copy(
@@ -722,6 +728,72 @@ fun ChatScreen(
                     onThumbsDown = { showVoiceEndedBanner = false },
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
+            }
+
+            // Pending Approval Banner
+            if (pendingApprovals.isNotEmpty()) {
+                val firstPending = pendingApprovals.first()
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFF261E1A))
+                        .border(1.dp, Color(0xFF5A3122), RoundedCornerShape(16.dp))
+                        .clickable { activeApprovalToReview = firstPending }
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF3D2319)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.WarningAmber,
+                            contentDescription = null,
+                            tint = BrandCoral,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (pendingApprovals.size == 1) "Action Approval Required" else "${pendingApprovals.size} Actions Require Approval",
+                            style = HermesTypography.bodyMedium.copy(
+                                color = TextPrimaryWarm,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.5.sp
+                            )
+                        )
+                        Text(
+                            text = "${firstPending.tool.ifBlank { "System action" }} · Tap to review",
+                            style = HermesTypography.bodySmall.copy(
+                                color = Color(0xFFC0BAB0),
+                                fontSize = 12.sp
+                            ),
+                            maxLines = 1
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(BrandCoral)
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = "Review",
+                            style = HermesTypography.labelMedium.copy(
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+                        )
+                    }
+                }
             }
 
             // Docked Composer in Chat (Screenshot 2, 3, 4)
@@ -919,6 +991,22 @@ fun ChatScreen(
                     showSummarySheet = false
                     onNavigateArtifactViewer(title, type, targetMsg?.artifactCode, targetMsg?.artifactLanguage)
                 }
+            )
+        }
+
+        // Human-in-the-Loop Policy Approval Sheet
+        activeApprovalToReview?.let { approval ->
+            ApprovalActionSheet(
+                approval = approval,
+                onApprove = { approvalId ->
+                    chatViewModel.approveRequest(approvalId)
+                    activeApprovalToReview = null
+                },
+                onDeny = { approvalId, _ ->
+                    chatViewModel.denyRequest(approvalId)
+                    activeApprovalToReview = null
+                },
+                onDismiss = { activeApprovalToReview = null }
             )
         }
     }

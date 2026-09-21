@@ -7,10 +7,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hermes.theme.*
-import com.example.hermes.ui.components.ClaudeStarburst
 
 @Composable
 fun SplashScreen(
@@ -22,29 +22,21 @@ fun SplashScreen(
             .background(CanvasNearBlack)
             .safeDrawingPadding()
     ) {
-        // Center: Terracotta/Coral Starburst + Serif Hermes Wordmark (Matches Screenshot 1)
-        Row(
-            modifier = Modifier.align(Alignment.Center),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            ClaudeStarburst(
-                size = 46.dp,
-                color = BrandCoral
-            )
-            Spacer(modifier = Modifier.width(14.dp))
-            Text(
-                text = "Hermes",
-                style = HermesTypography.displayLarge.copy(
-                    fontSize = 44.sp,
-                    color = TextPrimaryWarm,
-                    fontWeight = FontWeight.Normal,
-                    letterSpacing = (-0.5).sp
-                )
-            )
-        }
+        // Center: Centered Serif Hermes Wordmark (No logo icon)
+        Text(
+            text = "Hermes",
+            style = HermesTypography.displayLarge.copy(
+                fontSize = 44.sp,
+                color = TextPrimaryWarm,
+                fontFamily = AnthropicSerif,
+                fontWeight = FontWeight.Normal,
+                textAlign = TextAlign.Center,
+                letterSpacing = (-0.5).sp
+            ),
+            modifier = Modifier.align(Alignment.Center)
+        )
 
-        // Bottom: APEX Logo Text in bold tracked subtle grey (Matches Screenshot 1)
+        // Bottom: APEX Logo Text in bold tracked subtle grey
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -56,7 +48,8 @@ fun SplashScreen(
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextSubtle,
-                    letterSpacing = 4.sp
+                    letterSpacing = 4.sp,
+                    fontFamily = AnthropicSans
                 )
             )
         }

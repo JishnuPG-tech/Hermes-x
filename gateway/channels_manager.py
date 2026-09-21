@@ -650,6 +650,38 @@ class EmailAgentService:
 telegram_service = TelegramBotService()
 email_service = EmailAgentService()
 
+async def send_telegram_notification(chat_id: str, text: str) -> bool:
+    cfg = load_channels_config().get("telegram", {})
+    token = cfg.get("token")
+    if not token or not chat_id:
+        return False
+    api_base = f"https://api.telegram.org/bot{token}"
+    chunks = format_for_telegram(text)
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            for c in chunks:
+                await client.post(
+                    f"{api_base}/sendMessage",
+                    json={"chat_id": chat_id, "text": c, "parse_mode": "HTML"}
+                )
+        return True
+    except Exception as e:
+        logger.error(f"Error sending telegram notification: {e}")
+        return False
+
+async def send_email_notification(to_addr: str, subject: str, content: str) -> bool:
+    cfg = load_channels_config().get("email", {})
+    user = cfg.get("address")
+    pwd = cfg.get("password")
+    if not user or not pwd:
+        return False
+    try:
+        email_service._send_reply(cfg, to_addr, subject, "", content)
+        return True
+    except Exception as e:
+        logger.error(f"Error sending email notification: {e}")
+        return False
+
 async def start_all_channels():
     await telegram_service.start()
     await email_service.start()
@@ -661,3 +693,4 @@ async def stop_all_channels():
 async def restart_channels():
     await stop_all_channels()
     await start_all_channels()
+

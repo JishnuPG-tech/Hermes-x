@@ -34,3 +34,8 @@ __pycache__/
 venv/
 .venv/
 /data/
+cookies.txt
+skills-lock.json
+.agents/
+portfolio/
+android/.kotlin/

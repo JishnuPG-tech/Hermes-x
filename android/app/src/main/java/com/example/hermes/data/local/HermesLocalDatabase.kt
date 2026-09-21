@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import com.example.hermes.data.FtsSearchResultDto
 
 class HermesLocalDatabase private constructor(context: Context) :
     SQLiteOpenHelper(context.applicationContext, DATABASE_NAME, null, DATABASE_VERSION) {
@@ -268,6 +269,47 @@ class HermesLocalDatabase private constructor(context: Context) :
         } finally {
             db.endTransaction()
         }
+    }
+
+    suspend fun searchMessagesFts(query: String): List<FtsSearchResultDto> = withContext(Dispatchers.IO) {
+        val trimmed = query.trim()
+        if (trimmed.isBlank()) return@withContext emptyList()
+        val list = mutableListOf<FtsSearchResultDto>()
+        val sql = """
+            SELECT m.session_id, s.title, m.role, m.content, m.timestamp
+            FROM messages m
+            LEFT JOIN sessions s ON m.session_id = s.id
+            WHERE (m.user_id = ? OR m.user_id = 'guest')
+              AND m.content LIKE ?
+            ORDER BY m.timestamp DESC
+            LIMIT 40
+        """.trimIndent()
+
+        readableDatabase.rawQuery(sql, arrayOf(activeUserId, "%$trimmed%")).use { cursor ->
+            while (cursor.moveToNext()) {
+                val sId = cursor.getString(0) ?: ""
+                val sTitle = cursor.getString(1) ?: "Chat"
+                val role = cursor.getString(2) ?: "assistant"
+                val fullContent = cursor.getString(3) ?: ""
+                val ts = cursor.getLong(4)
+
+                val idx = fullContent.indexOf(trimmed, ignoreCase = true)
+                val start = (idx - 35).coerceAtLeast(0)
+                val end = (idx + trimmed.length + 55).coerceAtMost(fullContent.length)
+                val snippet = (if (start > 0) "..." else "") +
+                        fullContent.substring(start, end).replace("\n", " ") +
+                        (if (end < fullContent.length) "..." else "")
+
+                list.add(FtsSearchResultDto(
+                    sessionId = sId,
+                    sessionTitle = sTitle,
+                    role = role,
+                    snippet = snippet,
+                    timestamp = ts
+                ))
+            }
+        }
+        list
     }
 
     // --- TASKS ---

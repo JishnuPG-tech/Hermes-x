@@ -6,6 +6,7 @@ import com.example.hermes.data.*
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 class ChatViewModel(
     private val repository: DataRepository = HermesDataRepository.instance
@@ -116,4 +117,33 @@ class ChatViewModel(
     fun createTask(title: String, prompt: String) {
         repository.createNewTask(title, prompt)
     }
+
+    val approvals: StateFlow<List<ApprovalDto>> = repository.approvals
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun fetchApprovals() {
+        repository.fetchApprovals()
+    }
+
+    fun approveRequest(approvalId: String) {
+        repository.approveRequest(approvalId)
+    }
+
+    fun denyRequest(approvalId: String) {
+        repository.denyRequest(approvalId)
+    }
+
+    val ftsSearchResults = kotlinx.coroutines.flow.MutableStateFlow<List<FtsSearchResultDto>>(emptyList())
+
+    fun searchMessagesFts(query: String) {
+        viewModelScope.launch {
+            if (query.isBlank()) {
+                ftsSearchResults.value = emptyList()
+            } else {
+                ftsSearchResults.value = repository.searchMessagesFts(query)
+            }
+        }
+    }
 }
+
+

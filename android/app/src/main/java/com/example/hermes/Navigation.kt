@@ -243,6 +243,8 @@ fun MainNavigation(
                         onNavigateTimeFocus = { backStack.add(NavTimeFocus) },
                         onNavigatePrivacy = { backStack.add(NavPrivacy) },
                         onNavigateSharing = { backStack.add(NavSharing) },
+                        onNavigateChannels = { backStack.add(NavChannels) },
+                        onNavigateOmniRoute = { backStack.add(NavOmniRoute) },
                         onNavigateAuth = {
                             backStack.clear()
                             backStack.add(NavAuth)
@@ -268,6 +270,16 @@ fun MainNavigation(
                 }
                 entry<NavConnectors> {
                     ConnectorsScreen(
+                        onBack = { backStack.removeLastOrNull() }
+                    )
+                }
+                entry<NavChannels> {
+                    ChannelsScreen(
+                        onBack = { backStack.removeLastOrNull() }
+                    )
+                }
+                entry<NavOmniRoute> {
+                    OmniRouteScreen(
                         onBack = { backStack.removeLastOrNull() }
                     )
                 }

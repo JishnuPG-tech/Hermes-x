@@ -734,6 +734,267 @@ class HermesApiClient(
     }
 
     /**
+     * Unified hybrid search across Notion and Obsidian.
+     */
+    suspend fun searchKnowledge(query: String, sources: String? = null): List<KnowledgeSearchResultItemDto> = withContext(Dispatchers.IO) {
+        val encodedQ = java.net.URLEncoder.encode(query, "UTF-8")
+        val urlBuilder = "$baseUrl/v1/knowledge/search?q=$encodedQ" + (if (!sources.isNullOrBlank()) "&sources=$sources" else "")
+        val req = Request.Builder()
+            .url(urlBuilder)
+            .get()
+            .header("Authorization", "Bearer $apiKey")
+            .build()
+        try {
+            okHttpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext emptyList()
+                val bodyStr = resp.body?.string() ?: return@withContext emptyList()
+                val res = json.decodeFromString<KnowledgeSearchResponseDto>(bodyStr)
+                res.results
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    /**
+     * Trigger synchronization of Knowledge Space (Notion/Obsidian).
+     */
+    suspend fun syncKnowledge(connector: String? = null): Boolean = withContext(Dispatchers.IO) {
+        val payload = if (connector != null) """{"connector":"$connector"}""" else "{}"
+        val req = Request.Builder()
+            .url("$baseUrl/v1/knowledge/sync")
+            .post(payload.toRequestBody(JSON_MEDIA_TYPE))
+            .header("Authorization", "Bearer $apiKey")
+            .build()
+        try {
+            okHttpClient.newCall(req).execute().use { it.isSuccessful }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Create note or document in Notion or Obsidian.
+     */
+    suspend fun createKnowledgeNote(title: String, content: String, destination: String = "notion"): Boolean = withContext(Dispatchers.IO) {
+        val obj = org.json.JSONObject().apply {
+            put("title", title)
+            put("content", content)
+            put("destination", destination)
+        }
+        val req = Request.Builder()
+            .url("$baseUrl/v1/knowledge/notes")
+            .post(obj.toString().toRequestBody(JSON_MEDIA_TYPE))
+            .header("Authorization", "Bearer $apiKey")
+            .build()
+        try {
+            okHttpClient.newCall(req).execute().use { it.isSuccessful }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /**
+     * List files in the server computer filesystem.
+     */
+    suspend fun listComputerFiles(path: String? = null): List<ComputerFileItemDto> = withContext(Dispatchers.IO) {
+        val url = if (!path.isNullOrBlank()) "$baseUrl/v1/computer/files?path=${java.net.URLEncoder.encode(path, "UTF-8")}" else "$baseUrl/v1/computer/files"
+        val req = Request.Builder()
+            .url(url)
+            .get()
+            .header("Authorization", "Bearer $apiKey")
+            .build()
+        try {
+            okHttpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext emptyList()
+                val bodyStr = resp.body?.string() ?: return@withContext emptyList()
+                val res = json.decodeFromString<ComputerFilesResponseDto>(bodyStr)
+                res.files
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    /**
+     * Get content of a file on the server computer.
+     */
+    suspend fun getComputerFileContent(path: String): String? = withContext(Dispatchers.IO) {
+        val url = "$baseUrl/v1/computer/file/content?path=${java.net.URLEncoder.encode(path, "UTF-8")}"
+        val req = Request.Builder()
+            .url(url)
+            .get()
+            .header("Authorization", "Bearer $apiKey")
+            .build()
+        try {
+            okHttpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext null
+                val bodyStr = resp.body?.string() ?: return@withContext null
+                val res = json.decodeFromString<ComputerFileContentResponseDto>(bodyStr)
+                res.content
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Get browser live status.
+     */
+    suspend fun getBrowserStatus(): BrowserStatusDto? = withContext(Dispatchers.IO) {
+        val req = Request.Builder()
+            .url("$baseUrl/v1/browser/status")
+            .get()
+            .header("Authorization", "Bearer $apiKey")
+            .build()
+        try {
+            okHttpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext null
+                val bodyStr = resp.body?.string() ?: return@withContext null
+                json.decodeFromString<BrowserStatusDto>(bodyStr)
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Navigate server headless browser.
+     */
+    suspend fun navigateBrowser(url: String): BrowserNavigateResponseDto? = withContext(Dispatchers.IO) {
+        val payload = org.json.JSONObject().apply { put("url", url) }
+        val req = Request.Builder()
+            .url("$baseUrl/v1/browser/navigate")
+            .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
+            .header("Authorization", "Bearer $apiKey")
+            .build()
+        try {
+            okHttpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext null
+                val bodyStr = resp.body?.string() ?: return@withContext null
+                json.decodeFromString<BrowserNavigateResponseDto>(bodyStr)
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Capture browser screenshot.
+     */
+    suspend fun getBrowserScreenshot(): BrowserScreenshotResponseDto? = withContext(Dispatchers.IO) {
+        val req = Request.Builder()
+            .url("$baseUrl/v1/browser/screenshot")
+            .get()
+            .header("Authorization", "Bearer $apiKey")
+            .build()
+        try {
+            okHttpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext null
+                val bodyStr = resp.body?.string() ?: return@withContext null
+                json.decodeFromString<BrowserScreenshotResponseDto>(bodyStr)
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Fetch multi-agent workforce roles.
+     */
+    suspend fun getWorkforceRoles(): List<WorkforceRoleDto> = withContext(Dispatchers.IO) {
+        val req = Request.Builder()
+            .url("$baseUrl/v1/workforce/roles")
+            .get()
+            .header("Authorization", "Bearer $apiKey")
+            .build()
+        try {
+            okHttpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext emptyList()
+                val bodyStr = resp.body?.string() ?: return@withContext emptyList()
+                val res = json.decodeFromString<WorkforceRolesResponseDto>(bodyStr)
+                res.roles
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    /**
+     * Fetch scheduled automations (24x7 cron jobs).
+     */
+    suspend fun getAutomations(): List<ScheduledAutomationDto> = withContext(Dispatchers.IO) {
+        val req = Request.Builder()
+            .url("$baseUrl/v1/automations")
+            .get()
+            .header("Authorization", "Bearer $apiKey")
+            .build()
+        try {
+            okHttpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext emptyList()
+                val bodyStr = resp.body?.string() ?: return@withContext emptyList()
+                val res = json.decodeFromString<AutomationsResponseDto>(bodyStr)
+                res.automations
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    /**
+     * Create a scheduled automation.
+     */
+    suspend fun createAutomation(title: String, prompt: String, cronExpression: String = "0 * * * *"): Boolean = withContext(Dispatchers.IO) {
+        val obj = org.json.JSONObject().apply {
+            put("title", title)
+            put("prompt", prompt)
+            put("cron_expression", cronExpression)
+        }
+        val req = Request.Builder()
+            .url("$baseUrl/v1/automations")
+            .post(obj.toString().toRequestBody(JSON_MEDIA_TYPE))
+            .header("Authorization", "Bearer $apiKey")
+            .build()
+        try {
+            okHttpClient.newCall(req).execute().use { it.isSuccessful }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Toggle automation active/paused state.
+     */
+    suspend fun toggleAutomation(automationId: String): Boolean = withContext(Dispatchers.IO) {
+        val req = Request.Builder()
+            .url("$baseUrl/v1/automations/$automationId/toggle")
+            .post("{}".toRequestBody(JSON_MEDIA_TYPE))
+            .header("Authorization", "Bearer $apiKey")
+            .build()
+        try {
+            okHttpClient.newCall(req).execute().use { it.isSuccessful }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Trigger execution of automation now.
+     */
+    suspend fun runAutomationNow(automationId: String): Boolean = withContext(Dispatchers.IO) {
+        val req = Request.Builder()
+            .url("$baseUrl/v1/automations/$automationId/run_now")
+            .post("{}".toRequestBody(JSON_MEDIA_TYPE))
+            .header("Authorization", "Bearer $apiKey")
+            .build()
+        try {
+            okHttpClient.newCall(req).execute().use { it.isSuccessful }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /**
      * Connects to the interactive PTY WebSocket endpoint.
      */
     fun connectPtyWebSocket(listener: WebSocketListener): WebSocket {
@@ -818,8 +1079,8 @@ class HermesApiClient(
                             try {
                                 val chunk = json.decodeFromString<ChatCompletionChunk>(dataContent)
                                 val delta = chunk.choices.firstOrNull()?.delta
-                                val token = delta?.content
-                                val reasoning = delta?.reasoning_content
+                                val token = delta?.content ?: delta?.text
+                                val reasoning = delta?.reasoning_content ?: delta?.reasoning
 
                                 if (!reasoning.isNullOrEmpty()) {
                                     trySend(StreamEvent.Thinking(reasoning))
@@ -866,4 +1127,88 @@ class HermesApiClient(
 
         return okHttpClient.newWebSocket(request, listener)
     }
+
+    /**
+     * Get channels configuration and status.
+     */
+    suspend fun getChannels(): Result<ChannelsConfigDto> = withContext(Dispatchers.IO) {
+        try {
+            val req = Request.Builder()
+                .url("$baseUrl/v1/channels")
+                .get()
+                .header("Authorization", "Bearer $apiKey")
+                .build()
+            okHttpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext Result.failure(Exception("HTTP ${resp.code}"))
+                val bodyStr = resp.body?.string() ?: return@withContext Result.failure(Exception("Empty body"))
+                val res = json.decodeFromString<ChannelsConfigDto>(bodyStr)
+                Result.success(res)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Update channels configuration.
+     */
+    suspend fun updateChannels(request: UpdateChannelsRequestDto): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            val jsonStr = json.encodeToString(request)
+            val req = Request.Builder()
+                .url("$baseUrl/v1/channels")
+                .post(jsonStr.toRequestBody(JSON_MEDIA_TYPE))
+                .header("Authorization", "Bearer $apiKey")
+                .build()
+            okHttpClient.newCall(req).execute().use { resp ->
+                if (resp.isSuccessful) Result.success(true) else Result.failure(Exception("HTTP ${resp.code}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Test channel message delivery.
+     */
+    suspend fun testChannel(channel: String, message: String): Result<TestChannelResponseDto> = withContext(Dispatchers.IO) {
+        try {
+            val jsonStr = json.encodeToString(TestChannelRequestDto(channel = channel, message = message))
+            val req = Request.Builder()
+                .url("$baseUrl/v1/channels/test")
+                .post(jsonStr.toRequestBody(JSON_MEDIA_TYPE))
+                .header("Authorization", "Bearer $apiKey")
+                .build()
+            okHttpClient.newCall(req).execute().use { resp ->
+                val bodyStr = resp.body?.string() ?: ""
+                if (!resp.isSuccessful) return@withContext Result.failure(Exception(bodyStr.ifBlank { "HTTP ${resp.code}" }))
+                val res = json.decodeFromString<TestChannelResponseDto>(bodyStr)
+                Result.success(res)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Get OmniRoute routing telemetry and traces.
+     */
+    suspend fun getOmniRouteTelemetry(): Result<OmniRouteTelemetryDto> = withContext(Dispatchers.IO) {
+        try {
+            val req = Request.Builder()
+                .url("$baseUrl/v1/omniroute/telemetry")
+                .get()
+                .header("Authorization", "Bearer $apiKey")
+                .build()
+            okHttpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext Result.failure(Exception("HTTP ${resp.code}"))
+                val bodyStr = resp.body?.string() ?: return@withContext Result.failure(Exception("Empty body"))
+                val res = json.decodeFromString<OmniRouteTelemetryDto>(bodyStr)
+                Result.success(res)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
+

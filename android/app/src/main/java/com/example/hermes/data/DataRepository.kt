@@ -63,6 +63,24 @@ interface DataRepository {
     fun connectTerminalPty()
     fun sendTerminalInput(input: String)
     fun disconnectTerminalPty()
+    suspend fun searchKnowledge(query: String, sources: String? = null): List<KnowledgeSearchResultItemDto>
+    suspend fun syncKnowledge(connector: String? = null): Boolean
+    suspend fun createKnowledgeNote(title: String, content: String, destination: String = "notion"): Boolean
+    suspend fun listComputerFiles(path: String? = null): List<ComputerFileItemDto>
+    suspend fun getComputerFileContent(path: String): String?
+    suspend fun getBrowserStatus(): BrowserStatusDto?
+    suspend fun navigateBrowser(url: String): BrowserNavigateResponseDto?
+    suspend fun getBrowserScreenshot(): BrowserScreenshotResponseDto?
+    suspend fun getWorkforceRoles(): List<WorkforceRoleDto>
+    suspend fun getAutomations(): List<ScheduledAutomationDto>
+    suspend fun createAutomation(title: String, prompt: String, cronExpression: String = "0 * * * *"): Boolean
+    suspend fun toggleAutomation(automationId: String): Boolean
+    suspend fun runAutomationNow(automationId: String): Boolean
+    suspend fun getChannels(): Result<ChannelsConfigDto>
+    suspend fun updateChannels(request: UpdateChannelsRequestDto): Result<Boolean>
+    suspend fun testChannel(channel: String, message: String): Result<TestChannelResponseDto>
+    suspend fun getOmniRouteTelemetry(): Result<OmniRouteTelemetryDto>
+    suspend fun searchMessagesFts(query: String): List<FtsSearchResultDto>
 
     // Auth and Server Preferences
     val isLoggedIn: kotlinx.coroutines.flow.Flow<Boolean>
@@ -560,8 +578,19 @@ class HermesDataRepository(
                         }
                         is StreamEvent.Done -> {
                             _thinkingPhase.value = ThinkingPhase.COMPLETED
-                            newSmoother.complete(event.fullResponse)
-                            val artifactMeta = extractArtifactFromText(event.fullResponse)
+                            val rawResponse = event.fullResponse
+                            val effectiveResponse = if (rawResponse.isNotBlank()) {
+                                rawResponse
+                            } else if (newSmoother.renderedText.value.isNotBlank()) {
+                                newSmoother.renderedText.value
+                            } else if (thoughtsAccumulator.isNotBlank()) {
+                                thoughtsAccumulator.toString()
+                            } else {
+                                "Hermes has completed processing your request."
+                            }
+
+                            newSmoother.complete(effectiveResponse)
+                            val artifactMeta = extractArtifactFromText(effectiveResponse)
 
                             if (artifactMeta != null) {
                                 val newArtifact = ArtifactItemDto(
@@ -586,7 +615,7 @@ class HermesDataRepository(
 
                             updateAssistantMessage(
                                 id = assistantMsgId,
-                                content = event.fullResponse,
+                                content = effectiveResponse,
                                 thinking = thoughtsAccumulator.toString(),
                                 isStreaming = false,
                                 artifactTitle = artifactMeta?.title,
@@ -595,6 +624,24 @@ class HermesDataRepository(
                                 artifactCode = artifactMeta?.code,
                                 stepTitle = artifactMeta?.stepTitle
                             )
+
+                            if (rawResponse.isBlank()) {
+                                val curSess = currentSession
+                                repositoryScope.launch(Dispatchers.IO) {
+                                    try {
+                                        val sessionDto = apiClient.getSession(curSess)
+                                        val lastAsst = sessionDto?.messages?.lastOrNull { it.role == "assistant" }
+                                        if (lastAsst != null && lastAsst.content.isNotBlank()) {
+                                            updateAssistantMessage(
+                                                id = assistantMsgId,
+                                                content = lastAsst.content,
+                                                thinking = lastAsst.reasoning_content ?: thoughtsAccumulator.toString(),
+                                                isStreaming = false
+                                            )
+                                        }
+                                    } catch (_: Exception) {}
+                                }
+                            }
 
                             // Save message exchange to local cache
                             val currentSession = _currentSessionId.value ?: activeSessionId
@@ -1283,6 +1330,80 @@ class HermesDataRepository(
     override fun disconnectTerminalPty() {
         ptyWebSocket?.close(1000, "User disconnected")
         ptyWebSocket = null
+    }
+
+    override suspend fun searchKnowledge(query: String, sources: String?): List<KnowledgeSearchResultItemDto> {
+        return apiClient.searchKnowledge(query, sources)
+    }
+
+    override suspend fun syncKnowledge(connector: String?): Boolean {
+        val ok = apiClient.syncKnowledge(connector)
+        fetchKnowledgeSources()
+        return ok
+    }
+
+    override suspend fun createKnowledgeNote(title: String, content: String, destination: String): Boolean {
+        return apiClient.createKnowledgeNote(title, content, destination)
+    }
+
+    override suspend fun listComputerFiles(path: String?): List<ComputerFileItemDto> {
+        return apiClient.listComputerFiles(path)
+    }
+
+    override suspend fun getComputerFileContent(path: String): String? {
+        return apiClient.getComputerFileContent(path)
+    }
+
+    override suspend fun getBrowserStatus(): BrowserStatusDto? {
+        return apiClient.getBrowserStatus()
+    }
+
+    override suspend fun navigateBrowser(url: String): BrowserNavigateResponseDto? {
+        return apiClient.navigateBrowser(url)
+    }
+
+    override suspend fun getBrowserScreenshot(): BrowserScreenshotResponseDto? {
+        return apiClient.getBrowserScreenshot()
+    }
+
+    override suspend fun getWorkforceRoles(): List<WorkforceRoleDto> {
+        return apiClient.getWorkforceRoles()
+    }
+
+    override suspend fun getAutomations(): List<ScheduledAutomationDto> {
+        return apiClient.getAutomations()
+    }
+
+    override suspend fun createAutomation(title: String, prompt: String, cronExpression: String): Boolean {
+        return apiClient.createAutomation(title, prompt, cronExpression)
+    }
+
+    override suspend fun toggleAutomation(automationId: String): Boolean {
+        return apiClient.toggleAutomation(automationId)
+    }
+
+    override suspend fun runAutomationNow(automationId: String): Boolean {
+        return apiClient.runAutomationNow(automationId)
+    }
+
+    override suspend fun getChannels(): Result<ChannelsConfigDto> {
+        return apiClient.getChannels()
+    }
+
+    override suspend fun updateChannels(request: UpdateChannelsRequestDto): Result<Boolean> {
+        return apiClient.updateChannels(request)
+    }
+
+    override suspend fun testChannel(channel: String, message: String): Result<TestChannelResponseDto> {
+        return apiClient.testChannel(channel, message)
+    }
+
+    override suspend fun getOmniRouteTelemetry(): Result<OmniRouteTelemetryDto> {
+        return apiClient.getOmniRouteTelemetry()
+    }
+
+    override suspend fun searchMessagesFts(query: String): List<FtsSearchResultDto> {
+        return localDb?.searchMessagesFts(query) ?: emptyList()
     }
 
     override fun clearMessages() {

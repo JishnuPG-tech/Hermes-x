@@ -147,3 +147,106 @@ async def create_workspace(request: Request):
         branch=data.get("branch"),
     )
     return {"status": "ok", "workspace": info.to_dict()}
+
+
+# ── File System Exploration ───────────────────────────────────
+
+@router.get("/v1/computer/files")
+async def list_computer_files(path: Optional[str] = None):
+    """List files in the specified computer directory."""
+    root = Path("/data/jarvis")
+    if not root.exists():
+        root = Path("./data/jarvis")
+    root.mkdir(parents=True, exist_ok=True)
+
+    target = (root / path.lstrip("/\\")) if path else root
+    if not target.exists() or not target.is_dir():
+        return {"status": "ok", "path": str(target), "files": []}
+
+    items = []
+    for entry in target.iterdir():
+        try:
+            stat = entry.stat()
+            items.append({
+                "name": entry.name,
+                "path": str(entry.relative_to(root)).replace("\\", "/"),
+                "is_dir": entry.is_dir(),
+                "size": stat.st_size if entry.is_file() else 0,
+                "modified": stat.st_mtime,
+            })
+        except Exception:
+            continue
+    items.sort(key=lambda x: (not x["is_dir"], x["name"].lower()))
+    rel_path = ""
+    try:
+        rel_path = str(target.relative_to(root)).replace("\\", "/")
+    except Exception:
+        rel_path = "/"
+    return {"status": "ok", "path": rel_path, "files": items}
+
+
+@router.get("/v1/computer/file/content")
+async def get_computer_file_content(path: str = Query(...)):
+    """Read content of a file on the server computer."""
+    root = Path("/data/jarvis")
+    if not root.exists():
+        root = Path("./data/jarvis")
+    target = (root / path.lstrip("/\\")).resolve()
+    if not str(target).startswith(str(root.resolve())):
+        raise HTTPException(status_code=403, detail="Path traversal forbidden")
+    if not target.exists() or not target.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    try:
+        content = target.read_text(encoding="utf-8", errors="replace")
+        return {"status": "ok", "path": path, "content": content}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Browser Live View ─────────────────────────────────────────
+
+import base64
+from harness.browser.browser_manager import BrowserManager
+_browser_mgr = BrowserManager()
+
+
+@router.get("/v1/browser/status")
+async def get_browser_status():
+    """Returns status of the active headless browser session."""
+    session = _browser_mgr._sessions.get("default", {})
+    return {
+        "status": "ok",
+        "current_url": session.get("current_url", "about:blank"),
+        "title": session.get("title", "Ready"),
+        "is_active": _browser_mgr._browser is not None,
+    }
+
+
+@router.post("/v1/browser/navigate")
+async def navigate_browser(request: Request):
+    """Navigate the server browser to a URL."""
+    data = await request.json()
+    url = data.get("url", "https://google.com")
+    res = await _browser_mgr.navigate(url)
+    return {
+        "status": "ok",
+        "url": res.url,
+        "title": res.title,
+        "status_code": res.status_code,
+        "content_snippet": res.text_content[:2000] if res.text_content else "",
+    }
+
+
+@router.get("/v1/browser/screenshot")
+async def get_browser_screenshot():
+    """Captures and returns base64 PNG screenshot of current browser viewport."""
+    res = await _browser_mgr.screenshot()
+    if res.get("status") == "success" and "file_path" in res:
+        try:
+            with open(res["file_path"], "rb") as f:
+                b64 = base64.b64encode(f.read()).decode("utf-8")
+            return {"status": "ok", "screenshot_base64": b64, "url": res.get("current_url", "")}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+    return {"status": "fallback", "message": res.get("message", "Screenshot unavailable"), "screenshot_base64": ""}
+
