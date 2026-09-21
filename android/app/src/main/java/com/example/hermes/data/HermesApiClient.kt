@@ -476,14 +476,15 @@ class HermesApiClient(
      */
     suspend fun sendChatMessageFallback(
         prompt: String,
-        model: String = "auto/best-chat"
+        model: String = "hermes-agent"
     ): String = withContext(Dispatchers.IO) {
         val resolvedModel = when (model) {
-            "Hermes Smart" -> "auto/best-chat"
+            "Hermes Smart" -> "hermes-agent"
             "Hermes Coding" -> "auto/best-coding"
             "Hermes Reasoning" -> "auto/best-reasoning"
             "Hermes Turbo" -> "auto/best-coding-fast"
-            else -> if (model.isBlank()) "auto/best-chat" else model
+            "hermes-agent" -> "hermes-agent"
+            else -> if (model.isBlank()) "hermes-agent" else model
         }
         val reqBody = ChatCompletionRequest(
             model = resolvedModel,

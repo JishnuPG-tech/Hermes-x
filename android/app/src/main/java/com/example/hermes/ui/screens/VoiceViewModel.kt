@@ -172,13 +172,32 @@ class VoiceViewModel(
                             override fun onRmsChanged(rmsdB: Float) {}
                             override fun onBufferReceived(buffer: ByteArray?) {}
                             override fun onEndOfSpeech() {}
+                            private var errorCount = 0
+
                             override fun onError(error: Int) {
-                                // SpeechRecognizer.ERROR_NO_MATCH (7) or ERROR_SPEECH_TIMEOUT (6) — just restart
-                                if (!_isMuted.value && !isPlayingAudio) {
-                                    mainHandler.postDelayed({ startListening() }, 600)
+                                // 7 = ERROR_NO_MATCH, 6 = ERROR_SPEECH_TIMEOUT
+                                // 4 = ERROR_SERVER, 5 = ERROR_CLIENT
+                                if (error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
+                                    errorCount = 0
+                                    if (!_isMuted.value && !isPlayingAudio) {
+                                        mainHandler.postDelayed({ startListening() }, 600)
+                                    }
+                                } else {
+                                    errorCount++
+                                    if (errorCount > 2) {
+                                        // Stop retrying and require manual tap
+                                        errorCount = 0
+                                        _voiceState.value = VoiceState.IDLE
+                                        _statusText.value = "Tap to speak"
+                                    } else {
+                                        if (!_isMuted.value && !isPlayingAudio) {
+                                            mainHandler.postDelayed({ startListening() }, 600)
+                                        }
+                                    }
                                 }
                             }
                             override fun onResults(results: Bundle?) {
+                                errorCount = 0
                                 val spoken = results
                                     ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                                     ?.firstOrNull()

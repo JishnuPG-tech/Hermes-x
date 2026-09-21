@@ -69,7 +69,7 @@ fun ClaudeDrawerContent(
                     fontSize = 36.sp,
                     color = PureWhite,
                     lineHeight = 42.sp,
-                    fontWeight = FontWeight.Normal
+                    fontWeight = FontWeight.Bold
                 ),
                 modifier = Modifier
                     .padding(top = 8.dp, bottom = 24.dp)

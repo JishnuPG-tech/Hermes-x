@@ -472,12 +472,12 @@ class HermesDataRepository(
         stopGeneration()
 
         val resolvedModel = when (model) {
-            "Hermes Smart" -> "auto/best-chat"
+            "Hermes Smart" -> "hermes-agent"
             "Hermes Coding" -> "auto/best-coding"
             "Hermes Reasoning" -> "auto/best-reasoning"
             "Hermes Turbo" -> "auto/best-coding-fast"
-            "hermes-agent" -> "auto/best-chat"
-            else -> if (model.isBlank()) "auto/best-chat" else model
+            "hermes-agent" -> "hermes-agent"
+            else -> if (model.isBlank()) "hermes-agent" else model
         }
 
         val effectiveContent = if (attachments.isNotEmpty()) {
