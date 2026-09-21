@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
@@ -159,7 +160,7 @@ class HermesDataRepository(
     private val _directoryServers = MutableStateFlow<List<DirectoryServerItemDto>>(emptyList())
     override val directoryServers: StateFlow<List<DirectoryServerItemDto>> = _directoryServers.asStateFlow()
 
-    private val _terminalLogs = MutableStateFlow<List<String>>(listOf("Hermes PTY ready."))
+    private val _terminalLogs = MutableStateFlow<List<String>>(emptyList())
     override val terminalLogs: StateFlow<List<String>> = _terminalLogs.asStateFlow()
 
     companion object {
@@ -328,49 +329,53 @@ class HermesDataRepository(
         displayName: String,
         email: String,
         avatar: String
-    ): Result<VerifyGoogleResponse> {
+    ): Result<VerifyGoogleResponse> = withContext(Dispatchers.IO) {
         val name = displayName.ifBlank { email.substringBefore('@').replaceFirstChar { it.uppercase() }.ifBlank { "User" } }
-        val fallbackToken = "goog_${if (idToken.length > 32) idToken.takeLast(32) else idToken}"
 
-        // 1. Partition local database immediately by user email
-        val userId = email.ifBlank { "guest" }
-        localDb?.setActiveUser(userId)
+        try {
+            // Strictly verify against backend OAuth validator before creating local authenticated state
+            val result = apiClient.verifyGoogleToken(idToken)
+            if (result.isSuccess) {
+                val data = result.getOrNull()
+                val serverToken = data?.secret ?: data?.sessionKey ?: ""
+                val verifiedEmail = data?.account?.email_address?.ifBlank { email } ?: email
+                val verifiedName = data?.account?.display_name?.ifBlank { name } ?: name
 
-        // 2. Store user profile and local session token
-        prefsManager?.setUserProfile(name, email, avatar)
-        prefsManager?.setAuthToken(fallbackToken)
+                // 1. Partition local database immediately by verified email
+                localDb?.setActiveUser(verifiedEmail)
 
-        // 3. Perform backend verification and data sync asynchronously in background
-        // so UI is 100% INSTANT without waiting for network latency!
-        repositoryScope.launch(Dispatchers.IO) {
-            try {
-                val result = apiClient.verifyGoogleToken(idToken)
-                if (result.isSuccess) {
-                    val data = result.getOrNull()
-                    val serverToken = data?.secret ?: data?.sessionKey
-                    if (!serverToken.isNullOrBlank()) {
-                        prefsManager?.setAuthToken(serverToken)
-                    }
+                // 2. Persist verified profile and server auth token
+                prefsManager?.setUserProfile(verifiedName, verifiedEmail, avatar)
+                if (serverToken.isNotBlank()) {
+                    prefsManager?.setAuthToken(serverToken)
                 }
-            } catch (_: Exception) {}
 
-            fetchSessions()
-            fetchProjects()
-            fetchTasks()
-            fetchModels()
-        }
+                // 3. Trigger initial sync for authenticated account
+                repositoryScope.launch {
+                    fetchSessions()
+                    fetchProjects()
+                    fetchTasks()
+                    fetchModels()
+                }
 
-        return Result.success(
-            VerifyGoogleResponse(
-                success = true,
-                secret = fallbackToken,
-                account = GoogleAccountDto(
-                    email_address = email,
-                    full_name = name,
-                    display_name = name
+                Result.success(
+                    data ?: VerifyGoogleResponse(
+                        success = true,
+                        secret = serverToken,
+                        account = GoogleAccountDto(
+                            email_address = verifiedEmail,
+                            full_name = verifiedName,
+                            display_name = verifiedName
+                        )
+                    )
                 )
-            )
-        )
+            } else {
+                val err = result.exceptionOrNull() ?: Exception("Google OAuth verification rejected by Hermes Gateway")
+                Result.failure(err)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     override suspend fun refreshAuthConfig(): Result<AuthConfigResponse> {

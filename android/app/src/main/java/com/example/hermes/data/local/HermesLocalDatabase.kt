@@ -12,6 +12,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import com.example.hermes.data.FtsSearchResultDto
 
+/**
+ * Hermes Local Cache Database.
+ * Enforces strict per-account data isolation:
+ * - Account A only accesses Account A data.
+ * - Account B only accesses Account B data.
+ * - Guest data is strictly scoped to 'guest' without cross-account leakage.
+ */
 class HermesLocalDatabase private constructor(context: Context) :
     SQLiteOpenHelper(context.applicationContext, DATABASE_NAME, null, DATABASE_VERSION) {
 
@@ -29,6 +36,7 @@ class HermesLocalDatabase private constructor(context: Context) :
         }
     }
 
+    @Volatile
     private var activeUserId: String = "guest"
 
     private val _sessionsFlow = MutableStateFlow<List<SessionEntity>>(emptyList())
@@ -47,19 +55,16 @@ class HermesLocalDatabase private constructor(context: Context) :
         refreshAll()
     }
 
+    fun getActiveUserId(): String = activeUserId
+
+    /**
+     * Switches the active user context.
+     * Strictly isolates user data: does NOT overwrite or leak previous guest or user records.
+     */
     fun setActiveUser(userId: String) {
         val normalized = userId.trim().ifBlank { "guest" }
         if (activeUserId != normalized) {
             activeUserId = normalized
-            if (normalized != "guest") {
-                try {
-                    writableDatabase.execSQL("UPDATE sessions SET user_id = ? WHERE user_id = 'guest' OR user_id = ''", arrayOf(normalized))
-                    writableDatabase.execSQL("UPDATE messages SET user_id = ? WHERE user_id = 'guest' OR user_id = ''", arrayOf(normalized))
-                    writableDatabase.execSQL("UPDATE tasks SET user_id = ? WHERE user_id = 'guest' OR user_id = ''", arrayOf(normalized))
-                    writableDatabase.execSQL("UPDATE projects SET user_id = ? WHERE user_id = 'guest' OR user_id = ''", arrayOf(normalized))
-                    writableDatabase.execSQL("UPDATE artifacts SET user_id = ? WHERE user_id = 'guest' OR user_id = ''", arrayOf(normalized))
-                } catch (_: Exception) {}
-            }
             refreshAll()
         }
     }
@@ -76,7 +81,7 @@ class HermesLocalDatabase private constructor(context: Context) :
             )
             """.trimIndent()
         )
-        db.execSQL("CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id, updated_at DESC)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_sessions_user_updated ON sessions(user_id, updated_at DESC)")
 
         db.execSQL(
             """
@@ -97,7 +102,8 @@ class HermesLocalDatabase private constructor(context: Context) :
             )
             """.trimIndent()
         )
-        db.execSQL("CREATE INDEX IF NOT EXISTS idx_messages_user ON messages(user_id, session_id)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_messages_user_session ON messages(user_id, session_id)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_messages_session_time ON messages(session_id, timestamp ASC)")
 
         db.execSQL(
             """
@@ -114,7 +120,7 @@ class HermesLocalDatabase private constructor(context: Context) :
             )
             """.trimIndent()
         )
-        db.execSQL("CREATE INDEX IF NOT EXISTS idx_tasks_user ON tasks(user_id, updated_at DESC)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_tasks_user_updated ON tasks(user_id, updated_at DESC)")
 
         db.execSQL(
             """
@@ -127,6 +133,7 @@ class HermesLocalDatabase private constructor(context: Context) :
             )
             """.trimIndent()
         )
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_projects_user_created ON projects(user_id, created_at DESC)")
 
         db.execSQL(
             """
@@ -141,6 +148,7 @@ class HermesLocalDatabase private constructor(context: Context) :
             )
             """.trimIndent()
         )
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_artifacts_user_created ON artifacts(user_id, created_at DESC)")
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -160,11 +168,6 @@ class HermesLocalDatabase private constructor(context: Context) :
             try {
                 db.execSQL("ALTER TABLE artifacts ADD COLUMN user_id TEXT NOT NULL DEFAULT 'guest'")
             } catch (_: Exception) {}
-            try {
-                db.execSQL("CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id, updated_at DESC)")
-                db.execSQL("CREATE INDEX IF NOT EXISTS idx_messages_user ON messages(user_id, session_id)")
-                db.execSQL("CREATE INDEX IF NOT EXISTS idx_tasks_user ON tasks(user_id, updated_at DESC)")
-            } catch (_: Exception) {}
         }
     }
 
@@ -175,12 +178,12 @@ class HermesLocalDatabase private constructor(context: Context) :
         _artifactsFlow.value = queryArtifactsSync()
     }
 
-    // --- SESSIONS ---
+    // --- SESSIONS (Strictly scoped by activeUserId) ---
 
     private fun querySessionsSync(): List<SessionEntity> {
         val list = mutableListOf<SessionEntity>()
         readableDatabase.query(
-            "sessions", null, "user_id = ? OR user_id = 'guest'", arrayOf(activeUserId), null, null, "updated_at DESC"
+            "sessions", null, "user_id = ?", arrayOf(activeUserId), null, null, "updated_at DESC"
         ).use { cursor ->
             while (cursor.moveToNext()) {
                 list.add(cursor.toSessionEntity())
@@ -194,7 +197,7 @@ class HermesLocalDatabase private constructor(context: Context) :
         db.beginTransaction()
         try {
             for (s in sessions) {
-                val uid = if (s.userId.isBlank() || s.userId == "guest") activeUserId else s.userId
+                val uid = if (s.userId.isBlank()) activeUserId else s.userId
                 val cv = ContentValues().apply {
                     put("id", s.id)
                     put("title", s.title)
@@ -217,23 +220,23 @@ class HermesLocalDatabase private constructor(context: Context) :
             put("title", title)
             put("updated_at", System.currentTimeMillis())
         }
-        db.update("sessions", cv, "id = ? AND (user_id = ? OR user_id = 'guest')", arrayOf(sessionId, activeUserId))
+        db.update("sessions", cv, "id = ? AND user_id = ?", arrayOf(sessionId, activeUserId))
         _sessionsFlow.value = querySessionsSync()
     }
 
     suspend fun deleteSession(sessionId: String) = withContext(Dispatchers.IO) {
         val db = writableDatabase
-        db.delete("sessions", "id = ? AND (user_id = ? OR user_id = 'guest')", arrayOf(sessionId, activeUserId))
-        db.delete("messages", "session_id = ? AND (user_id = ? OR user_id = 'guest')", arrayOf(sessionId, activeUserId))
+        db.delete("sessions", "id = ? AND user_id = ?", arrayOf(sessionId, activeUserId))
+        db.delete("messages", "session_id = ? AND user_id = ?", arrayOf(sessionId, activeUserId))
         _sessionsFlow.value = querySessionsSync()
     }
 
-    // --- MESSAGES ---
+    // --- MESSAGES (Strictly scoped by activeUserId) ---
 
     suspend fun getMessagesForSession(sessionId: String): List<MessageEntity> = withContext(Dispatchers.IO) {
         val list = mutableListOf<MessageEntity>()
         readableDatabase.query(
-            "messages", null, "session_id = ? AND (user_id = ? OR user_id = 'guest')", arrayOf(sessionId, activeUserId), null, null, "timestamp ASC"
+            "messages", null, "session_id = ? AND user_id = ?", arrayOf(sessionId, activeUserId), null, null, "timestamp ASC"
         ).use { cursor ->
             while (cursor.moveToNext()) {
                 list.add(cursor.toMessageEntity())
@@ -247,7 +250,7 @@ class HermesLocalDatabase private constructor(context: Context) :
         db.beginTransaction()
         try {
             for (m in messages) {
-                val uid = if (m.userId.isBlank() || m.userId == "guest") activeUserId else m.userId
+                val uid = if (m.userId.isBlank()) activeUserId else m.userId
                 val cv = ContentValues().apply {
                     put("id", m.id)
                     put("session_id", m.sessionId)
@@ -272,14 +275,15 @@ class HermesLocalDatabase private constructor(context: Context) :
     }
 
     suspend fun searchMessagesFts(query: String): List<FtsSearchResultDto> = withContext(Dispatchers.IO) {
-        val trimmed = query.trim()
-        if (trimmed.isBlank()) return@withContext emptyList()
         val list = mutableListOf<FtsSearchResultDto>()
+        val trimmed = query.trim()
+        if (trimmed.isEmpty()) return@withContext list
+
         val sql = """
             SELECT m.session_id, s.title, m.role, m.content, m.timestamp
             FROM messages m
             LEFT JOIN sessions s ON m.session_id = s.id
-            WHERE (m.user_id = ? OR m.user_id = 'guest')
+            WHERE m.user_id = ?
               AND m.content LIKE ?
             ORDER BY m.timestamp DESC
             LIMIT 40
@@ -312,12 +316,12 @@ class HermesLocalDatabase private constructor(context: Context) :
         list
     }
 
-    // --- TASKS ---
+    // --- TASKS (Strictly scoped by activeUserId) ---
 
     private fun queryTasksSync(): List<TaskEntity> {
         val list = mutableListOf<TaskEntity>()
         readableDatabase.query(
-            "tasks", null, "user_id = ? OR user_id = 'guest'", arrayOf(activeUserId), null, null, "updated_at DESC"
+            "tasks", null, "user_id = ?", arrayOf(activeUserId), null, null, "updated_at DESC"
         ).use { cursor ->
             while (cursor.moveToNext()) {
                 list.add(cursor.toTaskEntity())
@@ -331,7 +335,7 @@ class HermesLocalDatabase private constructor(context: Context) :
         db.beginTransaction()
         try {
             for (t in tasks) {
-                val uid = if (t.userId.isBlank() || t.userId == "guest") activeUserId else t.userId
+                val uid = if (t.userId.isBlank()) activeUserId else t.userId
                 val cv = ContentValues().apply {
                     put("id", t.id)
                     put("title", t.title)
@@ -358,16 +362,16 @@ class HermesLocalDatabase private constructor(context: Context) :
             put("updated_at", System.currentTimeMillis())
             progress?.let { put("progress", it) }
         }
-        writableDatabase.update("tasks", cv, "id = ? AND (user_id = ? OR user_id = 'guest')", arrayOf(taskId, activeUserId))
+        writableDatabase.update("tasks", cv, "id = ? AND user_id = ?", arrayOf(taskId, activeUserId))
         _tasksFlow.value = queryTasksSync()
     }
 
-    // --- PROJECTS ---
+    // --- PROJECTS (Strictly scoped by activeUserId) ---
 
     private fun queryProjectsSync(): List<ProjectEntity> {
         val list = mutableListOf<ProjectEntity>()
         readableDatabase.query(
-            "projects", null, "user_id = ? OR user_id = 'guest'", arrayOf(activeUserId), null, null, "created_at DESC"
+            "projects", null, "user_id = ?", arrayOf(activeUserId), null, null, "created_at DESC"
         ).use { cursor ->
             while (cursor.moveToNext()) {
                 list.add(cursor.toProjectEntity())
@@ -381,7 +385,7 @@ class HermesLocalDatabase private constructor(context: Context) :
         db.beginTransaction()
         try {
             for (p in projects) {
-                val uid = if (p.userId.isBlank() || p.userId == "guest") activeUserId else p.userId
+                val uid = if (p.userId.isBlank()) activeUserId else p.userId
                 val cv = ContentValues().apply {
                     put("id", p.id)
                     put("name", p.name)
@@ -398,12 +402,12 @@ class HermesLocalDatabase private constructor(context: Context) :
         _projectsFlow.value = queryProjectsSync()
     }
 
-    // --- ARTIFACTS ---
+    // --- ARTIFACTS (Strictly scoped by activeUserId) ---
 
     private fun queryArtifactsSync(): List<ArtifactEntity> {
         val list = mutableListOf<ArtifactEntity>()
         readableDatabase.query(
-            "artifacts", null, "user_id = ? OR user_id = 'guest'", arrayOf(activeUserId), null, null, "created_at DESC"
+            "artifacts", null, "user_id = ?", arrayOf(activeUserId), null, null, "created_at DESC"
         ).use { cursor ->
             while (cursor.moveToNext()) {
                 list.add(cursor.toArtifactEntity())
@@ -417,7 +421,7 @@ class HermesLocalDatabase private constructor(context: Context) :
         db.beginTransaction()
         try {
             for (a in artifacts) {
-                val uid = if (a.userId.isBlank() || a.userId == "guest") activeUserId else a.userId
+                val uid = if (a.userId.isBlank()) activeUserId else a.userId
                 val cv = ContentValues().apply {
                     put("id", a.id)
                     put("title", a.title)
@@ -434,6 +438,103 @@ class HermesLocalDatabase private constructor(context: Context) :
             db.endTransaction()
         }
         _artifactsFlow.value = queryArtifactsSync()
+    }
+
+    // --- DAO IMPLEMENTATION EXPOSURE ---
+
+    val sessionDao: SessionDao = object : SessionDao {
+        override fun getSessions(userId: String): Flow<List<SessionEntity>> = sessionsFlow
+        override suspend fun getSessionsList(userId: String): List<SessionEntity> = querySessionsSync()
+        override suspend fun getSessionById(sessionId: String, userId: String): SessionEntity? {
+            readableDatabase.query(
+                "sessions", null, "id = ? AND user_id = ?", arrayOf(sessionId, userId), null, null, null
+            ).use { cursor ->
+                return if (cursor.moveToFirst()) cursor.toSessionEntity() else null
+            }
+        }
+        override suspend fun upsertSessions(sessions: List<SessionEntity>) = this@HermesLocalDatabase.upsertSessions(sessions)
+        override suspend fun updateSessionTitle(sessionId: String, userId: String, title: String, updatedAt: Long) {
+            val cv = ContentValues().apply {
+                put("title", title)
+                put("updated_at", updatedAt)
+            }
+            writableDatabase.update("sessions", cv, "id = ? AND user_id = ?", arrayOf(sessionId, userId))
+            refreshAll()
+        }
+        override suspend fun deleteSession(sessionId: String, userId: String) {
+            writableDatabase.delete("sessions", "id = ? AND user_id = ?", arrayOf(sessionId, userId))
+            writableDatabase.delete("messages", "session_id = ? AND user_id = ?", arrayOf(sessionId, userId))
+            refreshAll()
+        }
+        override suspend fun clearSessionsForUser(userId: String) {
+            writableDatabase.delete("sessions", "user_id = ?", arrayOf(userId))
+            writableDatabase.delete("messages", "user_id = ?", arrayOf(userId))
+            refreshAll()
+        }
+    }
+
+    val messageDao: MessageDao = object : MessageDao {
+        override suspend fun getMessagesForSession(sessionId: String, userId: String): List<MessageEntity> {
+            val list = mutableListOf<MessageEntity>()
+            readableDatabase.query(
+                "messages", null, "session_id = ? AND user_id = ?", arrayOf(sessionId, userId), null, null, "timestamp ASC"
+            ).use { cursor ->
+                while (cursor.moveToNext()) {
+                    list.add(cursor.toMessageEntity())
+                }
+            }
+            return list
+        }
+        override fun getMessagesForSessionFlow(sessionId: String, userId: String): Flow<List<MessageEntity>> {
+            val flow = MutableStateFlow<List<MessageEntity>>(emptyList())
+            flow.value = kotlinx.coroutines.runBlocking { getMessagesForSession(sessionId, userId) }
+            return flow.asStateFlow()
+        }
+        override suspend fun insertMessages(messages: List<MessageEntity>) = saveMessages(messages)
+        override suspend fun deleteMessagesForSession(sessionId: String, userId: String) {
+            writableDatabase.delete("messages", "session_id = ? AND user_id = ?", arrayOf(sessionId, userId))
+        }
+        override suspend fun clearMessagesForUser(userId: String) {
+            writableDatabase.delete("messages", "user_id = ?", arrayOf(userId))
+        }
+    }
+
+    val taskDao: TaskDao = object : TaskDao {
+        override fun getTasks(userId: String): Flow<List<TaskEntity>> = tasksFlow
+        override suspend fun getTasksList(userId: String): List<TaskEntity> = queryTasksSync()
+        override suspend fun upsertTasks(tasks: List<TaskEntity>) = this@HermesLocalDatabase.upsertTasks(tasks)
+        override suspend fun updateTaskStatus(taskId: String, userId: String, status: String, updatedAt: Long) {
+            val cv = ContentValues().apply {
+                put("status", status)
+                put("updated_at", updatedAt)
+            }
+            writableDatabase.update("tasks", cv, "id = ? AND user_id = ?", arrayOf(taskId, userId))
+            refreshAll()
+        }
+        override suspend fun deleteTask(taskId: String, userId: String) {
+            writableDatabase.delete("tasks", "id = ? AND user_id = ?", arrayOf(taskId, userId))
+            refreshAll()
+        }
+    }
+
+    val projectDao: ProjectDao = object : ProjectDao {
+        override fun getProjects(userId: String): Flow<List<ProjectEntity>> = projectsFlow
+        override suspend fun getProjectsList(userId: String): List<ProjectEntity> = queryProjectsSync()
+        override suspend fun upsertProjects(projects: List<ProjectEntity>) = this@HermesLocalDatabase.upsertProjects(projects)
+        override suspend fun deleteProject(projectId: String, userId: String) {
+            writableDatabase.delete("projects", "id = ? AND user_id = ?", arrayOf(projectId, userId))
+            refreshAll()
+        }
+    }
+
+    val artifactDao: ArtifactDao = object : ArtifactDao {
+        override fun getArtifacts(userId: String): Flow<List<ArtifactEntity>> = artifactsFlow
+        override suspend fun getArtifactsList(userId: String): List<ArtifactEntity> = queryArtifactsSync()
+        override suspend fun upsertArtifacts(artifacts: List<ArtifactEntity>) = this@HermesLocalDatabase.upsertArtifacts(artifacts)
+        override suspend fun deleteArtifact(artifactId: String, userId: String) {
+            writableDatabase.delete("artifacts", "id = ? AND user_id = ?", arrayOf(artifactId, userId))
+            refreshAll()
+        }
     }
 
     // --- CURSOR CONVERTERS ---

@@ -59,22 +59,21 @@ Documentation:
 - [Visual QA](docs/ui-ux/QA_AND_VISUAL_REGRESSION.md)
 - [Implementation Roadmap](docs/ui-ux/IMPLEMENTATION_ROADMAP.md)
 
-Flutter UI foundation:
+## Android Application
 
-`ui/hermes_flutter/`
+The mobile client is a production-connected native Android application built with **Jetpack Compose**, **Kotlin Coroutines / Flow**, **Room Persistence**, and **AndroidX DataStore**:
 
-## Existing documentation
+- **Location**: `android/`
+- **Design Language**: Authentic Anthropic Claude dark warm near-black canvas (`#161513`), serif editorial headers, Brand Coral accents (`#E27D60`), and high-information density components.
+- **Data & Persistence**: Strict multi-account cache isolation with Room DAOs (`SessionDao`, `MessageDao`, `TaskDao`, `ProjectDao`, `ArtifactDao`) and persistent `PreferencesManager` DataStore for typography, voice personas, connector discovery, and capability flags.
+- **Realtime Integration**:
+  - **Chat & Thinking**: SSE streaming with real-time reasoning phase tags (`<thought>`, `<phase>`) and token-budget metrics.
+  - **Interactive Terminal**: WebSocket client connected to `/api/pty` with terminal resizing, clean ANSI escape sequence stripping, and reconnection lifecycle.
+  - **Live Voice**: Realtime voice WebSocket protocol on `/v1/voice/ws` with configurable pace, language, and voice personas.
+  - **Autonomous Tasks & Workforce**: Dynamic live worker tracking, DAG subtask visualization, and 24x7 scheduled automations.
+  - **Secure Auth**: Google OAuth verification with synchronous server validation (`POST /api/auth/google`) and zero synthetic fallback states.
 
-- [Product Requirements](docs/PRD.md)
-- [Implementation Plan](docs/IMPLEMENTATION_PLAN.md)
-- [Architecture](docs/ARCHITECTURE.md)
-- [Agent Harness / Agent OS](docs/agent-harness-os/)
-- [Server Computer](docs/server-computer/)
-- [Voice Autonomy](docs/voice-autonomy/)
-- [OmniRoute Persistence](docs/omniroute-persistence/)
-- [Integrations](docs/integrations/)
-
-## Engineering rule
+## Engineering Rules
 
 Hermes never treats an agent claim as proof of completion. Completion requires verification evidence, including local and remote state verification where applicable.
 
@@ -83,7 +82,3 @@ Hermes never treats an agent claim as proof of completion. Completion requires v
 Autonomy is permission-aware. Production deployment, destructive actions, privileged system changes, credential operations and other high-risk operations are gated by policy and approval unless explicitly authorized by an existing trust policy.
 
 Secrets must not be committed to GitHub, Notion, model prompts or execution traces. Use encrypted credential references and appropriate secret storage.
-
-## UI status
-
-The repository now contains the Hermes UI/UX design contract and a Flutter UI foundation. Backend/session integration, real voice transport, device control, memory APIs, GitHub/Notion actions and production autonomous execution remain integration work described by the roadmap.

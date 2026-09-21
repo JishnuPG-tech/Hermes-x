@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hermes.theme.*
+import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(
@@ -40,12 +41,45 @@ fun SettingsScreen(
     onUpgradeClick: () -> Unit = onNavigateBilling,
     settingsViewModel: SettingsViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val prefs = remember { com.example.hermes.data.PreferencesManager.getInstance(context) }
+
     val themeMode by settingsViewModel.themeMode.collectAsState()
     val userEmail by settingsViewModel.userEmail.collectAsState()
-    var selectedFontStyle by remember { mutableStateOf("Default") }
+    val selectedFontStyle by prefs.fontStyle.collectAsState(initial = "Default")
+    val voicePersona by prefs.voicePersona.collectAsState(initial = "Rounded")
+    val connectorDiscovery by prefs.connectorDiscovery.collectAsState(initial = true)
+
+    val webSearchEnabled by prefs.capWebSearch.collectAsState(initial = true)
+    val codeExecEnabled by prefs.capCodeExec.collectAsState(initial = true)
+    val inlineVizEnabled by prefs.capInlineViz.collectAsState(initial = true)
+    val switchModelsEnabled by prefs.capSwitchModels.collectAsState(initial = true)
+    val genMemoryEnabled by prefs.capGenMemory.collectAsState(initial = true)
+
+    val enabledCapsCount = listOf(webSearchEnabled, codeExecEnabled, inlineVizEnabled, switchModelsEnabled, genMemoryEnabled).count { it }
+    val capabilitiesSubtitle = "$enabledCapsCount enabled"
+
+    val packageInfo = remember(context) {
+        try {
+            context.packageManager.getPackageInfo(context.packageName, 0)
+        } catch (_: Exception) { null }
+    }
+    val versionName = packageInfo?.versionName ?: "1.0"
+    val versionCode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+        packageInfo?.longVersionCode ?: 1L
+    } else {
+        @Suppress("DEPRECATION")
+        packageInfo?.versionCode?.toLong() ?: 1L
+    }
+    val appVersionText = "Hermes v$versionName ($versionCode)"
+
     var showColorModeDialog by remember { mutableStateOf(false) }
     var showFontStyleDialog by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showHelpDialog by remember { mutableStateOf(false) }
+    var showPrivacyDialog by remember { mutableStateOf(false) }
+    var showTermsDialog by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -217,9 +251,9 @@ fun SettingsScreen(
                             onClick = { showColorModeDialog = true }
                         )
                         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
-                        SettingOptionRow("Capabilities", subtitle = "5 enabled", icon = Icons.Outlined.Tune, onClick = onNavigateCapabilities)
+                        SettingOptionRow("Capabilities", subtitle = capabilitiesSubtitle, icon = Icons.Outlined.Tune, onClick = onNavigateCapabilities)
                         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
-                        SettingOptionRow("Connectors", subtitle = "2 connected", icon = Icons.Outlined.AttachFile, onClick = onNavigateConnectors)
+                        SettingOptionRow("Connectors", subtitle = if (connectorDiscovery) "Active • Auto-Discovery" else "Connected", icon = Icons.Outlined.AttachFile, onClick = onNavigateConnectors)
                         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
                         SettingOptionRow("Channels Hub", subtitle = "Telegram, Email, Discord", icon = Icons.Outlined.Forum, onClick = onNavigateChannels)
                         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
@@ -227,7 +261,7 @@ fun SettingsScreen(
                         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
                         SettingOptionRow("Permissions", icon = Icons.Outlined.Security, onClick = onNavigatePermissions)
                         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
-                        SettingOptionRow("Voice", subtitle = "Colm", icon = Icons.Outlined.RecordVoiceOver, onClick = onNavigateVoiceSettings)
+                        SettingOptionRow("Voice", subtitle = voicePersona, icon = Icons.Outlined.RecordVoiceOver, onClick = onNavigateVoiceSettings)
                     }
                 }
 
@@ -259,11 +293,11 @@ fun SettingsScreen(
                             .background(Color(0xFF1F1E1C))
                             .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp))
                     ) {
-                        SettingOptionRow("Help & support", icon = Icons.Outlined.HelpOutline, onClick = {})
+                        SettingOptionRow("Help & support", icon = Icons.Outlined.HelpOutline, onClick = { showHelpDialog = true })
                         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
-                        SettingOptionRow("Privacy policy", icon = Icons.Outlined.Description, onClick = {})
+                        SettingOptionRow("Privacy policy", icon = Icons.Outlined.Description, onClick = { showPrivacyDialog = true })
                         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
-                        SettingOptionRow("Terms of service", icon = Icons.Outlined.Gavel, onClick = {})
+                        SettingOptionRow("Terms of service", icon = Icons.Outlined.Gavel, onClick = { showTermsDialog = true })
                     }
                 }
 
@@ -286,7 +320,7 @@ fun SettingsScreen(
                     }
                 }
 
-                // App Version Footer (12-01-20)
+                // App Version Footer
                 item {
                     Box(
                         modifier = Modifier
@@ -295,7 +329,7 @@ fun SettingsScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Hermes v2.4.1 (120)",
+                            text = appVersionText,
                             style = HermesTypography.labelSmall.copy(
                                 fontSize = 12.sp,
                                 color = TextSubtle
@@ -396,13 +430,13 @@ fun SettingsScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(10.dp))
-                                    .clickable { selectedFontStyle = font }
+                                    .clickable { coroutineScope.launch { prefs.setFontStyle(font) } }
                                     .padding(vertical = 10.dp, horizontal = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 RadioButton(
                                     selected = selectedFontStyle == font,
-                                    onClick = { selectedFontStyle = font },
+                                    onClick = { coroutineScope.launch { prefs.setFontStyle(font) } },
                                     colors = RadioButtonDefaults.colors(
                                         selectedColor = AccentBlue,
                                         unselectedColor = TextSubtle
@@ -430,6 +464,57 @@ fun SettingsScreen(
                         Text("Cancel", color = TextMuted, fontSize = 15.sp)
                     }
                 }
+            )
+        }
+
+        // Help & Support Dialog
+        if (showHelpDialog) {
+            AlertDialog(
+                onDismissRequest = { showHelpDialog = false },
+                containerColor = Color(0xFF1F1E1C),
+                shape = RoundedCornerShape(22.dp),
+                title = { Text("Hermes Help & Support", style = HermesTypography.headlineMedium.copy(fontSize = 19.sp, color = TextPrimaryWarm)) },
+                text = {
+                    Text(
+                        "Hermes Agent provides 24x7 autonomous workflow assistance, multi-model intelligence via OmniRoute, and persistent memory.\n\nNeed enterprise support or reporting an issue?\nReach us at support@hermes-agent.io",
+                        style = HermesTypography.bodyMedium.copy(color = TextMuted, fontSize = 14.5.sp, lineHeight = 20.sp)
+                    )
+                },
+                confirmButton = { TextButton(onClick = { showHelpDialog = false }) { Text("Close", color = AccentBlue) } }
+            )
+        }
+
+        // Privacy Policy Dialog
+        if (showPrivacyDialog) {
+            AlertDialog(
+                onDismissRequest = { showPrivacyDialog = false },
+                containerColor = Color(0xFF1F1E1C),
+                shape = RoundedCornerShape(22.dp),
+                title = { Text("Privacy Policy", style = HermesTypography.headlineMedium.copy(fontSize = 19.sp, color = TextPrimaryWarm)) },
+                text = {
+                    Text(
+                        "Hermes respects user sovereignty and local-first memory. Sensitive tokens and memory are isolated per-user in encrypted secure storage, and never shared across guest or other user sessions.",
+                        style = HermesTypography.bodyMedium.copy(color = TextMuted, fontSize = 14.5.sp, lineHeight = 20.sp)
+                    )
+                },
+                confirmButton = { TextButton(onClick = { showPrivacyDialog = false }) { Text("Close", color = AccentBlue) } }
+            )
+        }
+
+        // Terms of Service Dialog
+        if (showTermsDialog) {
+            AlertDialog(
+                onDismissRequest = { showTermsDialog = false },
+                containerColor = Color(0xFF1F1E1C),
+                shape = RoundedCornerShape(22.dp),
+                title = { Text("Terms of Service", style = HermesTypography.headlineMedium.copy(fontSize = 19.sp, color = TextPrimaryWarm)) },
+                text = {
+                    Text(
+                        "By using Hermes Agent, you agree to execute local and cloud actions responsibly according to trust-tier configurations and human-in-the-loop policies.",
+                        style = HermesTypography.bodyMedium.copy(color = TextMuted, fontSize = 14.5.sp, lineHeight = 20.sp)
+                    )
+                },
+                confirmButton = { TextButton(onClick = { showTermsDialog = false }) { Text("Close", color = AccentBlue) } }
             )
         }
 

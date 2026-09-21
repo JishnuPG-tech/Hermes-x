@@ -66,6 +66,14 @@ fun CodeScreen(
         mutableStateOf(browserStatus?.current_url ?: "https://google.com")
     }
 
+    // Agent Telemetry State
+    val contextUsageTokens by codeViewModel.contextUsageTokens.collectAsStateWithLifecycle()
+    val gitBranch by codeViewModel.gitBranch.collectAsStateWithLifecycle()
+    val hostStatus by codeViewModel.hostStatus.collectAsStateWithLifecycle()
+    val contextMax = codeViewModel.contextMaxTokens
+    val fraction = (contextUsageTokens.toFloat() / contextMax).coerceIn(0.01f, 1f)
+    val percent = (fraction * 100).toInt()
+
     val focusManager = LocalFocusManager.current
 
     Box(
@@ -179,7 +187,7 @@ fun CodeScreen(
                                 style = HermesTypography.labelSmall.copy(color = TextMuted, fontSize = 12.sp)
                             )
                             Text(
-                                text = "24k / 200k (12%)",
+                                text = "${contextUsageTokens / 1000}k / ${contextMax / 1000}k ($percent%)",
                                 style = HermesTypography.labelSmall.copy(color = AccentBlue, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                             )
                         }
@@ -193,7 +201,7 @@ fun CodeScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .fillMaxWidth(0.12f)
+                                    .fillMaxWidth(fraction)
                                     .fillMaxHeight()
                                     .clip(CircleShape)
                                     .background(AccentBlue)
@@ -209,7 +217,7 @@ fun CodeScreen(
                             AnthropicIcon(AnthropicIcons.Branch, size = 15.dp, tint = TextMuted)
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "main",
+                                text = gitBranch,
                                 style = HermesTypography.bodyMedium.copy(
                                     fontFamily = JetBrainsMono,
                                     fontSize = 12.sp,
@@ -223,7 +231,10 @@ fun CodeScreen(
                                     .background(Color(0xFF1E281F))
                                     .padding(horizontal = 8.dp, vertical = 2.dp)
                             ) {
-                                Text("Computer Host Ready", style = HermesTypography.labelSmall.copy(color = AccentGreen, fontSize = 11.sp))
+                                Text(
+                                    text = if (hostStatus != null) "Host: ${hostStatus?.storage_root ?: "Hermes Server"}" else "Computer Host Ready",
+                                    style = HermesTypography.labelSmall.copy(color = AccentGreen, fontSize = 11.sp)
+                                )
                             }
                         }
                     }

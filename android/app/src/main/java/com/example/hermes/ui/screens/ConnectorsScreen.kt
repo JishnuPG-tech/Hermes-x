@@ -34,6 +34,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.hermes.data.KnowledgeSearchResultItemDto
 import com.example.hermes.theme.*
 import com.example.hermes.ui.components.ClaudeToggle
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,7 +42,11 @@ fun ConnectorsScreen(
     onBack: () -> Unit,
     viewModel: ConnectorsViewModel = viewModel()
 ) {
-    var discoveryEnabled by remember { mutableStateOf(true) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val prefs = remember { com.example.hermes.data.PreferencesManager.getInstance(context) }
+
+    val discoveryEnabled by prefs.connectorDiscovery.collectAsState(initial = true)
     var searchQuery by remember { mutableStateOf("") }
     var showCreateNoteSheet by remember { mutableStateOf(false) }
 
@@ -302,7 +307,7 @@ fun ConnectorsScreen(
                         Spacer(modifier = Modifier.width(12.dp))
                         ClaudeToggle(
                             checked = discoveryEnabled,
-                            onCheckedChange = { discoveryEnabled = it }
+                            onCheckedChange = { coroutineScope.launch { prefs.setConnectorDiscovery(it) } }
                         )
                     }
                 }

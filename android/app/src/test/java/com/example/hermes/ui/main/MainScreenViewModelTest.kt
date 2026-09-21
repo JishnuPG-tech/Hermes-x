@@ -171,4 +171,23 @@ private class FakeHermesRepository : DataRepository {
   override val currentServerUrl: kotlinx.coroutines.flow.Flow<String> = MutableStateFlow("https://test.hermes.space").asStateFlow()
   override suspend fun setGoogleClientId(clientId: String) { }
   override suspend fun setServerBaseUrl(url: String) { }
+
+  override suspend fun searchKnowledge(query: String, sources: String?): List<KnowledgeSearchResultItemDto> = emptyList()
+  override suspend fun syncKnowledge(connector: String?): Boolean = true
+  override suspend fun createKnowledgeNote(title: String, content: String, destination: String): Boolean = true
+  override suspend fun listComputerFiles(path: String?): List<ComputerFileItemDto> = emptyList()
+  override suspend fun getComputerFileContent(path: String): String? = null
+  override suspend fun getBrowserStatus(): BrowserStatusDto? = null
+  override suspend fun navigateBrowser(url: String): BrowserNavigateResponseDto? = null
+  override suspend fun getBrowserScreenshot(): BrowserScreenshotResponseDto? = null
+  override suspend fun getWorkforceRoles(): List<WorkforceRoleDto> = emptyList()
+  override suspend fun getAutomations(): List<ScheduledAutomationDto> = emptyList()
+  override suspend fun createAutomation(title: String, prompt: String, cronExpression: String): Boolean = true
+  override suspend fun toggleAutomation(automationId: String): Boolean = true
+  override suspend fun runAutomationNow(automationId: String): Boolean = true
+  override suspend fun getChannels(): Result<ChannelsConfigDto> = Result.success(ChannelsConfigDto())
+  override suspend fun updateChannels(request: UpdateChannelsRequestDto): Result<Boolean> = Result.success(true)
+  override suspend fun testChannel(channel: String, message: String): Result<TestChannelResponseDto> = Result.success(TestChannelResponseDto())
+  override suspend fun getOmniRouteTelemetry(): Result<OmniRouteTelemetryDto> = Result.success(OmniRouteTelemetryDto())
+  override suspend fun searchMessagesFts(query: String): List<FtsSearchResultDto> = emptyList()
 }

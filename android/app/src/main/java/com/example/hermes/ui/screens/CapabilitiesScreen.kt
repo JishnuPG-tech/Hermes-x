@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hermes.theme.*
 import com.example.hermes.ui.components.ClaudeToggle
+import kotlinx.coroutines.launch
 
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 
@@ -32,13 +33,17 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 fun CapabilitiesScreen(
     onBack: () -> Unit
 ) {
-    var webSearchEnabled by remember { mutableStateOf(true) }
-    var inlineVisualizationsEnabled by remember { mutableStateOf(true) }
-    var codeExecutionEnabled by remember { mutableStateOf(true) }
-    var switchModelsEnabled by remember { mutableStateOf(true) }
-    var generateMemoryEnabled by remember { mutableStateOf(true) }
-    var sensitiveMemoryEnabled by remember { mutableStateOf(false) }
-    var selectedToolAccess by remember { mutableStateOf("Auto") }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val prefs = remember { com.example.hermes.data.PreferencesManager.getInstance(context) }
+
+    val webSearchEnabled by prefs.capWebSearch.collectAsState(initial = true)
+    val inlineVisualizationsEnabled by prefs.capInlineViz.collectAsState(initial = true)
+    val codeExecutionEnabled by prefs.capCodeExec.collectAsState(initial = true)
+    val switchModelsEnabled by prefs.capSwitchModels.collectAsState(initial = true)
+    val generateMemoryEnabled by prefs.capGenMemory.collectAsState(initial = true)
+    val sensitiveMemoryEnabled by prefs.capSensitiveMem.collectAsState(initial = false)
+    val selectedToolAccess by prefs.capToolAccess.collectAsState(initial = "Auto")
 
     Column(
         modifier = Modifier
@@ -93,7 +98,7 @@ fun CapabilitiesScreen(
                     description = "Hermes will automatically search the web when it determines it needs current information",
                     icon = Icons.Outlined.Language,
                     checked = webSearchEnabled,
-                    onCheckedChange = { webSearchEnabled = it }
+                    onCheckedChange = { coroutineScope.launch { prefs.setCapWebSearch(it) } }
                 )
 
                 Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
@@ -117,7 +122,7 @@ fun CapabilitiesScreen(
                     icon = Icons.Outlined.BarChart,
                     badge = "BETA",
                     checked = inlineVisualizationsEnabled,
-                    onCheckedChange = { inlineVisualizationsEnabled = it }
+                    onCheckedChange = { coroutineScope.launch { prefs.setCapInlineViz(it) } }
                 )
 
                 Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
@@ -128,7 +133,7 @@ fun CapabilitiesScreen(
                     description = "Allow Hermes to execute code and create and edit docs, spreadsheets, presentations, PDFs, and data reports.",
                     icon = Icons.Outlined.Code,
                     checked = codeExecutionEnabled,
-                    onCheckedChange = { codeExecutionEnabled = it }
+                    onCheckedChange = { coroutineScope.launch { prefs.setCapCodeExec(it) } }
                 )
 
                 Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
@@ -139,7 +144,7 @@ fun CapabilitiesScreen(
                     description = "When safety measures flag a message, automatically switch to a different model to keep chatting. When off, your chat will pause instead.",
                     icon = Icons.Outlined.SwapVert,
                     checked = switchModelsEnabled,
-                    onCheckedChange = { switchModelsEnabled = it }
+                    onCheckedChange = { coroutineScope.launch { prefs.setCapSwitchModels(it) } }
                 )
             }
 
@@ -163,7 +168,7 @@ fun CapabilitiesScreen(
                         title = "Generate memory from chats",
                         description = "Allow Hermes to generate memory from your chats.",
                         checked = generateMemoryEnabled,
-                        onCheckedChange = { generateMemoryEnabled = it }
+                        onCheckedChange = { coroutineScope.launch { prefs.setCapGenMemory(it) } }
                     )
 
                     Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
@@ -202,7 +207,7 @@ fun CapabilitiesScreen(
                             Spacer(modifier = Modifier.width(12.dp))
                             ClaudeToggle(
                                 checked = sensitiveMemoryEnabled,
-                                onCheckedChange = { sensitiveMemoryEnabled = it }
+                                onCheckedChange = { coroutineScope.launch { prefs.setCapSensitiveMem(it) } }
                             )
                         }
                     }
@@ -254,7 +259,7 @@ fun CapabilitiesScreen(
                         title = "Auto",
                         description = "Hermes chooses for you",
                         isSelected = selectedToolAccess == "Auto",
-                        onClick = { selectedToolAccess = "Auto" }
+                        onClick = { coroutineScope.launch { prefs.setCapToolAccess("Auto") } }
                     )
 
                     Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
@@ -264,7 +269,7 @@ fun CapabilitiesScreen(
                         title = "On demand",
                         description = "Load when needed. More messages, lower accuracy",
                         isSelected = selectedToolAccess == "On demand",
-                        onClick = { selectedToolAccess = "On demand" }
+                        onClick = { coroutineScope.launch { prefs.setCapToolAccess("On demand") } }
                     )
 
                     Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
@@ -274,7 +279,7 @@ fun CapabilitiesScreen(
                         title = "Always available",
                         description = "Ready from start. Fewer messages, better accuracy",
                         isSelected = selectedToolAccess == "Always available",
-                        onClick = { selectedToolAccess = "Always available" }
+                        onClick = { coroutineScope.launch { prefs.setCapToolAccess("Always available") } }
                     )
                 }
             }

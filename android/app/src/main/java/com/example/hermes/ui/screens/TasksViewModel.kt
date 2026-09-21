@@ -35,6 +35,9 @@ class TasksViewModel(
     private val _automations = MutableStateFlow<List<ScheduledAutomationDto>>(emptyList())
     val automations: StateFlow<List<ScheduledAutomationDto>> = _automations.asStateFlow()
 
+    val hostStatus: StateFlow<HostStatusDto?> = repository.hostStatus
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 

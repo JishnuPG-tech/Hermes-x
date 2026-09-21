@@ -24,15 +24,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hermes.theme.*
+import kotlinx.coroutines.launch
 
 @Composable
 fun VoiceSettingsScreen(
     onBack: () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val prefs = remember { com.example.hermes.data.PreferencesManager.getInstance(context) }
+
     val personas = listOf("Airy", "Mellow", "Glassy", "Rounded", "Brass")
-    var selectedIndex by remember { mutableIntStateOf(3) } // Default: Rounded (4th item)
-    var language by remember { mutableStateOf("English (United Kingdom)") }
-    var pace by remember { mutableStateOf("Normal") }
+    val savedPersona by prefs.voicePersona.collectAsState(initial = "Rounded")
+    val savedLanguage by prefs.voiceLanguage.collectAsState(initial = "English (United Kingdom)")
+    val savedPace by prefs.voicePace.collectAsState(initial = "Normal")
+
+    val selectedIndex = personas.indexOf(savedPersona).let { if (it >= 0) it else 3 }
+    val language = savedLanguage
+    val pace = savedPace
+
     var showLanguageMenu by remember { mutableStateOf(false) }
     var showPaceMenu by remember { mutableStateOf(false) }
 
@@ -99,9 +109,9 @@ fun VoiceSettingsScreen(
                         },
                         onDragEnd = {
                             if (totalDrag > 50 && selectedIndex > 0) {
-                                selectedIndex--
+                                coroutineScope.launch { prefs.setVoicePersona(personas[selectedIndex - 1]) }
                             } else if (totalDrag < -50 && selectedIndex < personas.size - 1) {
-                                selectedIndex++
+                                coroutineScope.launch { prefs.setVoicePersona(personas[selectedIndex + 1]) }
                             }
                         }
                     )
@@ -124,7 +134,7 @@ fun VoiceSettingsScreen(
                             .clip(RoundedCornerShape(30.dp))
                             .background(Color(0xFF1C1B19))
                             .border(1.dp, BorderSubtle, RoundedCornerShape(30.dp))
-                            .clickable { selectedIndex-- }
+                            .clickable { coroutineScope.launch { prefs.setVoicePersona(personas[selectedIndex - 1]) } }
                             .padding(end = 16.dp),
                         contentAlignment = Alignment.CenterEnd
                     ) {
@@ -164,7 +174,7 @@ fun VoiceSettingsScreen(
                             .clip(RoundedCornerShape(30.dp))
                             .background(Color(0xFF1C1B19))
                             .border(1.dp, BorderSubtle, RoundedCornerShape(30.dp))
-                            .clickable { selectedIndex++ }
+                            .clickable { coroutineScope.launch { prefs.setVoicePersona(personas[selectedIndex + 1]) } }
                             .padding(start = 16.dp),
                         contentAlignment = Alignment.CenterStart
                     ) {
@@ -195,7 +205,7 @@ fun VoiceSettingsScreen(
                             .size(dotSize)
                             .clip(CircleShape)
                             .background(if (isSelected) TextPrimaryWarm else Color(0xFF383733))
-                            .clickable { selectedIndex = idx }
+                            .clickable { coroutineScope.launch { prefs.setVoicePersona(personas[idx]) } }
                     )
                 }
             }
@@ -274,7 +284,7 @@ fun VoiceSettingsScreen(
                                 }
                             },
                             onClick = {
-                                language = lang
+                                coroutineScope.launch { prefs.setVoiceLanguage(lang) }
                                 showLanguageMenu = false
                             }
                         )
@@ -339,7 +349,7 @@ fun VoiceSettingsScreen(
                                 }
                             },
                             onClick = {
-                                pace = p
+                                coroutineScope.launch { prefs.setVoicePace(p) }
                                 showPaceMenu = false
                             }
                         )

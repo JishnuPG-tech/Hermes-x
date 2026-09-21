@@ -30,6 +30,20 @@ class PreferencesManager(private val context: Context) {
         val KEY_USER_EMAIL = stringPreferencesKey("user_email")
         val KEY_USER_AVATAR = stringPreferencesKey("user_avatar")
 
+        val KEY_FONT_STYLE = stringPreferencesKey("font_style")
+        val KEY_VOICE_PERSONA = stringPreferencesKey("voice_persona")
+        val KEY_VOICE_LANGUAGE = stringPreferencesKey("voice_language")
+        val KEY_VOICE_PACE = stringPreferencesKey("voice_pace")
+        val KEY_CONNECTOR_DISCOVERY = booleanPreferencesKey("connector_discovery")
+
+        val KEY_CAP_WEB_SEARCH = booleanPreferencesKey("cap_web_search")
+        val KEY_CAP_INLINE_VIZ = booleanPreferencesKey("cap_inline_viz")
+        val KEY_CAP_CODE_EXEC = booleanPreferencesKey("cap_code_exec")
+        val KEY_CAP_SWITCH_MODELS = booleanPreferencesKey("cap_switch_models")
+        val KEY_CAP_GEN_MEMORY = booleanPreferencesKey("cap_gen_memory")
+        val KEY_CAP_SENSITIVE_MEM = booleanPreferencesKey("cap_sensitive_mem")
+        val KEY_CAP_TOOL_ACCESS = stringPreferencesKey("cap_tool_access")
+
         const val DEFAULT_GOOGLE_CLIENT_ID = "292824298430-113kq16cbpq6i02jin424gb1mk5ebm40.apps.googleusercontent.com"
         const val ADMIN_EMAIL = "jishnupg2005@gmail.com"
 
@@ -225,6 +239,102 @@ class PreferencesManager(private val context: Context) {
             prefs[KEY_USER_EMAIL] = email
             prefs[KEY_USER_AVATAR] = avatar
         }
+    }
+
+    val fontStyle: Flow<String> = context.hermesDataStore.data
+        .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+        .map { it[KEY_FONT_STYLE] ?: "Default" }
+
+    suspend fun setFontStyle(style: String) {
+        context.hermesDataStore.edit { it[KEY_FONT_STYLE] = style }
+    }
+
+    val voicePersona: Flow<String> = context.hermesDataStore.data
+        .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+        .map { it[KEY_VOICE_PERSONA] ?: "Rounded" }
+
+    suspend fun setVoicePersona(persona: String) {
+        context.hermesDataStore.edit { it[KEY_VOICE_PERSONA] = persona }
+    }
+
+    val voiceLanguage: Flow<String> = context.hermesDataStore.data
+        .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+        .map { it[KEY_VOICE_LANGUAGE] ?: "English (United Kingdom)" }
+
+    suspend fun setVoiceLanguage(lang: String) {
+        context.hermesDataStore.edit { it[KEY_VOICE_LANGUAGE] = lang }
+    }
+
+    val voicePace: Flow<String> = context.hermesDataStore.data
+        .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+        .map { it[KEY_VOICE_PACE] ?: "Normal" }
+
+    suspend fun setVoicePace(pace: String) {
+        context.hermesDataStore.edit { it[KEY_VOICE_PACE] = pace }
+    }
+
+    val connectorDiscovery: Flow<Boolean> = context.hermesDataStore.data
+        .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+        .map { it[KEY_CONNECTOR_DISCOVERY] ?: true }
+
+    suspend fun setConnectorDiscovery(enabled: Boolean) {
+        context.hermesDataStore.edit { it[KEY_CONNECTOR_DISCOVERY] = enabled }
+    }
+
+    val capWebSearch: Flow<Boolean> = context.hermesDataStore.data
+        .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+        .map { it[KEY_CAP_WEB_SEARCH] ?: true }
+
+    suspend fun setCapWebSearch(enabled: Boolean) {
+        context.hermesDataStore.edit { it[KEY_CAP_WEB_SEARCH] = enabled }
+    }
+
+    val capInlineViz: Flow<Boolean> = context.hermesDataStore.data
+        .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+        .map { it[KEY_CAP_INLINE_VIZ] ?: true }
+
+    suspend fun setCapInlineViz(enabled: Boolean) {
+        context.hermesDataStore.edit { it[KEY_CAP_INLINE_VIZ] = enabled }
+    }
+
+    val capCodeExec: Flow<Boolean> = context.hermesDataStore.data
+        .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+        .map { it[KEY_CAP_CODE_EXEC] ?: true }
+
+    suspend fun setCapCodeExec(enabled: Boolean) {
+        context.hermesDataStore.edit { it[KEY_CAP_CODE_EXEC] = enabled }
+    }
+
+    val capSwitchModels: Flow<Boolean> = context.hermesDataStore.data
+        .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+        .map { it[KEY_CAP_SWITCH_MODELS] ?: true }
+
+    suspend fun setCapSwitchModels(enabled: Boolean) {
+        context.hermesDataStore.edit { it[KEY_CAP_SWITCH_MODELS] = enabled }
+    }
+
+    val capGenMemory: Flow<Boolean> = context.hermesDataStore.data
+        .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+        .map { it[KEY_CAP_GEN_MEMORY] ?: true }
+
+    suspend fun setCapGenMemory(enabled: Boolean) {
+        context.hermesDataStore.edit { it[KEY_CAP_GEN_MEMORY] = enabled }
+    }
+
+    val capSensitiveMem: Flow<Boolean> = context.hermesDataStore.data
+        .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+        .map { it[KEY_CAP_SENSITIVE_MEM] ?: false }
+
+    suspend fun setCapSensitiveMem(enabled: Boolean) {
+        context.hermesDataStore.edit { it[KEY_CAP_SENSITIVE_MEM] = enabled }
+    }
+
+    val capToolAccess: Flow<String> = context.hermesDataStore.data
+        .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+        .map { it[KEY_CAP_TOOL_ACCESS] ?: "Auto" }
+
+    suspend fun setCapToolAccess(access: String) {
+        context.hermesDataStore.edit { it[KEY_CAP_TOOL_ACCESS] = access }
     }
 }
 

@@ -42,6 +42,7 @@ fun TasksScreen(
     val expandedTaskId by tasksViewModel.expandedTaskId.collectAsStateWithLifecycle()
     val workforceRoles by tasksViewModel.workforceRoles.collectAsStateWithLifecycle()
     val automations by tasksViewModel.automations.collectAsStateWithLifecycle()
+    val hostStatus by tasksViewModel.hostStatus.collectAsStateWithLifecycle()
     val isRefreshing by tasksViewModel.isRefreshing.collectAsStateWithLifecycle()
 
     var showCreateAutomationSheet by remember { mutableStateOf(false) }
@@ -191,8 +192,14 @@ fun TasksScreen(
                             style = HermesTypography.titleMedium.copy(color = TextPrimaryWarm, fontSize = 16.sp)
                         )
                         Spacer(modifier = Modifier.height(2.dp))
+                        val runningCount = liveTasks.count { it.status.equals("RUNNING", ignoreCase = true) }
+                        val activeWorkspaceStr = hostStatus?.let { " • ${it.active_projects_count} active projects" } ?: ""
                         Text(
-                            text = "Coordinated by Hermes TeamCoordinator for concurrent subtask DAG execution.",
+                            text = if (runningCount > 0) {
+                                "Coordinated by Hermes TeamCoordinator • $runningCount active task${if (runningCount > 1) "s" else ""}$activeWorkspaceStr"
+                            } else {
+                                "Coordinated by Hermes TeamCoordinator for concurrent subtask DAG execution$activeWorkspaceStr"
+                            },
                             style = HermesTypography.bodySmall.copy(color = TextMuted, fontSize = 12.5.sp)
                         )
                     }
@@ -207,7 +214,11 @@ fun TasksScreen(
                     )
 
                     items(defaultRoles, key = { it.name }) { role ->
-                        WorkforceRoleCard(role = role)
+                        val isActive = liveTasks.any { task ->
+                            task.status.equals("RUNNING", ignoreCase = true) &&
+                            task.subtasks.any { sub -> sub.role.equals(role.name, ignoreCase = true) && sub.status.equals("running", ignoreCase = true) }
+                        }
+                        WorkforceRoleCard(role = role, isActive = isActive)
                     }
                 }
             }
@@ -501,7 +512,7 @@ private fun DagSubtaskNode(subtask: SubtaskDto, index: Int) {
 }
 
 @Composable
-private fun WorkforceRoleCard(role: WorkforceRoleDto) {
+private fun WorkforceRoleCard(role: WorkforceRoleDto, isActive: Boolean = false) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -520,10 +531,15 @@ private fun WorkforceRoleCard(role: WorkforceRoleDto) {
                     modifier = Modifier
                         .size(34.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFF2B2420)),
+                        .background(if (isActive) Color(0xFF16253B) else Color(0xFF2B2420)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.GroupWork, contentDescription = null, tint = BrandCoral, modifier = Modifier.size(18.dp))
+                    Icon(
+                        Icons.Default.GroupWork,
+                        contentDescription = null,
+                        tint = if (isActive) AccentBlue else BrandCoral,
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
@@ -534,10 +550,16 @@ private fun WorkforceRoleCard(role: WorkforceRoleDto) {
             Box(
                 modifier = Modifier
                     .clip(CircleShape)
-                    .background(Color(0xFF1E281F))
+                    .background(if (isActive) Color(0xFF16253B) else Color(0xFF1E281F))
                     .padding(horizontal = 8.dp, vertical = 3.dp)
             ) {
-                Text("Ready", style = HermesTypography.labelSmall.copy(color = AccentGreen, fontSize = 11.sp))
+                Text(
+                    text = if (isActive) "Active (Running)" else "Ready",
+                    style = HermesTypography.labelSmall.copy(
+                        color = if (isActive) AccentBlue else AccentGreen,
+                        fontSize = 11.sp
+                    )
+                )
             }
         }
 
