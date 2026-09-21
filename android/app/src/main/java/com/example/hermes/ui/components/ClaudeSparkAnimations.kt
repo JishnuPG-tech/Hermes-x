@@ -31,7 +31,7 @@ fun ClaudeSpark(
 ) {
     Image(
         painter = painterResource(id = R.drawable.claude_spark_icon),
-        contentDescription = "Claude Spark",
+        contentDescription = "Hermes Spark",
         colorFilter = ColorFilter.tint(tint),
         modifier = modifier.size(size)
     )

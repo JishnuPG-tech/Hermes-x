@@ -23,13 +23,18 @@ import androidx.compose.ui.unit.sp
 import com.example.hermes.theme.*
 import com.example.hermes.ui.components.*
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+
 @Composable
 fun CodeScreen(
     onOpenDrawer: () -> Unit,
-    onLaunchTerminal: () -> Unit
+    onLaunchTerminal: () -> Unit,
+    codeViewModel: CodeViewModel = viewModel()
 ) {
     var selectedMode by remember { mutableStateOf("Auto") }
     var showPermissionDialog by remember { mutableStateOf(false) }
+    val approvals by codeViewModel.approvals.collectAsStateWithLifecycle()
 
     Box(
         modifier = Modifier
@@ -61,7 +66,7 @@ fun CodeScreen(
                     }
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Claude Code",
+                        text = "Hermes Code",
                         style = HermesTypography.headlineMedium.copy(fontSize = 20.sp, color = TextPrimaryWarm)
                     )
                 }
@@ -211,60 +216,88 @@ fun CodeScreen(
                     }
                 }
 
-                // Action Approval Card
-                item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0xFF242017))
-                            .border(1.dp, Color(0xFF4A3E20), RoundedCornerShape(16.dp))
-                            .padding(16.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Outlined.Shield,
-                                contentDescription = null,
-                                tint = AccentWarning,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Permission Request: bash command",
-                                style = HermesTypography.titleMedium.copy(fontSize = 14.sp, color = TextPrimaryWarm, fontWeight = FontWeight.SemiBold)
-                            )
+                // Dynamic Action Approvals
+                if (approvals.isNotEmpty()) {
+                    approvals.forEach { appr ->
+                        item(key = appr.id) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(Color(0xFF242017))
+                                    .border(1.dp, Color(0xFF4A3E20), RoundedCornerShape(16.dp))
+                                    .padding(16.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Shield,
+                                        contentDescription = null,
+                                        tint = AccentWarning,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Permission Request: ${appr.tool}",
+                                        style = HermesTypography.titleMedium.copy(fontSize = 14.sp, color = TextPrimaryWarm, fontWeight = FontWeight.SemiBold)
+                                    )
+                                    Spacer(modifier = Modifier.weight(1f))
+                                    Text(
+                                        text = "Risk: ${appr.risk}",
+                                        style = HermesTypography.labelSmall.copy(color = AccentWarning, fontSize = 11.sp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "$ ${appr.command.ifBlank { "Tool execution command" }}",
+                                    style = HermesTypography.bodyMedium.copy(
+                                        fontFamily = JetBrainsMono,
+                                        color = TextMuted,
+                                        fontSize = 12.5.sp
+                                    )
+                                )
+                                Spacer(modifier = Modifier.height(14.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = { codeViewModel.deny(appr.id) },
+                                        modifier = Modifier.weight(1f),
+                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextMuted),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Text("Deny", fontSize = 13.sp)
+                                    }
+                                    Button(
+                                        onClick = { codeViewModel.approve(appr.id) },
+                                        modifier = Modifier.weight(1f),
+                                        colors = ButtonDefaults.buttonColors(containerColor = BrandCoral),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Text("Approve", color = PureWhite, fontSize = 13.sp)
+                                    }
+                                }
+                            }
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "$ docker push registry.internal/hermes-worker:latest",
-                            style = HermesTypography.bodyMedium.copy(
-                                fontFamily = JetBrainsMono,
-                                color = TextMuted,
-                                fontSize = 12.5.sp
-                            )
-                        )
-                        Spacer(modifier = Modifier.height(14.dp))
+                    }
+                } else {
+                    item {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(Color(0xFF1E241E))
+                                .border(1.dp, Color(0xFF283A29), RoundedCornerShape(14.dp))
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            OutlinedButton(
-                                onClick = { },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = TextMuted),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Text("Deny", fontSize = 13.sp)
-                            }
-                            Button(
-                                onClick = { },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = BrandCoral),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Text("Approve", color = PureWhite, fontSize = 13.sp)
-                            }
+                            Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = AccentGreen, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "All autonomous actions approved · Zero security blocks",
+                                style = HermesTypography.bodyMedium.copy(color = AccentGreen, fontSize = 12.5.sp)
+                            )
                         }
                     }
                 }

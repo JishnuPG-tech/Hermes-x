@@ -25,84 +25,84 @@ except ImportError:
 # 1. Models Catalog (Full ModelOption array matching Organization.claude_ai_bootstrap_models_config)
 MODELS_CATALOG = [
     {
-        "model": "claude-3-5-sonnet-20241022",
-        "id": "claude-3-5-sonnet-20241022",
-        "name": "Sonnet 5",
-        "display_name": "Sonnet 5",
-        "short_name": "Sonnet 5 Low",
-        "description": {"text": "Most efficient for everyday tasks"},
-        "description_i18n_key": None,
-        "overflow": None,
-        "inactive": False,
-        "thinking_modes": [],
-        "capabilities": {
-            "mm_images": True,
-            "mm_pdf": True,
-            "web_search": True,
-            "code_execution": True
-        },
-        "notice_text": None,
-        "notice_text_i18n_key": None,
-        "knowledgeCutoff": "2024-10-22",
-        "slow_kb_warning_threshold": None,
-        "created_at": "2024-10-22T00:00:00Z",
-        "type": "model"
-    },
-    {
-        "model": "claude-3-5-haiku-20241022",
-        "id": "claude-3-5-haiku-20241022",
-        "name": "Haiku 4.5",
-        "display_name": "Haiku 4.5",
-        "short_name": "Haiku 4.5",
-        "description": {"text": "Fastest for quick answers"},
-        "description_i18n_key": None,
-        "overflow": None,
-        "inactive": False,
-        "thinking_modes": [],
-        "capabilities": {
-            "mm_images": True,
-            "mm_pdf": True,
-            "web_search": True,
-            "code_execution": True
-        },
-        "notice_text": None,
-        "notice_text_i18n_key": None,
-        "knowledgeCutoff": "2024-10-22",
-        "slow_kb_warning_threshold": None,
-        "created_at": "2024-10-22T00:00:00Z",
-        "type": "model"
-    },
-    {
-        "model": "claude-3-opus-20240229",
-        "id": "claude-3-opus-20240229",
-        "name": "Opus 5",
-        "display_name": "Opus 5",
-        "short_name": "Opus 5",
-        "description": {"text": "For complex tasks"},
-        "description_i18n_key": None,
-        "overflow": None,
-        "inactive": False,
-        "thinking_modes": [],
-        "capabilities": {
-            "mm_images": True,
-            "mm_pdf": True,
-            "web_search": True,
-            "code_execution": True
-        },
-        "notice_text": None,
-        "notice_text_i18n_key": None,
-        "knowledgeCutoff": "2024-02-29",
-        "slow_kb_warning_threshold": None,
-        "created_at": "2024-02-29T00:00:00Z",
-        "type": "model"
-    },
-    {
-        "model": "hermes-agent",
+        "model": "auto/best-chat",
         "id": "hermes-agent",
-        "name": "Fable 5",
-        "display_name": "Fable 5",
-        "short_name": "Fable 5",
-        "description": {"text": "For your toughest challenges"},
+        "name": "Hermes Smart",
+        "display_name": "Hermes Smart",
+        "short_name": "Hermes Smart",
+        "description": {"text": "General intelligence, dialogue & creative workflows"},
+        "description_i18n_key": None,
+        "overflow": None,
+        "inactive": False,
+        "thinking_modes": [],
+        "capabilities": {
+            "mm_images": True,
+            "mm_pdf": True,
+            "web_search": True,
+            "code_execution": True
+        },
+        "notice_text": None,
+        "notice_text_i18n_key": None,
+        "knowledgeCutoff": "2026-01-01",
+        "slow_kb_warning_threshold": None,
+        "created_at": "2026-01-01T00:00:00Z",
+        "type": "model"
+    },
+    {
+        "model": "auto/best-coding",
+        "id": "auto/best-coding",
+        "name": "Hermes Coding",
+        "display_name": "Hermes Coding",
+        "short_name": "Hermes Coding",
+        "description": {"text": "High precision code synthesis, refactoring & review"},
+        "description_i18n_key": None,
+        "overflow": None,
+        "inactive": False,
+        "thinking_modes": [],
+        "capabilities": {
+            "mm_images": True,
+            "mm_pdf": True,
+            "web_search": True,
+            "code_execution": True
+        },
+        "notice_text": None,
+        "notice_text_i18n_key": None,
+        "knowledgeCutoff": "2026-01-01",
+        "slow_kb_warning_threshold": None,
+        "created_at": "2026-01-01T00:00:00Z",
+        "type": "model"
+    },
+    {
+        "model": "auto/best-reasoning",
+        "id": "auto/best-reasoning",
+        "name": "Hermes Reasoning",
+        "display_name": "Hermes Reasoning",
+        "short_name": "Hermes Reasoning",
+        "description": {"text": "Deep reasoning, complex logic & multi-step planning"},
+        "description_i18n_key": None,
+        "overflow": None,
+        "inactive": False,
+        "thinking_modes": [],
+        "capabilities": {
+            "mm_images": True,
+            "mm_pdf": True,
+            "web_search": True,
+            "code_execution": True
+        },
+        "notice_text": None,
+        "notice_text_i18n_key": None,
+        "knowledgeCutoff": "2026-01-01",
+        "slow_kb_warning_threshold": None,
+        "created_at": "2026-01-01T00:00:00Z",
+        "type": "model"
+    },
+    {
+        "model": "auto/best-coding-fast",
+        "id": "auto/best-coding-fast",
+        "name": "Hermes Turbo",
+        "display_name": "Hermes Turbo",
+        "short_name": "Hermes Turbo",
+        "description": {"text": "Ultra-low latency inference for quick iterations"},
         "description_i18n_key": None,
         "overflow": None,
         "inactive": False,
@@ -142,60 +142,60 @@ MODEL_SELECTOR_CONFIG_LIST = [
         "id": "chat",
         "models": [
             {
-                "id": "claude-3-5-sonnet-20241022",
-                "name": "Sonnet 5",
-                "short_name": "Sonnet 5 Low",
-                "voice_model": None,
-                "description": {"english": "Most efficient for everyday tasks"},
-                "notice": None,
-                "selection_notice": None,
-                "section": "main",
-                "disabled": False,
-                "capabilities": {"mm_images": True, "mm_pdf": True, "web_search": True, "code_execution": True},
-                "thinking": DEFAULT_THINKING_OPTIONS,
-                "badge": None
-            },
-            {
-                "id": "claude-3-5-haiku-20241022",
-                "name": "Haiku 4.5",
-                "short_name": "Haiku 4.5",
-                "voice_model": None,
-                "description": {"english": "Fastest for quick answers"},
-                "notice": None,
-                "selection_notice": None,
-                "section": "main",
-                "disabled": False,
-                "capabilities": {"mm_images": True, "mm_pdf": True, "web_search": True, "code_execution": True},
-                "thinking": DEFAULT_THINKING_OPTIONS,
-                "badge": None
-            },
-            {
-                "id": "claude-3-opus-20240229",
-                "name": "Opus 5",
-                "short_name": "Opus 5",
-                "voice_model": None,
-                "description": {"english": "For complex tasks"},
-                "notice": None,
-                "selection_notice": None,
-                "section": "main",
-                "disabled": False,
-                "capabilities": {"mm_images": True, "mm_pdf": True, "web_search": True, "code_execution": True},
-                "thinking": DEFAULT_THINKING_OPTIONS,
-                "badge": {"message": {"english": "Pro"}}
-            },
-            {
                 "id": "hermes-agent",
-                "name": "Fable 5",
-                "short_name": "Fable 5",
+                "name": "Hermes Smart",
+                "short_name": "Hermes Smart",
                 "voice_model": None,
-                "description": {"english": "For your toughest challenges"},
+                "description": {"english": "General intelligence, dialogue & creative workflows"},
                 "notice": None,
                 "selection_notice": None,
                 "section": "main",
                 "disabled": False,
                 "capabilities": {"mm_images": True, "mm_pdf": True, "web_search": True, "code_execution": True},
                 "thinking": DEFAULT_THINKING_OPTIONS,
-                "badge": {"message": {"english": "Pro"}}
+                "badge": None
+            },
+            {
+                "id": "auto/best-coding",
+                "name": "Hermes Coding",
+                "short_name": "Hermes Coding",
+                "voice_model": None,
+                "description": {"english": "High precision code synthesis, refactoring & review"},
+                "notice": None,
+                "selection_notice": None,
+                "section": "main",
+                "disabled": False,
+                "capabilities": {"mm_images": True, "mm_pdf": True, "web_search": True, "code_execution": True},
+                "thinking": DEFAULT_THINKING_OPTIONS,
+                "badge": {"message": {"english": "Code"}}
+            },
+            {
+                "id": "auto/best-reasoning",
+                "name": "Hermes Reasoning",
+                "short_name": "Hermes Reasoning",
+                "voice_model": None,
+                "description": {"english": "Deep reasoning, complex logic & multi-step planning"},
+                "notice": None,
+                "selection_notice": None,
+                "section": "main",
+                "disabled": False,
+                "capabilities": {"mm_images": True, "mm_pdf": True, "web_search": True, "code_execution": True},
+                "thinking": DEFAULT_THINKING_OPTIONS,
+                "badge": {"message": {"english": "Reasoning"}}
+            },
+            {
+                "id": "auto/best-coding-fast",
+                "name": "Hermes Turbo",
+                "short_name": "Hermes Turbo",
+                "voice_model": None,
+                "description": {"english": "Ultra-low latency inference for quick iterations"},
+                "notice": None,
+                "selection_notice": None,
+                "section": "main",
+                "disabled": False,
+                "capabilities": {"mm_images": True, "mm_pdf": True, "web_search": True, "code_execution": True},
+                "thinking": DEFAULT_THINKING_OPTIONS,
+                "badge": {"message": {"english": "Turbo"}}
             }
         ]
     },
@@ -203,23 +203,9 @@ MODEL_SELECTOR_CONFIG_LIST = [
         "id": "voice",
         "models": [
             {
-                "id": "claude-3-5-sonnet-20241022",
-                "name": "Sonnet 5",
-                "short_name": "Sonnet 5 Low",
-                "voice_model": None,
-                "description": None,
-                "notice": None,
-                "selection_notice": None,
-                "section": "main",
-                "disabled": False,
-                "capabilities": {"mm_images": True, "mm_pdf": True, "web_search": True, "code_execution": True},
-                "thinking": None,
-                "badge": None
-            },
-            {
-                "id": "claude-3-5-haiku-20241022",
-                "name": "Haiku 4.5",
-                "short_name": "Haiku 4.5",
+                "id": "hermes-agent",
+                "name": "Hermes Smart",
+                "short_name": "Hermes Smart",
                 "voice_model": None,
                 "description": None,
                 "notice": None,
@@ -246,7 +232,7 @@ MODEL_SELECTOR_STATE_LIST = [
     },
     {
         "id": "voice",
-        "model": "claude-3-5-sonnet-20241022",
+        "model": "hermes-agent",
         "thinking": None,
         "thinking_by_model": []
     }
@@ -655,11 +641,19 @@ async def send_live_mobile_notification(title: str, body: str, chat_id: Optional
 @router.get("/organizations/{org_id}/chat_conversations")
 @router.get("/hermes/api/organizations/{org_id}/chat_conversations")
 @router.get("/hermes/organizations/{org_id}/chat_conversations")
-async def list_conversations(org_id: str, limit: int = 100, starred: Optional[bool] = None, consistency: Optional[str] = None):
+async def list_conversations(org_id: str, limit: int = 100, starred: Optional[bool] = None, consistency: Optional[str] = None, authorization: Optional[str] = Header(None)):
     _load_history()
+    user_email = None
+    if authorization:
+        acc = _resolve_account(authorization)
+        user_email = acc.get("email_address")
+
     conv_list = []
     for conv in _CONVERSATIONS.values():
         if starred and not conv.get("is_starred", False):
+            continue
+        c_user = conv.get("user_email")
+        if user_email and c_user and c_user != user_email:
             continue
         conv_list.append(_build_conv_response(conv))
     conv_list.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
@@ -669,7 +663,7 @@ async def list_conversations(org_id: str, limit: int = 100, starred: Optional[bo
 @router.post("/organizations/{org_id}/chat_conversations")
 @router.post("/hermes/api/organizations/{org_id}/chat_conversations")
 @router.post("/hermes/organizations/{org_id}/chat_conversations")
-async def create_conversation(org_id: str, request: Request):
+async def create_conversation(org_id: str, request: Request, authorization: Optional[str] = Header(None)):
     try:
         body = await request.json()
     except Exception:
@@ -677,12 +671,18 @@ async def create_conversation(org_id: str, request: Request):
     chat_id = body.get("uuid") or str(uuid.uuid4())
     name = body.get("name") or body.get("title") or "Chat"
     now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    user_email = None
+    if authorization:
+        acc = _resolve_account(authorization)
+        user_email = acc.get("email_address")
+
     if chat_id not in _CONVERSATIONS:
         _CONVERSATIONS[chat_id] = {
             "uuid": chat_id,
             "name": name,
             "created_at": now,
             "updated_at": now,
+            "user_email": user_email,
             "chat_messages": []
         }
         _save_history()

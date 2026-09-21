@@ -5,9 +5,12 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -15,15 +18,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.hermes.theme.*
 
 @Composable
 fun TerminalScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    viewModel: TerminalViewModel = viewModel()
 ) {
     var commandText by remember { mutableStateOf("") }
+    val hostStatus by viewModel.hostStatus.collectAsStateWithLifecycle()
+    val terminalLogs by viewModel.terminalLogs.collectAsStateWithLifecycle()
 
     Column(
         modifier = Modifier
@@ -41,7 +50,7 @@ fun TerminalScreen(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = TextPrimaryWarm)
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimaryWarm)
                 }
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
@@ -51,9 +60,6 @@ fun TerminalScreen(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                IconButton(onClick = {}) {
-                    Icon(Icons.Default.MoreVert, contentDescription = null, tint = TextMuted)
-                }
                 Box(
                     modifier = Modifier
                         .size(32.dp)
@@ -84,11 +90,10 @@ fun TerminalScreen(
                 Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(AccentGreen))
                 Spacer(modifier = Modifier.width(6.dp))
                 Text("Online", style = HermesTypography.labelSmall.copy(color = AccentGreen, fontSize = 12.sp))
-                Text(" • /data/jarvis", style = HermesTypography.labelSmall.copy(color = TextSubtle, fontSize = 12.sp))
-            }
-
-            IconButton(onClick = {}, modifier = Modifier.size(24.dp)) {
-                Icon(Icons.Default.Info, contentDescription = null, tint = TextSubtle, modifier = Modifier.size(18.dp))
+                Text(
+                    " • ${hostStatus?.storage_root ?: "/data"}",
+                    style = HermesTypography.labelSmall.copy(color = TextSubtle, fontSize = 12.sp)
+                )
             }
         }
 
@@ -120,9 +125,15 @@ fun TerminalScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Dns, contentDescription = null, tint = BrandCoral, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("HERMES NODE TELEMETRY", style = HermesTypography.labelSmall.copy(color = TextMuted, fontSize = 11.5.sp, letterSpacing = 1.sp))
+                            Text("HERMES HOST TELEMETRY", style = HermesTypography.labelSmall.copy(color = TextMuted, fontSize = 11.5.sp, letterSpacing = 1.sp))
                         }
-                        Text("US-EAST-2A", style = HermesTypography.labelSmall.copy(color = BrandCoral, fontSize = 11.5.sp))
+                        Text(
+                            if (hostStatus?.writable == true) "RW MOUNTED" else "RO / DISCONNECTED",
+                            style = HermesTypography.labelSmall.copy(
+                                color = if (hostStatus?.writable == true) AccentGreen else AccentWarning,
+                                fontSize = 11.5.sp
+                            )
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(14.dp))
@@ -131,15 +142,20 @@ fun TerminalScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        TelemetryGauge("CPU", "24%", AccentWarning)
-                        TelemetryGauge("RAM", "3.8 / 8GB", BrandCoral)
-                        TelemetryGauge("Disk Free", "42 GB", TextPrimaryWarm, "HF Bucket")
-                        TelemetryGauge("WebSocket", "18ms", AccentGreen, "Optimal")
+                        val freeGb = hostStatus?.disk_free_gb ?: 0.0
+                        val totalGb = hostStatus?.disk_total_gb ?: 0.0
+                        val activeWorkspaces = hostStatus?.active_workspaces_count ?: 0
+                        val activeProjects = hostStatus?.active_projects_count ?: 0
+
+                        TelemetryGauge("Status", hostStatus?.status ?: "Ready", AccentGreen)
+                        TelemetryGauge("Disk Free", "${freeGb.toInt()} GB", BrandCoral, "of ${totalGb.toInt()} GB")
+                        TelemetryGauge("Workspaces", "$activeWorkspaces", TextPrimaryWarm, "Active")
+                        TelemetryGauge("Projects", "$activeProjects", AccentBlue, "Registered")
                     }
                 }
             }
 
-            // macOS Terminal Console Window
+            // macOS / Linux Terminal Console Window
             item {
                 Column(
                     modifier = Modifier
@@ -164,28 +180,7 @@ fun TerminalScreen(
                             Spacer(modifier = Modifier.width(5.dp))
                             Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF22C55E)))
                             Spacer(modifier = Modifier.width(10.dp))
-                            Text("hermes@server-compute...", style = HermesTypography.labelSmall.copy(color = TextMuted, fontSize = 11.sp))
-                        }
-
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(Color(0xFF2D2C28))
-                                    .clickable {}
-                                    .padding(horizontal = 8.dp, vertical = 2.dp)
-                            ) {
-                                Text("Clear", style = HermesTypography.labelSmall.copy(color = TextSubtle, fontSize = 10.sp))
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(Color(0xFF2D2C28))
-                                    .clickable {}
-                                    .padding(horizontal = 8.dp, vertical = 2.dp)
-                            ) {
-                                Text("Rollback", style = HermesTypography.labelSmall.copy(color = TextSubtle, fontSize = 10.sp))
-                            }
+                            Text("hermes@hf-space:~$", style = HermesTypography.labelSmall.copy(color = TextMuted, fontSize = 11.sp))
                         }
                     }
 
@@ -196,17 +191,16 @@ fun TerminalScreen(
                             .padding(14.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Text("[System Engine v4.19-rc] Session bound via secure TLS handshake.", style = HermesTypography.labelSmall.copy(color = TextSubtle, fontSize = 12.sp))
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text("hermes@box:~$ git status -s", style = HermesTypography.labelSmall.copy(color = BrandCoral, fontSize = 12.sp))
-                        Text(" M docs/ui-ux/DESIGN_SYSTEM.md", style = HermesTypography.labelSmall.copy(color = AccentWarning, fontSize = 12.sp))
-                        Text(" M app/src/main/java/tech/hermes/ui/chat/ChatScreen.kt", style = HermesTypography.labelSmall.copy(color = AccentWarning, fontSize = 12.sp))
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text("hermes@box:~$ ./gradlew testDebugUnitTest --continue", style = HermesTypography.labelSmall.copy(color = BrandCoral, fontSize = 12.sp))
-                        Text("> Task :app:testDebugUnitTest", style = HermesTypography.labelSmall.copy(color = TextSubtle, fontSize = 12.sp))
-                        Text("🤖 [QA Agent] Visual regression test: SCREEN_2 to SCREEN_9 diff = 0.00%", style = HermesTypography.labelSmall.copy(color = AccentBlue, fontSize = 12.sp))
-                        Text("🛡 [Security Agent] Vault scan: 0 hardcoded credentials detected.", style = HermesTypography.labelSmall.copy(color = AccentGreen, fontSize = 12.sp))
-                        Text("BUILD SUCCESSFUL in 14s", style = HermesTypography.labelSmall.copy(color = AccentGreen, fontSize = 12.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold))
+                        terminalLogs.takeLast(40).forEach { line ->
+                            val color = when {
+                                line.startsWith("$") -> BrandCoral
+                                line.startsWith("[Connected") -> AccentGreen
+                                line.startsWith("[PTY Error") -> AccentWarning
+                                line.contains("SUCCESS", true) -> AccentGreen
+                                else -> TextPrimaryWarm
+                            }
+                            Text(line, style = HermesTypography.labelSmall.copy(color = color, fontSize = 11.5.sp))
+                        }
                     }
                 }
             }
@@ -229,42 +223,70 @@ fun TerminalScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        QuickCommandPill("git diff", Icons.Default.Description)
-                        QuickCommandPill("git log -n 5", Icons.Default.History)
-                        QuickCommandPill("checkpoint c...", Icons.Default.BookmarkBorder)
+                        QuickCommandPill("git status -s", Icons.Default.Description) {
+                            viewModel.sendCommand("git status -s")
+                        }
+                        QuickCommandPill("git log -n 5", Icons.Default.History) {
+                            viewModel.sendCommand("git log -n 5")
+                        }
+                        QuickCommandPill("ls -la", Icons.Default.Folder) {
+                            viewModel.sendCommand("ls -la")
+                        }
                     }
                 }
             }
         }
 
         // Bottom Command Bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .clip(RoundedCornerShape(26.dp))
-                .background(Color(0xFF1E1D1B))
-                .border(1.dp, BorderSubtle, RoundedCornerShape(26.dp))
-                .padding(horizontal = 14.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = Color(0xFF191816),
+            tonalElevation = 8.dp
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                Text("$ ", style = HermesTypography.titleLarge.copy(color = BrandCoral, fontSize = 16.sp))
-                Text(
-                    text = "Run command via Hermes authority",
-                    style = HermesTypography.bodyMedium.copy(color = TextSubtle, fontSize = 13.5.sp)
-                )
-            }
-
-            Box(
+            Row(
                 modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(BrandTerracotta),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Icon(Icons.Default.ArrowForward, contentDescription = "Dispatch", tint = PureWhite, modifier = Modifier.size(18.dp))
+                OutlinedTextField(
+                    value = commandText,
+                    onValueChange = { commandText = it },
+                    placeholder = {
+                        Text("Type terminal command...", style = HermesTypography.bodyMedium.copy(color = TextSubtle, fontSize = 13.sp))
+                    },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = BrandCoral,
+                        unfocusedBorderColor = Color(0xFF2E2D2A),
+                        focusedContainerColor = Color(0xFF141312),
+                        unfocusedContainerColor = Color(0xFF141312),
+                        focusedTextColor = TextPrimaryWarm,
+                        unfocusedTextColor = TextPrimaryWarm
+                    ),
+                    singleLine = true
+                )
+
+                IconButton(
+                    onClick = {
+                        if (commandText.isNotBlank()) {
+                            viewModel.sendCommand(commandText)
+                            commandText = ""
+                        }
+                    },
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(if (commandText.isNotBlank()) BrandCoral else Color(0xFF262522))
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = "Send",
+                        tint = if (commandText.isNotBlank()) PureWhite else TextSubtle
+                    )
+                }
             }
         }
     }
@@ -278,28 +300,32 @@ private fun TelemetryGauge(
     subtext: String? = null
 ) {
     Column {
-        Text(label, style = HermesTypography.labelSmall.copy(color = TextSubtle, fontSize = 11.sp))
+        Text(label, style = HermesTypography.labelSmall.copy(color = TextSubtle, fontSize = 10.5.sp))
         Spacer(modifier = Modifier.height(2.dp))
-        Text(value, style = HermesTypography.titleLarge.copy(color = valueColor, fontSize = 14.sp))
+        Text(value, style = HermesTypography.titleLarge.copy(color = valueColor, fontSize = 15.sp))
         if (subtext != null) {
-            Text(subtext, style = HermesTypography.labelSmall.copy(color = TextSubtle, fontSize = 10.sp))
+            Text(subtext, style = HermesTypography.labelSmall.copy(color = TextSubtle, fontSize = 9.5.sp))
         }
     }
 }
 
 @Composable
-private fun QuickCommandPill(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
+private fun QuickCommandPill(
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit
+) {
     Row(
         modifier = Modifier
-            .clip(CircleShape)
-            .background(Color(0xFF1E1D1B))
-            .border(1.dp, BorderSubtle, CircleShape)
-            .clickable {}
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color(0xFF23221F))
+            .border(1.dp, BorderSubtle, RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, contentDescription = null, tint = TextMuted, modifier = Modifier.size(14.dp))
         Spacer(modifier = Modifier.width(6.dp))
-        Text(label, style = HermesTypography.bodyMedium.copy(color = TextPrimaryWarm, fontSize = 12.sp))
+        Text(label, style = HermesTypography.labelSmall.copy(color = TextPrimaryWarm, fontSize = 11.5.sp))
     }
 }

@@ -1,6 +1,7 @@
 package com.example.hermes.data
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
 import java.util.UUID
 
 @Serializable
@@ -15,7 +16,8 @@ data class ChatMessage(
     val artifactType: String? = null,
     val artifactLanguage: String? = null,
     val artifactCode: String? = null,
-    val stepTitle: String? = null
+    val stepTitle: String? = null,
+    val attachments: List<ChatAttachment> = emptyList()
 )
 
 @Serializable
@@ -28,7 +30,29 @@ data class ApiMessage(
 data class ChatCompletionRequest(
     val model: String = "hermes-3-llama-3.1-8b",
     val messages: List<ApiMessage>,
-    val stream: Boolean = true
+    val stream: Boolean = true,
+    val max_tokens: Int? = null,
+    @SerialName("session_id")
+    val sessionId: String? = null
+)
+
+@Serializable
+data class ChatCompletionResponse(
+    val id: String? = null,
+    val choices: List<ChatCompletionChoice> = emptyList()
+)
+
+@Serializable
+data class ChatCompletionChoice(
+    val index: Int? = null,
+    val message: ChatCompletionMessage? = null,
+    val finish_reason: String? = null
+)
+
+@Serializable
+data class ChatCompletionMessage(
+    val role: String? = null,
+    val content: String? = null
 )
 
 @Serializable
@@ -55,10 +79,15 @@ data class StreamDelta(
 data class TaskDto(
     val id: String,
     val title: String,
-    val status: String = "pending", // "pending", "in_progress", "completed", "failed"
+    val prompt: String = "",
+    val status: String = "RUNNING", // "RUNNING", "COMPLETED", "PAUSED", "FAILED"
     val progress: Float = 0f,
+    val agent_name: String? = null,
+    val supervisor: String? = "Hermes Supervisor",
     val subtasks: List<SubtaskDto> = emptyList(),
-    val error: String? = null
+    val error: String? = null,
+    val created_at: Double = 0.0,
+    val updated_at: Double = 0.0
 )
 
 @Serializable
@@ -72,6 +101,66 @@ data class SubtaskDto(
 data class CreateTaskRequest(
     val title: String,
     val prompt: String
+)
+
+@Serializable
+data class ApprovalDto(
+    val id: String,
+    val task_id: String? = null,
+    val tool: String = "bash",
+    val command: String = "",
+    val risk: String = "MEDIUM", // "LOW", "MEDIUM", "HIGH"
+    val status: String = "PENDING", // "PENDING", "APPROVED", "DENIED"
+    val reason: String? = null,
+    val created_at: Double = 0.0
+)
+
+@Serializable
+data class ApprovalsResponse(
+    val approvals: List<ApprovalDto> = emptyList()
+)
+
+@Serializable
+data class HostStatusDto(
+    val status: String = "healthy",
+    val storage_root: String = "/data",
+    val writable: Boolean = true,
+    val disk_free_gb: Double = 0.0,
+    val disk_total_gb: Double = 0.0,
+    val active_projects_count: Int = 0,
+    val active_workspaces_count: Int = 0
+)
+
+@Serializable
+data class KnowledgeSourceDto(
+    val name: String,
+    val type: String,
+    val primary: Boolean = false,
+    val status: String = "unknown",
+    val message: String = "",
+    val capabilities: List<String> = emptyList()
+)
+
+@Serializable
+data class KnowledgeSourcesResponse(
+    val status: String = "ok",
+    val default_source: String = "notion",
+    val sources: List<KnowledgeSourceDto> = emptyList()
+)
+
+@Serializable
+data class DirectoryServerItemDto(
+    val id: String = "",
+    val name: String = "",
+    val description: String = "",
+    val status: String = "ready",
+    val tools: List<String> = emptyList()
+)
+
+@Serializable
+data class DirectoryServersResponse(
+    val servers: List<DirectoryServerItemDto> = emptyList(),
+    val data: List<DirectoryServerItemDto> = emptyList()
 )
 
 @Serializable
@@ -142,6 +231,12 @@ data class NewSessionRequest(
 )
 
 @Serializable
+data class NewSessionResponse(
+    val ok: Boolean = false,
+    val session: SessionDto? = null
+)
+
+@Serializable
 data class SessionMessageDto(
     val role: String,
     val content: String = "",
@@ -156,12 +251,23 @@ data class SessionDetailDto(
     val workspace: String = "",
     val model: String? = null,
     val message_count: Int = 0,
-    val messages: List<SessionMessageDto> = emptyList()
+    val messages: List<SessionMessageDto> = emptyList(),
+    val is_streaming: Boolean = false,
+    val status: String = "idle"
 )
 
 @Serializable
 data class SessionDetailResponse(
     val session: SessionDetailDto? = null
+)
+
+@Serializable
+data class SessionStatusDto(
+    val session_id: String? = null,
+    val is_streaming: Boolean = false,
+    val status: String = "idle",
+    val current_text: String? = null,
+    val has_active_run: Boolean = false
 )
 
 @Serializable
@@ -220,4 +326,35 @@ data class ArtifactItemDto(
     val code: String? = null,
     val timestamp: Long = System.currentTimeMillis()
 )
+
+@Serializable
+data class GoogleAuthRequestDto(
+    val id_token: String? = null,
+    val token: String? = null,
+    val source: String = "google_mobile"
+)
+
+@Serializable
+data class GoogleAccountDto(
+    val uuid: String = "",
+    val email_address: String = "",
+    val full_name: String = "",
+    val display_name: String = ""
+)
+
+@Serializable
+data class VerifyGoogleResponse(
+    val success: Boolean = false,
+    val secret: String? = null,
+    val sessionKey: String? = null,
+    val account: GoogleAccountDto? = null,
+    val state: String? = null
+)
+
+@Serializable
+data class AuthConfigResponse(
+    val google_client_id: String? = null,
+    val auth_methods: List<String> = emptyList()
+)
+
 

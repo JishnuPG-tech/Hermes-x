@@ -49,7 +49,25 @@ async def _get_google_jwks() -> Dict[str, Any]:
             return _GOOGLE_JWKS_CACHE
         raise HTTPException(status_code=500, detail="Failed to fetch Google public keys")
 
+def get_allowed_google_client_ids() -> list[str]:
+    raw = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+    if not raw:
+        return ["292824298430-113kq16cbpq6i02jin424gb1mk5ebm40.apps.googleusercontent.com"]
+    return [x.strip() for x in raw.split(",") if x.strip()]
+
+@router.get("/api/auth/config")
+@router.get("/auth/config")
+@router.get("/api/v1/auth/config")
+@router.get("/hermes/api/auth/config")
+async def get_auth_config():
+    client_ids = get_allowed_google_client_ids()
+    return {
+        "google_client_id": client_ids[0] if client_ids else "",
+        "auth_methods": ["google", "guest", "email"]
+    }
+
 async def verify_google_id_token(token_str: str) -> Dict[str, Any]:
+    allowed_ids = get_allowed_google_client_ids()
     try:
         jwks = await _get_google_jwks()
         unverified_header = jwt.get_unverified_header(token_str)
@@ -62,14 +80,21 @@ async def verify_google_id_token(token_str: str) -> Dict[str, Any]:
                 break
                 
         if key:
+            # Decode with RS256; if allowed_ids present, verify audience or azp
             payload = jwt.decode(
                 token_str,
                 key=key,
                 algorithms=["RS256"],
-                audience=GOOGLE_CLIENT_ID,
+                options={"verify_aud": False},
                 issuer=["accounts.google.com", "https://accounts.google.com"]
             )
+            aud = payload.get("aud")
+            azp = payload.get("azp")
+            if allowed_ids and aud not in allowed_ids and azp not in allowed_ids:
+                raise HTTPException(status_code=401, detail=f"Token audience mismatch: {aud}")
             return payload
+    except HTTPException:
+        raise
     except Exception as err:
         logger.warning(f"Direct JWK verification failed, trying tokeninfo fallback: {err}")
 
@@ -79,7 +104,8 @@ async def verify_google_id_token(token_str: str) -> Dict[str, Any]:
         if resp.status_code == 200:
             payload = resp.json()
             aud = payload.get("aud")
-            if aud != GOOGLE_CLIENT_ID:
+            azp = payload.get("azp")
+            if allowed_ids and aud not in allowed_ids and azp not in allowed_ids:
                 raise HTTPException(status_code=401, detail=f"Token audience mismatch: {aud}")
             return payload
     raise HTTPException(status_code=401, detail="Invalid Google token key")

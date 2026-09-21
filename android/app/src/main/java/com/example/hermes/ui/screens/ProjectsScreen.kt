@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
@@ -149,29 +150,44 @@ fun ProjectsScreen(
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
-                    TextField(
+                    BasicTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        placeholder = {
-                            Text(
-                                text = "Search projects",
-                                style = HermesTypography.bodyLarge.copy(
-                                    fontSize = 15.5.sp,
-                                    color = TextSubtle
-                                )
-                            )
-                        },
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent,
-                            disabledContainerColor = Color.Transparent,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                            focusedTextColor = TextPrimaryWarm,
-                            unfocusedTextColor = TextPrimaryWarm
+                        textStyle = HermesTypography.bodyLarge.copy(
+                            fontSize = 15.5.sp,
+                            color = TextPrimaryWarm
                         ),
-                        modifier = Modifier.weight(1f)
+                        singleLine = true,
+                        cursorBrush = androidx.compose.ui.graphics.SolidColor(BrandCoral),
+                        modifier = Modifier.weight(1f),
+                        decorationBox = { innerTextField ->
+                            Box(contentAlignment = Alignment.CenterStart) {
+                                if (searchQuery.isEmpty()) {
+                                    Text(
+                                        text = "Search projects",
+                                        style = HermesTypography.bodyLarge.copy(
+                                            fontSize = 15.5.sp,
+                                            color = TextSubtle
+                                        )
+                                    )
+                                }
+                                innerTextField()
+                            }
+                        }
                     )
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(
+                            onClick = { searchQuery = "" },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Clear",
+                                tint = TextSubtle,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -198,7 +214,7 @@ fun ProjectsScreen(
                             Spacer(modifier = Modifier.height(24.dp))
 
                             Text(
-                                text = "Create a project to organize and customize chats with Claude around a topic or set of documents.",
+                                text = "Create a project to organize and customize chats with Hermes around a topic or set of documents.",
                                 style = HermesTypography.bodyLarge.copy(
                                     fontSize = 16.sp,
                                     color = TextMuted,
@@ -678,7 +694,7 @@ private fun ProjectDetailView(
                     Spacer(modifier = Modifier.height(20.dp))
 
                     Text(
-                        text = "Chats you've had with Claude will show up here.",
+                        text = "Chats you've had with Hermes will show up here.",
                         style = HermesTypography.bodyLarge.copy(
                             fontSize = 16.5.sp,
                             color = TextMuted,

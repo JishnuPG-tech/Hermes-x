@@ -6,10 +6,12 @@ import kotlinx.serialization.Serializable
 @Serializable data object NavAuth : NavKey
 @Serializable data object NavHome : NavKey
 @Serializable data class NavChat(
+    val id: String = java.util.UUID.randomUUID().toString(),
     val prompt: String? = null,
     val sessionId: String? = null,
     val isIncognito: Boolean = false,
-    val fromVoice: Boolean = false
+    val fromVoice: Boolean = false,
+    val initialModel: String = "Hermes Smart"
 ) : NavKey
 @Serializable data object NavVoice : NavKey
 @Serializable data object NavChats : NavKey
@@ -17,6 +19,7 @@ import kotlinx.serialization.Serializable
 @Serializable data object NavCode : NavKey
 @Serializable data object NavArtifacts : NavKey
 @Serializable data class NavArtifactViewer(
+    val id: String = java.util.UUID.randomUUID().toString(),
     val artifactTitle: String = "Theme Showcase",
     val artifactType: String = "Application",
     val artifactCode: String? = null,

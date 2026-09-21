@@ -1,5 +1,7 @@
 package com.example.hermes.data
 
+import android.content.Context
+import com.example.hermes.data.local.*
 import com.example.hermes.stream.StreamSmoothingEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -8,6 +10,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
 import java.util.UUID
 
 interface DataRepository {
@@ -21,18 +26,57 @@ interface DataRepository {
     val projects: StateFlow<List<ProjectDto>>
     val availableModels: StateFlow<List<ModelOptionDto>>
     val allArtifacts: StateFlow<List<ArtifactItemDto>>
+    val approvals: StateFlow<List<ApprovalDto>>
+    val hostStatus: StateFlow<HostStatusDto?>
+    val knowledgeSources: StateFlow<List<KnowledgeSourceDto>>
+    val directoryServers: StateFlow<List<DirectoryServerItemDto>>
+    val terminalLogs: StateFlow<List<String>>
 
-    fun sendMessage(content: String, model: String = "hermes-agent")
+    fun sendMessage(
+        content: String,
+        model: String = "hermes-agent",
+        attachments: List<ChatAttachment> = emptyList(),
+        webSearch: Boolean = true,
+        memory: Boolean = true
+    )
     fun stopGeneration()
     fun fetchTasks()
     fun createNewTask(title: String, prompt: String)
+    fun pauseTask(taskId: String)
+    fun resumeTask(taskId: String)
+    fun cancelTask(taskId: String)
     fun fetchSessions()
     fun loadSession(sessionId: String)
+    fun syncActiveSession()
     fun deleteSession(sessionId: String)
+    fun updateSessionTitle(sessionId: String, newTitle: String)
     fun fetchProjects()
     fun createNewProject(name: String, description: String = "")
     fun fetchModels()
     fun clearMessages()
+    fun fetchApprovals()
+    fun approveRequest(approvalId: String)
+    fun denyRequest(approvalId: String)
+    fun fetchHostStatus()
+    fun fetchKnowledgeSources()
+    fun fetchDirectoryServers()
+    fun connectTerminalPty()
+    fun sendTerminalInput(input: String)
+    fun disconnectTerminalPty()
+
+    // Auth and Server Preferences
+    val isLoggedIn: kotlinx.coroutines.flow.Flow<Boolean>
+    val currentUserId: kotlinx.coroutines.flow.Flow<String>
+    suspend fun logout()
+    suspend fun loginWithGoogle(idToken: String, displayName: String, email: String, avatar: String): Result<VerifyGoogleResponse>
+    suspend fun refreshAuthConfig(): Result<AuthConfigResponse>
+    val googleClientId: kotlinx.coroutines.flow.Flow<String>
+    val currentServerUrl: kotlinx.coroutines.flow.Flow<String>
+    suspend fun setGoogleClientId(clientId: String)
+    suspend fun setServerBaseUrl(url: String)
+
+    // DataStore Preferences access via Repository
+    fun getPreferencesManager(): PreferencesManager?
 }
 
 enum class ThinkingPhase {
@@ -51,6 +95,9 @@ class HermesDataRepository(
     private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var smoother: StreamSmoothingEngine? = null
     private var activeStreamJob: kotlinx.coroutines.Job? = null
+    private var localDb: HermesLocalDatabase? = null
+    private var prefsManager: PreferencesManager? = null
+    private var ptyWebSocket: WebSocket? = null
 
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
     override val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
@@ -76,25 +123,255 @@ class HermesDataRepository(
     private val _projects = MutableStateFlow<List<ProjectDto>>(emptyList())
     override val projects: StateFlow<List<ProjectDto>> = _projects.asStateFlow()
 
-    private val _availableModels = MutableStateFlow<List<ModelOptionDto>>(emptyList())
+    private val _availableModels = MutableStateFlow<List<ModelOptionDto>>(DEFAULT_MODELS)
     override val availableModels: StateFlow<List<ModelOptionDto>> = _availableModels.asStateFlow()
 
     private val _allArtifacts = MutableStateFlow<List<ArtifactItemDto>>(emptyList())
     override val allArtifacts: StateFlow<List<ArtifactItemDto>> = _allArtifacts.asStateFlow()
 
+    private val _approvals = MutableStateFlow<List<ApprovalDto>>(emptyList())
+    override val approvals: StateFlow<List<ApprovalDto>> = _approvals.asStateFlow()
+
+    private val _hostStatus = MutableStateFlow<HostStatusDto?>(null)
+    override val hostStatus: StateFlow<HostStatusDto?> = _hostStatus.asStateFlow()
+
+    private val _knowledgeSources = MutableStateFlow<List<KnowledgeSourceDto>>(emptyList())
+    override val knowledgeSources: StateFlow<List<KnowledgeSourceDto>> = _knowledgeSources.asStateFlow()
+
+    private val _directoryServers = MutableStateFlow<List<DirectoryServerItemDto>>(emptyList())
+    override val directoryServers: StateFlow<List<DirectoryServerItemDto>> = _directoryServers.asStateFlow()
+
+    private val _terminalLogs = MutableStateFlow<List<String>>(listOf("Hermes PTY ready."))
+    override val terminalLogs: StateFlow<List<String>> = _terminalLogs.asStateFlow()
+
     companion object {
+        val DEFAULT_MODELS = listOf(
+            ModelOptionDto(
+                id = "auto/best-chat",
+                name = "Hermes Smart",
+                display_name = "Hermes Smart",
+                short_name = "Smart",
+                description = ModelDescriptionDto("General intelligence, dialogue & creative agent workflows.")
+            ),
+            ModelOptionDto(
+                id = "auto/best-coding",
+                name = "Hermes Coding",
+                display_name = "Hermes Coding",
+                short_name = "Coding",
+                description = ModelDescriptionDto("High precision code synthesis, refactoring & review.")
+            ),
+            ModelOptionDto(
+                id = "auto/best-reasoning",
+                name = "Hermes Reasoning",
+                display_name = "Hermes Reasoning",
+                short_name = "Reasoning",
+                description = ModelDescriptionDto("Deep reasoning, complex logic & multi-step planning.")
+            ),
+            ModelOptionDto(
+                id = "auto/best-coding-fast",
+                name = "Hermes Turbo",
+                display_name = "Hermes Turbo",
+                short_name = "Turbo",
+                description = ModelDescriptionDto("Ultra-low latency inference for rapid prototyping & quick edits.")
+            )
+        )
+
         val instance: HermesDataRepository by lazy { HermesDataRepository() }
 
         private val CODE_BLOCK_REGEX = Regex("```([a-zA-Z0-9_-]+)?\\s*\\n([\\s\\S]*?)(?:```|$)")
         private val ANT_ARTIFACT_REGEX = Regex("<antArtifact\\s+([^>]+)>([\\s\\S]*?)(?:</antArtifact>|$)", RegexOption.IGNORE_CASE)
+
+        fun initialize(context: Context) {
+            instance.setContext(context.applicationContext)
+        }
+
+        fun syncActiveSession() {
+            instance.syncActiveSession()
+        }
+    }
+
+    fun setContext(context: Context) {
+        val db = HermesLocalDatabase.getInstance(context)
+        val prefs = PreferencesManager.getInstance(context)
+        localDb = db
+        prefsManager = prefs
+
+        // Listen for active user ID change to partition local DB
+        repositoryScope.launch(Dispatchers.IO) {
+            prefs.currentUserId.collect { userId ->
+                db.setActiveUser(userId)
+            }
+        }
+
+        // Load cached entities from SQLite
+        repositoryScope.launch(Dispatchers.IO) {
+            db.sessionsFlow.collect { cachedSessions ->
+                val localDtos = cachedSessions.map {
+                    SessionDto(
+                        session_id = it.id,
+                        title = it.title,
+                        model = it.model,
+                        updated_at = it.updatedAt / 1000.0
+                    )
+                }
+                val localIds = localDtos.map { it.session_id }.toSet()
+                val remoteOnly = _sessions.value.filter { it.session_id !in localIds }
+                _sessions.value = (localDtos + remoteOnly).sortedByDescending { it.updated_at }
+            }
+        }
+
+        repositoryScope.launch(Dispatchers.IO) {
+            db.tasksFlow.collect { cachedTasks ->
+                if (_tasks.value.isEmpty() && cachedTasks.isNotEmpty()) {
+                    _tasks.value = cachedTasks.map {
+                        TaskDto(
+                            id = it.id,
+                            title = it.title,
+                            prompt = it.prompt,
+                            status = it.status,
+                            progress = it.progress,
+                            agent_name = it.agentName
+                        )
+                    }
+                }
+            }
+        }
+
+        repositoryScope.launch(Dispatchers.IO) {
+            db.projectsFlow.collect { cachedProjects ->
+                if (_projects.value.isEmpty() && cachedProjects.isNotEmpty()) {
+                    _projects.value = cachedProjects.map {
+                        ProjectDto(
+                            id = it.id,
+                            name = it.name,
+                            description = it.description,
+                            created_at = it.createdAt.toDouble()
+                        )
+                    }
+                }
+            }
+        }
+
+        repositoryScope.launch(Dispatchers.IO) {
+            db.artifactsFlow.collect { cachedArtifacts ->
+                if (_allArtifacts.value.isEmpty() && cachedArtifacts.isNotEmpty()) {
+                    _allArtifacts.value = cachedArtifacts.map {
+                        ArtifactItemDto(
+                            id = it.id,
+                            title = it.title,
+                            type = it.type,
+                            language = it.language,
+                            code = it.code,
+                            timestamp = it.createdAt
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    override fun getPreferencesManager(): PreferencesManager? = prefsManager
+
+    override val isLoggedIn: kotlinx.coroutines.flow.Flow<Boolean>
+        get() = prefsManager?.isLoggedIn ?: kotlinx.coroutines.flow.flowOf(false)
+
+    override val currentUserId: kotlinx.coroutines.flow.Flow<String>
+        get() = prefsManager?.currentUserId ?: kotlinx.coroutines.flow.flowOf("guest")
+
+    override val googleClientId: kotlinx.coroutines.flow.Flow<String>
+        get() = prefsManager?.googleClientId ?: kotlinx.coroutines.flow.flowOf(PreferencesManager.DEFAULT_GOOGLE_CLIENT_ID)
+
+    override val currentServerUrl: kotlinx.coroutines.flow.Flow<String>
+        get() = prefsManager?.connectionBaseUrl ?: kotlinx.coroutines.flow.flowOf(HermesApiClient.DEFAULT_BASE_URL)
+
+    override suspend fun setGoogleClientId(clientId: String) {
+        prefsManager?.setGoogleClientId(clientId)
+    }
+
+    override suspend fun setServerBaseUrl(url: String) {
+        prefsManager?.setConnectionBaseUrl(url)
+        apiClient.updateBaseUrl(url)
+    }
+
+    override suspend fun logout() {
+        stopGeneration()
+        prefsManager?.clearAuth()
+        localDb?.setActiveUser("guest")
+        _messages.value = emptyList()
+        _sessions.value = emptyList()
+        _tasks.value = emptyList()
+        _projects.value = emptyList()
+        _allArtifacts.value = emptyList()
+        _currentSessionId.value = null
+    }
+
+    override suspend fun loginWithGoogle(
+        idToken: String,
+        displayName: String,
+        email: String,
+        avatar: String
+    ): Result<VerifyGoogleResponse> {
+        val name = displayName.ifBlank { email.substringBefore('@').replaceFirstChar { it.uppercase() }.ifBlank { "User" } }
+        val fallbackToken = "goog_${if (idToken.length > 32) idToken.takeLast(32) else idToken}"
+
+        // 1. Partition local database immediately by user email
+        val userId = email.ifBlank { "guest" }
+        localDb?.setActiveUser(userId)
+
+        // 2. Store user profile and local session token
+        prefsManager?.setUserProfile(name, email, avatar)
+        prefsManager?.setAuthToken(fallbackToken)
+
+        // 3. Perform backend verification and data sync asynchronously in background
+        // so UI is 100% INSTANT without waiting for network latency!
+        repositoryScope.launch(Dispatchers.IO) {
+            try {
+                val result = apiClient.verifyGoogleToken(idToken)
+                if (result.isSuccess) {
+                    val data = result.getOrNull()
+                    val serverToken = data?.secret ?: data?.sessionKey
+                    if (!serverToken.isNullOrBlank()) {
+                        prefsManager?.setAuthToken(serverToken)
+                    }
+                }
+            } catch (_: Exception) {}
+
+            fetchSessions()
+            fetchProjects()
+            fetchTasks()
+            fetchModels()
+        }
+
+        return Result.success(
+            VerifyGoogleResponse(
+                success = true,
+                secret = fallbackToken,
+                account = GoogleAccountDto(
+                    email_address = email,
+                    full_name = name,
+                    display_name = name
+                )
+            )
+        )
+    }
+
+    override suspend fun refreshAuthConfig(): Result<AuthConfigResponse> {
+        val result = apiClient.getAuthConfig()
+        if (result.isSuccess) {
+            val cfg = result.getOrNull()
+            val clientId = cfg?.google_client_id
+            if (!clientId.isNullOrBlank()) {
+                prefsManager?.setGoogleClientId(clientId)
+            }
+        }
+        return result
     }
 
     init {
-        // Initial async sync with server
-        fetchSessions()
-        fetchProjects()
-        fetchTasks()
-        fetchModels()
+        // Light async refresh in background without flooding network on startup
+        repositoryScope.launch(Dispatchers.IO) {
+            refreshAuthConfig()
+        }
     }
 
     override fun stopGeneration() {
@@ -111,13 +388,81 @@ class HermesDataRepository(
         }
     }
 
-    override fun sendMessage(content: String, model: String) {
+    override fun sendMessage(
+        content: String,
+        model: String,
+        attachments: List<ChatAttachment>,
+        webSearch: Boolean,
+        memory: Boolean
+    ) {
         stopGeneration()
+
+        val resolvedModel = when (model) {
+            "Hermes Smart" -> "auto/best-chat"
+            "Hermes Coding" -> "auto/best-coding"
+            "Hermes Reasoning" -> "auto/best-reasoning"
+            "Hermes Turbo" -> "auto/best-coding-fast"
+            "hermes-agent" -> "auto/best-chat"
+            else -> if (model.isBlank()) "auto/best-chat" else model
+        }
+
+        val effectiveContent = if (attachments.isNotEmpty()) {
+            val attInfo = attachments.joinToString("\n") { att ->
+                if (att.isImage) "[Attached Image: ${att.name}]" else "[Attached File: ${att.name}]"
+            }
+            if (content.isNotBlank()) "$attInfo\n\n$content" else attInfo
+        } else {
+            content
+        }
+
+        // Ensure session exists or create a new session
+        val isNewChat = _currentSessionId.value == null
+        val activeSessionId = _currentSessionId.value ?: ("sess_" + UUID.randomUUID().toString().replace("-", "").take(16))
+        _currentSessionId.value = activeSessionId
+
+        val chatTitle = if (isNewChat) {
+            content.lines().firstOrNull { it.isNotBlank() }?.trim()?.take(40)
+                ?: attachments.firstOrNull()?.name?.take(40)
+                ?: "Chat"
+        } else {
+            _sessions.value.firstOrNull { it.session_id == activeSessionId }?.title ?: "Chat"
+        }
+
+        if (isNewChat) {
+            val nowSec = System.currentTimeMillis() / 1000.0
+            val newSessionDto = SessionDto(
+                session_id = activeSessionId,
+                title = chatTitle,
+                model = resolvedModel,
+                created_at = nowSec,
+                updated_at = nowSec,
+                message_count = 1
+            )
+            _sessions.value = listOf(newSessionDto) + _sessions.value.filter { it.session_id != activeSessionId }
+
+            // Persist immediately in local database
+            localDb?.let { db ->
+                repositoryScope.launch(Dispatchers.IO) {
+                    db.upsertSessions(listOf(SessionEntity(
+                        id = activeSessionId,
+                        title = chatTitle,
+                        model = resolvedModel,
+                        updatedAt = System.currentTimeMillis()
+                    )))
+                }
+            }
+
+            // Sync with backend asynchronously
+            repositoryScope.launch(Dispatchers.IO) {
+                apiClient.createSession(title = chatTitle, model = resolvedModel)
+            }
+        }
 
         val userMsg = ChatMessage(
             id = UUID.randomUUID().toString(),
             role = "user",
-            content = content
+            content = effectiveContent,
+            attachments = attachments
         )
 
         val assistantMsgId = UUID.randomUUID().toString()
@@ -134,6 +479,31 @@ class HermesDataRepository(
         _isStreaming.value = true
         _activeThinking.value = "Thought process"
         _thinkingPhase.value = ThinkingPhase.THOUGHT_PROCESS
+
+        val currentSession = _currentSessionId.value ?: activeSessionId
+        localDb?.let { db ->
+            repositoryScope.launch(Dispatchers.IO) {
+                db.saveMessages(listOf(
+                    MessageEntity(
+                        id = userMsg.id,
+                        sessionId = currentSession,
+                        role = userMsg.role,
+                        content = userMsg.content,
+                        timestamp = userMsg.timestamp
+                    ),
+                    MessageEntity(
+                        id = assistantMsgId,
+                        sessionId = currentSession,
+                        role = "assistant",
+                        content = "",
+                        thinking = null,
+                        timestamp = System.currentTimeMillis(),
+                        isStreaming = true,
+                        stepTitle = "Thought process"
+                    )
+                ))
+            }
+        }
 
         val newSmoother = StreamSmoothingEngine(repositoryScope)
         smoother = newSmoother
@@ -162,7 +532,7 @@ class HermesDataRepository(
         // Live SSE stream collector
         activeStreamJob = repositoryScope.launch {
             try {
-                apiClient.streamChat(updatedList.dropLast(1), model).collect { event ->
+                apiClient.streamChat(updatedList.dropLast(1), resolvedModel, sessionId = currentSession).collect { event ->
                     when (event) {
                         is StreamEvent.Thinking -> {
                             thoughtsAccumulator.append(event.text)
@@ -194,7 +564,6 @@ class HermesDataRepository(
                             val artifactMeta = extractArtifactFromText(event.fullResponse)
 
                             if (artifactMeta != null) {
-                                // Record in allArtifacts
                                 val newArtifact = ArtifactItemDto(
                                     title = artifactMeta.title,
                                     type = artifactMeta.type,
@@ -202,6 +571,17 @@ class HermesDataRepository(
                                     code = artifactMeta.code
                                 )
                                 _allArtifacts.value = listOf(newArtifact) + _allArtifacts.value.filter { it.title != newArtifact.title }
+                                localDb?.let { db ->
+                                    repositoryScope.launch(Dispatchers.IO) {
+                                        db.upsertArtifacts(listOf(ArtifactEntity(
+                                            id = newArtifact.id,
+                                            title = newArtifact.title,
+                                            type = newArtifact.type,
+                                            language = newArtifact.language ?: "",
+                                            code = newArtifact.code ?: ""
+                                        )))
+                                    }
+                                }
                             }
 
                             updateAssistantMessage(
@@ -215,6 +595,77 @@ class HermesDataRepository(
                                 artifactCode = artifactMeta?.code,
                                 stepTitle = artifactMeta?.stepTitle
                             )
+
+                            // Save message exchange to local cache
+                            val currentSession = _currentSessionId.value ?: activeSessionId
+                            localDb?.let { db ->
+                                repositoryScope.launch(Dispatchers.IO) {
+                                    db.saveMessages(listOf(
+                                        MessageEntity(
+                                            id = userMsg.id,
+                                            sessionId = currentSession,
+                                            role = userMsg.role,
+                                            content = userMsg.content,
+                                            timestamp = userMsg.timestamp
+                                        ),
+                                        MessageEntity(
+                                            id = assistantMsgId,
+                                            sessionId = currentSession,
+                                            role = "assistant",
+                                            content = event.fullResponse,
+                                            thinking = thoughtsAccumulator.toString(),
+                                            timestamp = System.currentTimeMillis(),
+                                            isStreaming = false,
+                                            artifactTitle = artifactMeta?.title,
+                                            artifactType = artifactMeta?.type,
+                                            artifactLanguage = artifactMeta?.language,
+                                            artifactCode = artifactMeta?.code,
+                                            stepTitle = artifactMeta?.stepTitle
+                                        )
+                                    ))
+
+                                    // Update session updated_at in local DB
+                                    db.upsertSessions(listOf(SessionEntity(
+                                        id = currentSession,
+                                        title = chatTitle,
+                                        model = model,
+                                        updatedAt = System.currentTimeMillis()
+                                    )))
+                                }
+                            }
+
+                            // Update _sessions in-memory with new timestamp & message count
+                            _sessions.value = _sessions.value.map { s ->
+                                if (s.session_id == currentSession) {
+                                    s.copy(
+                                        updated_at = System.currentTimeMillis() / 1000.0,
+                                        message_count = _messages.value.size
+                                    )
+                                } else s
+                            }.sortedByDescending { it.updated_at }
+
+                            // If this is the 1st or 2nd message exchange, generate a smart AI title using the fast mini model
+                            // If title is default or first/second exchange, generate a smart AI title using the fast mini model
+                            val currentSessionTitle = _sessions.value.firstOrNull { it.session_id == currentSession }?.title ?: ""
+                            val isTitleGeneric = currentSessionTitle.isBlank() ||
+                                currentSessionTitle.lowercase() in listOf("chat", "new chat", "untitled") ||
+                                currentSessionTitle.startsWith("sess_") ||
+                                currentSessionTitle == userMsg.content.lines().firstOrNull()?.trim()?.take(40) ||
+                                _messages.value.size in 2..4
+
+                            if (isTitleGeneric) {
+                                repositoryScope.launch(Dispatchers.IO) {
+                                    try {
+                                        val aiTitle = apiClient.generateChatTitle(
+                                            userPrompt = userMsg.content,
+                                            assistantReply = event.fullResponse
+                                        )
+                                        if (!aiTitle.isNullOrBlank()) {
+                                            updateSessionTitle(currentSession, aiTitle)
+                                        }
+                                    } catch (_: Exception) {}
+                                }
+                            }
                         }
                         is StreamEvent.Error -> {
                             _thinkingPhase.value = ThinkingPhase.COMPLETED
@@ -276,7 +727,6 @@ class HermesDataRepository(
     private fun extractArtifactFromText(text: String): ExtractedArtifact? {
         if (text.isBlank()) return null
 
-        // 1. Check for explicit <antArtifact> tags
         val antMatch = ANT_ARTIFACT_REGEX.find(text)
         if (antMatch != null) {
             val attrs = antMatch.groupValues[1]
@@ -302,7 +752,6 @@ class HermesDataRepository(
             )
         }
 
-        // 2. Check for fenced code blocks with substantive content (> 30 characters)
         val codeMatch = CODE_BLOCK_REGEX.find(text)
         if (codeMatch != null) {
             val rawLang = (codeMatch.groupValues[1]).trim().lowercase()
@@ -351,37 +800,114 @@ class HermesDataRepository(
         artifactCode: String? = null,
         stepTitle: String? = null
     ) {
-        _messages.value = _messages.value.map { msg ->
-            if (msg.id == id) {
-                msg.copy(
-                    content = content,
-                    thinking = if (thinking.isNullOrEmpty()) null else thinking,
-                    isStreaming = isStreaming,
-                    artifactTitle = artifactTitle ?: msg.artifactTitle,
-                    artifactType = artifactType ?: msg.artifactType,
-                    artifactLanguage = artifactLanguage ?: msg.artifactLanguage,
-                    artifactCode = artifactCode ?: msg.artifactCode,
-                    stepTitle = stepTitle ?: msg.stepTitle
-                )
-            } else {
-                msg
+        val currentList = _messages.value
+        val exists = currentList.any { it.id == id }
+        if (!exists) {
+            _messages.value = currentList + ChatMessage(
+                id = id,
+                role = "assistant",
+                content = content,
+                thinking = if (thinking.isNullOrEmpty()) null else thinking,
+                isStreaming = isStreaming,
+                artifactTitle = artifactTitle,
+                artifactType = artifactType,
+                artifactLanguage = artifactLanguage,
+                artifactCode = artifactCode,
+                stepTitle = stepTitle
+            )
+        } else {
+            _messages.value = currentList.map { msg ->
+                if (msg.id == id) {
+                    msg.copy(
+                        content = content,
+                        thinking = if (thinking.isNullOrEmpty()) null else thinking,
+                        isStreaming = isStreaming,
+                        artifactTitle = artifactTitle ?: msg.artifactTitle,
+                        artifactType = artifactType ?: msg.artifactType,
+                        artifactLanguage = artifactLanguage ?: msg.artifactLanguage,
+                        artifactCode = artifactCode ?: msg.artifactCode,
+                        stepTitle = stepTitle ?: msg.stepTitle
+                    )
+                } else {
+                    msg
+                }
             }
         }
     }
 
     override fun fetchSessions() {
         repositoryScope.launch {
-            val serverSessions = apiClient.getSessions()
-            if (serverSessions.isNotEmpty()) {
-                _sessions.value = serverSessions
-            }
+            localDb?.refreshAll()
+            try {
+                val serverSessions = apiClient.getSessions()
+                if (serverSessions.isNotEmpty()) {
+                    _sessions.value = serverSessions
+                    localDb?.let { db ->
+                        db.upsertSessions(serverSessions.map {
+                            SessionEntity(
+                                id = it.session_id,
+                                title = it.title,
+                                model = it.model ?: "hermes-agent",
+                                updatedAt = (it.updated_at * 1000).toLong()
+                            )
+                        })
+                    }
+                }
+            } catch (_: Exception) {}
         }
     }
 
     override fun loadSession(sessionId: String) {
         repositoryScope.launch {
+            // Guard: If we are currently actively streaming for this exact session,
+            // DO NOT wipe the active stream with stale cache!
+            if (_currentSessionId.value == sessionId && _isStreaming.value) {
+                return@launch
+            }
+
             _currentSessionId.value = sessionId
+
+            // 1. Immediately load and render from local cache (0ms delay)
+            localDb?.let { db ->
+                val cached = db.getMessagesForSession(sessionId)
+                if (cached.isNotEmpty() && (!_isStreaming.value || _messages.value.isEmpty())) {
+                    _messages.value = cached.map {
+                        ChatMessage(
+                            id = it.id,
+                            role = it.role,
+                            content = it.content,
+                            thinking = it.thinking,
+                            isStreaming = it.isStreaming,
+                            timestamp = it.timestamp,
+                            artifactTitle = it.artifactTitle,
+                            artifactType = it.artifactType,
+                            artifactLanguage = it.artifactLanguage,
+                            artifactCode = it.artifactCode,
+                            stepTitle = it.stepTitle
+                        )
+                    }
+                }
+            }
+
+            // 2. Fetch from server and sync
             val detail = apiClient.getSession(sessionId)
+            if (_isStreaming.value && _currentSessionId.value == sessionId) {
+                return@launch
+            }
+
+            if (detail != null) {
+                // Update session title if server generated a smart title
+                val serverTitle = detail.title
+                if (!serverTitle.isNullOrBlank() && serverTitle.lowercase() !in listOf("chat", "new chat", "untitled") && !serverTitle.startsWith("sess_")) {
+                    _sessions.value = _sessions.value.map { s ->
+                        if (s.session_id == sessionId) s.copy(title = serverTitle) else s
+                    }
+                    localDb?.let { db ->
+                        db.updateSessionTitle(sessionId, serverTitle)
+                    }
+                }
+            }
+
             if (detail != null && detail.messages.isNotEmpty()) {
                 val mapped = detail.messages.map { sMsg ->
                     val art = extractArtifactFromText(sMsg.content)
@@ -400,15 +926,129 @@ class HermesDataRepository(
                     )
                 }
                 _messages.value = mapped
-            } else {
-                _messages.value = emptyList()
+
+                // Update local cache with remote messages
+                localDb?.let { db ->
+                    db.saveMessages(mapped.map { m ->
+                        MessageEntity(
+                            id = m.id,
+                            sessionId = sessionId,
+                            role = m.role,
+                            content = m.content,
+                            thinking = m.thinking,
+                            timestamp = m.timestamp,
+                            isStreaming = false,
+                            artifactTitle = m.artifactTitle,
+                            artifactType = m.artifactType,
+                            artifactLanguage = m.artifactLanguage,
+                            artifactCode = m.artifactCode,
+                            stepTitle = m.stepTitle
+                        )
+                    })
+                }
+
+                // Check if title is still default/generic and trigger fallback title generation
+                val currentSessionTitle = _sessions.value.firstOrNull { it.session_id == sessionId }?.title ?: ""
+                val isTitleGeneric = currentSessionTitle.isBlank() ||
+                    currentSessionTitle.lowercase() in listOf("chat", "new chat", "untitled") ||
+                    currentSessionTitle.startsWith("sess_") ||
+                    currentSessionTitle == mapped.firstOrNull { it.role == "user" }?.content?.lines()?.firstOrNull()?.trim()?.take(40)
+
+                if (isTitleGeneric) {
+                    val userContent = mapped.firstOrNull { it.role == "user" }?.content
+                    val asstContent = mapped.lastOrNull { it.role == "assistant" && it.content.isNotBlank() }?.content
+                    if (!userContent.isNullOrBlank() && !asstContent.isNullOrBlank()) {
+                        repositoryScope.launch(Dispatchers.IO) {
+                            try {
+                                val aiTitle = apiClient.generateChatTitle(userContent, asstContent)
+                                if (!aiTitle.isNullOrBlank()) {
+                                    updateSessionTitle(sessionId, aiTitle)
+                                }
+                            } catch (_: Exception) {}
+                        }
+                    }
+                }
+
+                // If session is still streaming on the server, poll until completed
+                if (detail.is_streaming) {
+                    _isStreaming.value = true
+                    _activeThinking.value = "Hermes is working on your response..."
+                    repositoryScope.launch {
+                        var pollCount = 0
+                        while (_isStreaming.value && pollCount < 60) {
+                            kotlinx.coroutines.delay(1500)
+                            pollCount++
+                            val updatedDetail = apiClient.getSession(sessionId)
+                            if (updatedDetail != null && updatedDetail.messages.isNotEmpty()) {
+                                val updatedMapped = updatedDetail.messages.map { sMsg ->
+                                    val art = extractArtifactFromText(sMsg.content)
+                                    ChatMessage(
+                                        id = UUID.randomUUID().toString(),
+                                        role = sMsg.role,
+                                        content = sMsg.content,
+                                        thinking = sMsg.reasoning_content,
+                                        isStreaming = updatedDetail.is_streaming,
+                                        timestamp = (sMsg.timestamp?.toLong() ?: (System.currentTimeMillis() / 1000)) * 1000,
+                                        artifactTitle = art?.title,
+                                        artifactType = art?.type,
+                                        artifactLanguage = art?.language,
+                                        artifactCode = art?.code,
+                                        stepTitle = art?.stepTitle
+                                    )
+                                }
+                                _messages.value = updatedMapped
+
+                                if (!updatedDetail.title.isNullOrBlank() && updatedDetail.title.lowercase() !in listOf("chat", "new chat")) {
+                                    updateSessionTitle(sessionId, updatedDetail.title)
+                                }
+
+                                if (!updatedDetail.is_streaming) {
+                                    _isStreaming.value = false
+                                    _activeThinking.value = null
+                                    localDb?.let { db ->
+                                        db.saveMessages(updatedMapped.map { m ->
+                                            MessageEntity(
+                                                id = m.id,
+                                                sessionId = sessionId,
+                                                role = m.role,
+                                                content = m.content,
+                                                thinking = m.thinking,
+                                                timestamp = m.timestamp,
+                                                isStreaming = false,
+                                                artifactTitle = m.artifactTitle,
+                                                artifactType = m.artifactType,
+                                                artifactLanguage = m.artifactLanguage,
+                                                artifactCode = m.artifactCode,
+                                                stepTitle = m.stepTitle
+                                            )
+                                        })
+                                    }
+                                    break
+                                }
+                            }
+                        }
+                        _isStreaming.value = false
+                        _activeThinking.value = null
+                    }
+                } else {
+                    _isStreaming.value = false
+                }
             }
         }
+    }
+
+    override fun syncActiveSession() {
+        val active = _currentSessionId.value
+        if (!active.isNullOrBlank() && !_isStreaming.value) {
+            loadSession(active)
+        }
+        fetchSessions()
     }
 
     override fun deleteSession(sessionId: String) {
         repositoryScope.launch {
             apiClient.deleteSession(sessionId)
+            localDb?.deleteSession(sessionId)
             _sessions.value = _sessions.value.filter { it.session_id != sessionId }
             if (_currentSessionId.value == sessionId) {
                 _currentSessionId.value = null
@@ -417,10 +1057,46 @@ class HermesDataRepository(
         }
     }
 
+    override fun updateSessionTitle(sessionId: String, newTitle: String) {
+        val clean = newTitle.trim().take(60)
+        if (clean.isBlank()) return
+
+        // 1. Update in-memory state so UI updates immediately
+        _sessions.value = _sessions.value.map { s ->
+            if (s.session_id == sessionId) {
+                s.copy(title = clean)
+            } else s
+        }
+
+        // 2. Persist in local SQLite database
+        localDb?.let { db ->
+            repositoryScope.launch(Dispatchers.IO) {
+                db.updateSessionTitle(sessionId, clean)
+            }
+        }
+
+        // 3. Sync with backend server
+        repositoryScope.launch(Dispatchers.IO) {
+            apiClient.renameSession(sessionId, clean)
+        }
+    }
+
     override fun fetchProjects() {
         repositoryScope.launch {
             val list = apiClient.getProjects()
-            _projects.value = list
+            if (list.isNotEmpty()) {
+                _projects.value = list
+                localDb?.let { db ->
+                    db.upsertProjects(list.map {
+                        ProjectEntity(
+                            id = it.id,
+                            name = it.name,
+                            description = it.description,
+                            createdAt = (it.created_at * 1000).toLong()
+                        )
+                    })
+                }
+            }
         }
     }
 
@@ -429,6 +1105,13 @@ class HermesDataRepository(
             val created = apiClient.createProject(name, description)
             if (created != null) {
                 _projects.value = listOf(created) + _projects.value
+                localDb?.let { db ->
+                    db.upsertProjects(listOf(ProjectEntity(
+                        id = created.id,
+                        name = created.name,
+                        description = created.description
+                    )))
+                }
             }
         }
     }
@@ -445,7 +1128,21 @@ class HermesDataRepository(
     override fun fetchTasks() {
         repositoryScope.launch {
             val fetched = apiClient.getTasks()
-            _tasks.value = fetched
+            if (fetched.isNotEmpty()) {
+                _tasks.value = fetched
+                localDb?.let { db ->
+                    db.upsertTasks(fetched.map {
+                        TaskEntity(
+                            id = it.id,
+                            title = it.title,
+                            prompt = it.prompt,
+                            status = it.status,
+                            progress = it.progress,
+                            agentName = it.agent_name
+                        )
+                    })
+                }
+            }
         }
     }
 
@@ -454,11 +1151,142 @@ class HermesDataRepository(
             val created = apiClient.createTask(title, prompt)
             if (created != null) {
                 _tasks.value = listOf(created) + _tasks.value
+                localDb?.let { db ->
+                    db.upsertTasks(listOf(TaskEntity(
+                        id = created.id,
+                        title = created.title,
+                        prompt = created.prompt,
+                        status = created.status,
+                        progress = created.progress,
+                        agentName = created.agent_name
+                    )))
+                }
             }
         }
     }
 
+    override fun pauseTask(taskId: String) {
+        repositoryScope.launch {
+            apiClient.pauseTask(taskId)
+            _tasks.value = _tasks.value.map {
+                if (it.id == taskId) it.copy(status = "PAUSED") else it
+            }
+            localDb?.updateTaskStatus(taskId, "PAUSED")
+        }
+    }
+
+    override fun resumeTask(taskId: String) {
+        repositoryScope.launch {
+            apiClient.resumeTask(taskId)
+            _tasks.value = _tasks.value.map {
+                if (it.id == taskId) it.copy(status = "RUNNING") else it
+            }
+            localDb?.updateTaskStatus(taskId, "RUNNING")
+        }
+    }
+
+    override fun cancelTask(taskId: String) {
+        repositoryScope.launch {
+            apiClient.cancelTask(taskId)
+            _tasks.value = _tasks.value.map {
+                if (it.id == taskId) it.copy(status = "CANCELLED") else it
+            }
+            localDb?.updateTaskStatus(taskId, "CANCELLED")
+        }
+    }
+
+    override fun fetchApprovals() {
+        repositoryScope.launch {
+            val list = apiClient.getApprovals()
+            _approvals.value = list
+        }
+    }
+
+    override fun approveRequest(approvalId: String) {
+        repositoryScope.launch {
+            apiClient.approveRequest(approvalId)
+            _approvals.value = _approvals.value.filter { it.id != approvalId }
+        }
+    }
+
+    override fun denyRequest(approvalId: String) {
+        repositoryScope.launch {
+            apiClient.denyRequest(approvalId)
+            _approvals.value = _approvals.value.filter { it.id != approvalId }
+        }
+    }
+
+    override fun fetchHostStatus() {
+        repositoryScope.launch {
+            val status = apiClient.getHostStatus()
+            if (status != null) {
+                _hostStatus.value = status
+            }
+        }
+    }
+
+    override fun fetchKnowledgeSources() {
+        repositoryScope.launch {
+            val sources = apiClient.getKnowledgeSources()
+            if (sources.isNotEmpty()) {
+                _knowledgeSources.value = sources
+            }
+        }
+    }
+
+    override fun fetchDirectoryServers() {
+        repositoryScope.launch {
+            val servers = apiClient.getDirectoryServers()
+            if (servers.isNotEmpty()) {
+                _directoryServers.value = servers
+            }
+        }
+    }
+
+    override fun connectTerminalPty() {
+        if (ptyWebSocket != null) return
+        ptyWebSocket = apiClient.connectPtyWebSocket(object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: Response) {
+                repositoryScope.launch {
+                    _terminalLogs.value = _terminalLogs.value + "[Connected to Hermes Live PTY]"
+                }
+            }
+
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                repositoryScope.launch {
+                    val clean = text.replace("\r\n", "\n").replace("\r", "\n")
+                    val lines = clean.lines().filter { it.isNotEmpty() }
+                    _terminalLogs.value = (_terminalLogs.value + lines).takeLast(200)
+                }
+            }
+
+            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                repositoryScope.launch {
+                    _terminalLogs.value = _terminalLogs.value + "[PTY Connection Closed: $reason]"
+                }
+                ptyWebSocket = null
+            }
+
+            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                repositoryScope.launch {
+                    _terminalLogs.value = _terminalLogs.value + "[PTY Error: ${t.message}]"
+                }
+                ptyWebSocket = null
+            }
+        })
+    }
+
+    override fun sendTerminalInput(input: String) {
+        ptyWebSocket?.send("$input\n")
+    }
+
+    override fun disconnectTerminalPty() {
+        ptyWebSocket?.close(1000, "User disconnected")
+        ptyWebSocket = null
+    }
+
     override fun clearMessages() {
+        stopGeneration()
         _currentSessionId.value = null
         _messages.value = emptyList()
     }

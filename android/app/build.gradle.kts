@@ -87,4 +87,16 @@ dependencies {
   implementation(libs.okhttp)
   implementation(libs.okhttp.sse)
   implementation(libs.kotlinx.serialization.json)
+
+  // DataStore
+  implementation(libs.androidx.datastore.preferences)
+
+  // Room runtime
+  implementation(libs.androidx.room.runtime)
+  implementation(libs.androidx.room.ktx)
+
+  // Google Credential Manager & Identity
+  implementation(libs.androidx.credentials)
+  implementation(libs.androidx.credentials.play.services.auth)
+  implementation(libs.googleid)
 }

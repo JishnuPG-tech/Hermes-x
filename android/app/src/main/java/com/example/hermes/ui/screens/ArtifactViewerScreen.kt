@@ -202,13 +202,13 @@ fun ArtifactViewerScreen(
                 }
             }
 
-            // Bottom Claude Follow-Up Composer Bar
+            // Bottom Hermes Follow-Up Composer Bar
             ClaudeHomeComposer(
                 text = followUpText,
                 onTextChange = { followUpText = it },
-                selectedModel = "Sonnet 5",
-                modelTier = "Low",
-                placeholder = "Reply to Claude...",
+                selectedModel = "Hermes Smart",
+                modelTier = "Smart",
+                placeholder = "Reply to Hermes...",
                 showProBanner = false,
                 onModelClick = {},
                 onAttachClick = {},

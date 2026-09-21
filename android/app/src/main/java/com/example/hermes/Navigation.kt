@@ -1,22 +1,62 @@
 package com.example.hermes
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
-import com.example.hermes.data.HermesDataRepository
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.hermes.theme.CanvasNearBlack
 import com.example.hermes.theme.SurfaceDarkElevated
 import com.example.hermes.ui.components.ClaudeDrawerContent
 import com.example.hermes.ui.screens.*
 import kotlinx.coroutines.launch
 
 @Composable
-fun MainNavigation() {
-    val backStack = rememberNavBackStack(NavHome)
+fun MainNavigation(
+    chatViewModel: ChatViewModel = viewModel(),
+    authViewModel: AuthViewModel = viewModel()
+) {
+    val isLoggedIn by authViewModel.isLoggedIn.collectAsStateWithLifecycle()
+    val currentUserName by authViewModel.userName.collectAsStateWithLifecycle()
+    val currentUserEmail by authViewModel.userEmail.collectAsStateWithLifecycle()
+
+    var isSplashVisible by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(1000)
+        isSplashVisible = false
+    }
+
+    if (isLoggedIn == null || isSplashVisible) {
+        SplashScreen()
+        return
+    }
+
+    val backStack = rememberNavBackStack(if (isLoggedIn == true) NavHome else NavAuth)
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val sessions by chatViewModel.sessions.collectAsStateWithLifecycle()
+
+    LaunchedEffect(isLoggedIn) {
+        if (isLoggedIn == false) {
+            backStack.clear()
+            backStack.add(NavAuth)
+        } else if (isLoggedIn == true) {
+            chatViewModel.fetchSessions()
+        }
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -25,6 +65,9 @@ fun MainNavigation() {
                 drawerContainerColor = SurfaceDarkElevated
             ) {
                 ClaudeDrawerContent(
+                    sessions = sessions,
+                    userName = currentUserName,
+                    userEmail = currentUserEmail,
                     onNavigateHome = {
                         scope.launch { drawerState.close() }
                         if (backStack.lastOrNull() != NavHome) {
@@ -58,7 +101,7 @@ fun MainNavigation() {
                     },
                     onNewChat = {
                         scope.launch { drawerState.close() }
-                        HermesDataRepository.instance.clearMessages()
+                        chatViewModel.clearMessages()
                         backStack.add(NavChat(prompt = null))
                     },
                     onOpenRecentChat = { sessionId ->
@@ -88,19 +131,23 @@ fun MainNavigation() {
                     )
                 }
                 entry<NavHome> {
+                    val availableModels by chatViewModel.availableModels.collectAsStateWithLifecycle()
                     HomeScreen(
-                        userName = "Jishnu",
+                        userName = currentUserName.substringBefore(' ').ifBlank { "User" },
+                        availableModels = availableModels,
                         onOpenDrawer = { scope.launch { drawerState.open() } },
-                        onNavigateChat = { prompt ->
-                            HermesDataRepository.instance.clearMessages()
-                            backStack.add(NavChat(prompt = prompt))
+                        onNavigateChat = { prompt, model ->
+                            chatViewModel.clearMessages()
+                            backStack.add(NavChat(prompt = prompt, initialModel = model))
                         },
                         onNavigateVoice = { backStack.add(NavVoice) },
                         onNavigateIncognito = {
-                            HermesDataRepository.instance.clearMessages()
+                            chatViewModel.clearMessages()
                             backStack.add(NavChat(prompt = null, isIncognito = true))
                         },
-                        onUpgradeClick = { backStack.add(NavBilling) }
+                        onUpgradeClick = { backStack.add(NavBilling) },
+                        onNavigateConnectors = { backStack.add(NavConnectors) },
+                        chatViewModel = chatViewModel
                     )
                 }
                 entry<NavChat> { key ->
@@ -109,20 +156,23 @@ fun MainNavigation() {
                         sessionId = key.sessionId,
                         isIncognito = key.isIncognito,
                         fromVoice = key.fromVoice,
+                        initialModel = key.initialModel,
                         onOpenDrawer = { scope.launch { drawerState.open() } },
                         onBack = { backStack.removeLastOrNull() },
                         onNavigateVoice = { backStack.add(NavVoice) },
                         onNavigateArtifacts = { backStack.add(NavArtifacts) },
                         onNavigateArtifactViewer = { title, type, code, lang ->
-                            backStack.add(NavArtifactViewer(title, type, code, lang))
-                        }
+                            backStack.add(NavArtifactViewer(artifactTitle = title, artifactType = type, artifactCode = code, artifactLanguage = lang))
+                        },
+                        onNavigateConnectors = { backStack.add(NavConnectors) },
+                        chatViewModel = chatViewModel
                     )
                 }
                 entry<NavVoice> {
                     VoiceScreen(
                         onClose = {
                             backStack.removeLastOrNull()
-                            HermesDataRepository.instance.clearMessages()
+                            chatViewModel.clearMessages()
                             backStack.add(NavChat(prompt = null, fromVoice = true))
                         },
                         onOpenVoiceSettings = { backStack.add(NavVoiceSettings) }
@@ -135,7 +185,7 @@ fun MainNavigation() {
                             backStack.add(NavChat(sessionId = sessionId))
                         },
                         onNewChat = {
-                            HermesDataRepository.instance.clearMessages()
+                            chatViewModel.clearMessages()
                             backStack.add(NavChat(prompt = null))
                         }
                     )
@@ -144,8 +194,8 @@ fun MainNavigation() {
                     ProjectsScreen(
                         onOpenDrawer = { scope.launch { drawerState.open() } },
                         onNavigateChat = {
-                            HermesDataRepository.instance.clearMessages()
-                            backStack.add(NavChat(null))
+                            chatViewModel.clearMessages()
+                            backStack.add(NavChat(prompt = null))
                         }
                     )
                 }
@@ -159,7 +209,7 @@ fun MainNavigation() {
                     ArtifactsScreen(
                         onOpenDrawer = { scope.launch { drawerState.open() } },
                         onOpenArtifact = { title, type, code, lang ->
-                            backStack.add(NavArtifactViewer(title, type, code, lang))
+                            backStack.add(NavArtifactViewer(artifactTitle = title, artifactType = type, artifactCode = code, artifactLanguage = lang))
                         }
                     )
                 }
@@ -192,6 +242,10 @@ fun MainNavigation() {
                         onNavigateTimeFocus = { backStack.add(NavTimeFocus) },
                         onNavigatePrivacy = { backStack.add(NavPrivacy) },
                         onNavigateSharing = { backStack.add(NavSharing) },
+                        onNavigateAuth = {
+                            backStack.clear()
+                            backStack.add(NavAuth)
+                        },
                         onUpgradeClick = { backStack.add(NavBilling) }
                     )
                 }

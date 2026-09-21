@@ -41,9 +41,48 @@ class ChatViewModel(
     val tasks: StateFlow<List<TaskDto>> = repository.tasks
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    fun sendMessage(content: String, model: String = "hermes-agent") {
-        if (content.isBlank()) return
-        repository.sendMessage(content.trim(), model)
+    val webSearchEnabled = kotlinx.coroutines.flow.MutableStateFlow(true)
+    val memoryEnabled = kotlinx.coroutines.flow.MutableStateFlow(true)
+    val selectedProject = kotlinx.coroutines.flow.MutableStateFlow<ProjectDto?>(null)
+
+    fun setWebSearchEnabled(enabled: Boolean) {
+        webSearchEnabled.value = enabled
+    }
+
+    fun setMemoryEnabled(enabled: Boolean) {
+        memoryEnabled.value = enabled
+    }
+
+    fun setSelectedProject(project: ProjectDto?) {
+        selectedProject.value = project
+    }
+
+    private val _pendingAttachments = kotlinx.coroutines.flow.MutableStateFlow<List<ChatAttachment>>(emptyList())
+    val pendingAttachments: StateFlow<List<ChatAttachment>> = _pendingAttachments
+
+    fun setPendingAttachments(list: List<ChatAttachment>) {
+        _pendingAttachments.value = list
+    }
+
+    fun consumePendingAttachments(): List<ChatAttachment> {
+        val list = _pendingAttachments.value
+        _pendingAttachments.value = emptyList()
+        return list
+    }
+
+    fun sendMessage(
+        content: String,
+        model: String = "hermes-agent",
+        attachments: List<ChatAttachment> = emptyList()
+    ) {
+        if (content.isBlank() && attachments.isEmpty()) return
+        repository.sendMessage(
+            content = content.trim(),
+            model = model,
+            attachments = attachments,
+            webSearch = webSearchEnabled.value,
+            memory = memoryEnabled.value
+        )
     }
 
     fun stopGeneration() {
@@ -60,6 +99,10 @@ class ChatViewModel(
 
     fun deleteSession(sessionId: String) {
         repository.deleteSession(sessionId)
+    }
+
+    fun updateSessionTitle(sessionId: String, newTitle: String) {
+        repository.updateSessionTitle(sessionId, newTitle)
     }
 
     fun fetchSessions() {

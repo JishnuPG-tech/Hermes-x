@@ -29,11 +29,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.hermes.data.HermesDataRepository
+import com.example.hermes.data.SessionDto
 import com.example.hermes.theme.*
 
 @Composable
 fun ClaudeDrawerContent(
+    sessions: List<SessionDto> = emptyList(),
+    userName: String = "User",
+    userEmail: String = "",
     onNavigateHome: () -> Unit,
     onNavigateChats: () -> Unit,
     onNavigateProjects: () -> Unit,
@@ -56,9 +59,9 @@ fun ClaudeDrawerContent(
                 .fillMaxSize()
                 .padding(horizontal = 24.dp, vertical = 16.dp)
         ) {
-            // Claude Serif Wordmark (12-01-18)
+            // Hermes Serif Wordmark (12-01-18)
             Text(
-                text = "Claude",
+                text = "Hermes",
                 style = HermesTypography.displayLarge.copy(
                     fontSize = 40.sp,
                     color = TextPrimaryWarm,
@@ -161,7 +164,6 @@ fun ClaudeDrawerContent(
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
             Spacer(modifier = Modifier.height(14.dp))
 
-            val sessions by HermesDataRepository.instance.sessions.collectAsState()
             val pinnedSessions = sessions.filter { it.pinned }
             val recentSessions = sessions.filter { !it.pinned }.take(8)
 
@@ -257,7 +259,10 @@ fun ClaudeDrawerContent(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Salmon Circle Avatar "J" (12-01-18)
+            // Salmon Circle Avatar with User Initial
+            val initial = userName.trim().firstOrNull()?.uppercaseChar()?.toString()
+                ?: userEmail.trim().firstOrNull()?.uppercaseChar()?.toString()
+                ?: "U"
             Box(
                 modifier = Modifier
                     .size(46.dp)
@@ -267,7 +272,7 @@ fun ClaudeDrawerContent(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "J",
+                    text = initial,
                     style = HermesTypography.headlineMedium.copy(
                         color = PureWhite,
                         fontSize = 20.sp,

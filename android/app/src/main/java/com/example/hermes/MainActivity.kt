@@ -15,8 +15,16 @@ class MainActivity : ComponentActivity() {
     super.onCreate(savedInstanceState)
 
     enableEdgeToEdge()
+    com.example.hermes.data.HermesDataRepository.initialize(applicationContext)
     setContent {
       HermesTheme { Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { MainNavigation() } }
+    }
+  }
+
+  override fun onResume() {
+    super.onResume()
+    if (!com.example.hermes.data.HermesDataRepository.instance.isStreaming.value) {
+      com.example.hermes.data.HermesDataRepository.syncActiveSession()
     }
   }
 }

@@ -85,7 +85,7 @@ fun NotificationsScreen(
                 // Dispatch messages
                 NotificationRow(
                     title = "Dispatch messages",
-                    description = "Get notified when Claude messages you in Dispatch",
+                    description = "Get notified when Hermes messages you in Dispatch",
                     icon = Icons.Outlined.MarkUnreadChatAlt,
                     checked = dispatchMessagesEnabled,
                     onCheckedChange = { dispatchMessagesEnabled = it }

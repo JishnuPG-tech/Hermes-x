@@ -252,6 +252,12 @@ async def list_sessions(
     offset: int = Query(0, ge=0),
 ):
     """List all sessions"""
+    try:
+        from gateway import sessions_api as session_store
+        if session_store._SESSIONS:
+            return await session_store.list_sessions(limit=limit)
+    except Exception:
+        pass
     return await _proxy_to_hermes("sessions", request, default_fallback={"data": [], "has_more": False})
 
 
@@ -261,6 +267,11 @@ async def create_session(
     body: dict = Body(...),
 ):
     """Create a new session"""
+    try:
+        from gateway import sessions_api as session_store
+        return await session_store.create_session(request)
+    except Exception:
+        pass
     session_id = f"s_{os.urandom(8).hex()}"
     return await _proxy_to_hermes("sessions", request, default_fallback={"id": session_id, "status": "active", "created_at": "2026-08-26T00:00:00Z"})
 
@@ -271,6 +282,12 @@ async def get_session(
     session_id: str = Path(...),
 ):
     """Get session details"""
+    try:
+        from gateway import sessions_api as session_store
+        if session_id in session_store._SESSIONS or session_id in session_store._CONV_TO_SESSION:
+            return await session_store.get_session(session_id)
+    except Exception:
+        pass
     return await _proxy_to_hermes(f"sessions/{session_id}", request, default_fallback={"id": session_id, "status": "active", "events": []})
 
 

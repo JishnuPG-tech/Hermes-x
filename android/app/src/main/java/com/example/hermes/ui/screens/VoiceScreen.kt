@@ -25,19 +25,18 @@ import androidx.compose.ui.unit.sp
 import com.example.hermes.theme.*
 import com.example.hermes.ui.components.*
 
-enum class VoiceCallState {
-    CONNECTING, LISTENING, THINKING, SPEAKING
-}
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun VoiceScreen(
     onClose: () -> Unit,
-    onOpenVoiceSettings: () -> Unit = {}
+    onOpenVoiceSettings: () -> Unit = {},
+    voiceViewModel: VoiceViewModel = viewModel()
 ) {
-    var isMuted by remember { mutableStateOf(false) }
-    var voiceState by remember { mutableStateOf(VoiceCallState.LISTENING) }
-    var captionText by remember { mutableStateOf("Hold tight, connecting…") }
-    var activeWordIndex by remember { mutableIntStateOf(0) }
+    val voiceState by voiceViewModel.voiceState.collectAsStateWithLifecycle()
+    val captionText by voiceViewModel.statusText.collectAsStateWithLifecycle()
+    val isMuted by voiceViewModel.isMuted.collectAsStateWithLifecycle()
 
     // Rhythmic breathing pulse for starburst avatar
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
@@ -114,10 +113,10 @@ fun VoiceScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(
-                modifier = Modifier.scale(if (voiceState == VoiceCallState.SPEAKING) pulseScale else 1.0f),
+                modifier = Modifier.scale(if (voiceState == VoiceState.SPEAKING) pulseScale else 1.0f),
                 contentAlignment = Alignment.Center
             ) {
-                if (voiceState == VoiceCallState.THINKING) {
+                if (voiceState == VoiceState.CONNECTING) {
                     ClaudeSparkThinkingAnimation(size = 54.dp, tint = BrandCoral)
                 } else {
                     ClaudeSpark(size = 54.dp, tint = BrandCoral)
@@ -155,8 +154,7 @@ fun VoiceScreen(
                     .background(Color(0xFF1C1B19))
                     .border(1.dp, BorderSubtle, CircleShape)
                     .clickable {
-                        isMuted = !isMuted
-                        captionText = if (isMuted) "Microphone muted" else "Listening…"
+                        voiceViewModel.toggleMute()
                     },
                 contentAlignment = Alignment.Center
             ) {
@@ -208,7 +206,7 @@ fun VoiceScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Sonnet",
+                        text = "Hermes Smart",
                         style = HermesTypography.titleLarge.copy(
                             fontSize = 15.sp,
                             color = TextPrimaryWarm,

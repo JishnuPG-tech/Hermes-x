@@ -108,6 +108,79 @@ class HermesApiClient(
     }
 
     /**
+     * Authenticate with Google ID Token via backend /api/auth/verify_google_mobile
+     */
+    suspend fun verifyGoogleToken(idToken: String): Result<VerifyGoogleResponse> = withContext(Dispatchers.IO) {
+        val payload = json.encodeToString(GoogleAuthRequestDto(id_token = idToken, token = idToken))
+        val endpoints = listOf(
+            "$baseUrl/api/auth/verify_google_mobile",
+            "$baseUrl/api/v1/auth/google",
+            "$baseUrl/auth/verify_google_mobile"
+        )
+
+        var lastError: Exception? = null
+        for (endpoint in endpoints) {
+            try {
+                val req = Request.Builder()
+                    .url(endpoint)
+                    .post(payload.toRequestBody(JSON_MEDIA_TYPE))
+                    .header("Accept", "application/json")
+                    .build()
+
+                okHttpClient.newCall(req).execute().use { resp ->
+                    val bodyStr = resp.body?.string() ?: ""
+                    if (resp.isSuccessful && bodyStr.isNotBlank()) {
+                        val authRes = json.decodeFromString<VerifyGoogleResponse>(bodyStr)
+                        if (authRes.success || !authRes.secret.isNullOrBlank() || !authRes.sessionKey.isNullOrBlank()) {
+                            val token = authRes.secret ?: authRes.sessionKey
+                            if (!token.isNullOrBlank()) {
+                                updateApiKey(token)
+                            }
+                            return@withContext Result.success(authRes)
+                        }
+                    } else if (resp.code in 400..499) {
+                        return@withContext Result.failure(IOException("Authentication error (${resp.code}): $bodyStr"))
+                    }
+                }
+            } catch (e: Exception) {
+                lastError = e
+            }
+        }
+        Result.failure(lastError ?: IOException("Failed to verify Google token with server"))
+    }
+
+    /**
+     * Fetch OAuth and server configuration dynamically from the backend.
+     */
+    suspend fun getAuthConfig(): Result<AuthConfigResponse> = withContext(Dispatchers.IO) {
+        val endpoints = listOf(
+            "$baseUrl/api/auth/config",
+            "$baseUrl/auth/config",
+            "$baseUrl/api/v1/auth/config",
+            "$baseUrl/hermes/api/auth/config"
+        )
+        for (endpoint in endpoints) {
+            try {
+                val req = Request.Builder()
+                    .url(endpoint)
+                    .get()
+                    .header("Accept", "application/json")
+                    .build()
+                okHttpClient.newCall(req).execute().use { resp ->
+                    val bodyStr = resp.body?.string() ?: ""
+                    if (resp.isSuccessful && bodyStr.isNotBlank()) {
+                        val cfg = json.decodeFromString<AuthConfigResponse>(bodyStr)
+                        return@withContext Result.success(cfg)
+                    }
+                }
+            } catch (_: Exception) {
+            }
+        }
+        Result.failure(IOException("Failed to fetch auth configuration from server"))
+    }
+
+
+    /**
      * Check if currently authenticated with the server.
      */
     suspend fun checkAuthStatus(): Boolean = withContext(Dispatchers.IO) {
@@ -130,58 +203,125 @@ class HermesApiClient(
     }
 
     /**
+     * Ensure active session authentication with backend.
+     */
+    suspend fun ensureAuthenticated(): Boolean = withContext(Dispatchers.IO) {
+        if (checkAuthStatus()) return@withContext true
+        login()
+    }
+
+    /**
      * Fetch all chat sessions from the server.
      */
     suspend fun getSessions(): List<SessionDto> = withContext(Dispatchers.IO) {
-        // Auto-login if session expired
-        if (!checkAuthStatus()) {
-            login()
-        }
+        ensureAuthenticated()
 
-        val req = Request.Builder()
-            .url("$baseUrl/api/sessions")
-            .get()
-            .header("Authorization", "Bearer $apiKey")
-            .build()
+        val urls = listOf(
+            "$baseUrl/api/sessions",
+            "$baseUrl/v1/sessions",
+            "$baseUrl/sessions"
+        )
+        for (url in urls) {
+            try {
+                val req = Request.Builder()
+                    .url(url)
+                    .get()
+                    .header("Authorization", "Bearer $apiKey")
+                    .header("Accept", "application/json")
+                    .build()
 
-        try {
-            okHttpClient.newCall(req).execute().use { resp ->
-                if (!resp.isSuccessful) return@withContext emptyList()
-                val bodyStr = resp.body?.string() ?: return@withContext emptyList()
-                val res = json.decodeFromString<SessionsResponse>(bodyStr)
-                res.sessions
-            }
-        } catch (_: Exception) {
-            emptyList()
+                okHttpClient.newCall(req).execute().use { resp ->
+                    if (!resp.isSuccessful) return@use
+                    val bodyStr = resp.body?.string() ?: return@use
+                    try {
+                        val res = json.decodeFromString<SessionsResponse>(bodyStr)
+                        if (res.sessions.isNotEmpty()) return@withContext res.sessions
+                    } catch (_: Exception) {}
+                    try {
+                        val directList = json.decodeFromString<List<SessionDto>>(bodyStr)
+                        if (directList.isNotEmpty()) return@withContext directList
+                    } catch (_: Exception) {}
+                }
+            } catch (_: Exception) {}
         }
+        emptyList()
     }
 
     /**
      * Get details and messages for a specific session.
      */
     suspend fun getSession(sessionId: String): SessionDetailDto? = withContext(Dispatchers.IO) {
-        val req = Request.Builder()
-            .url("$baseUrl/api/session?session_id=$sessionId")
-            .get()
-            .header("Authorization", "Bearer $apiKey")
-            .build()
+        ensureAuthenticated()
 
-        try {
-            okHttpClient.newCall(req).execute().use { resp ->
-                if (!resp.isSuccessful) return@withContext null
-                val bodyStr = resp.body?.string() ?: return@withContext null
-                val res = json.decodeFromString<SessionDetailResponse>(bodyStr)
-                res.session
-            }
-        } catch (_: Exception) {
-            null
+        val urls = listOf(
+            "$baseUrl/api/session?session_id=$sessionId",
+            "$baseUrl/v1/sessions/$sessionId",
+            "$baseUrl/sessions/$sessionId",
+            "$baseUrl/hermes/v1/sessions/$sessionId"
+        )
+        for (url in urls) {
+            try {
+                val req = Request.Builder()
+                    .url(url)
+                    .get()
+                    .header("Authorization", "Bearer $apiKey")
+                    .header("Accept", "application/json")
+                    .build()
+
+                okHttpClient.newCall(req).execute().use { resp ->
+                    if (!resp.isSuccessful) return@use
+                    val bodyStr = resp.body?.string() ?: return@use
+                    try {
+                        val res = json.decodeFromString<SessionDetailResponse>(bodyStr)
+                        if (res.session != null) return@withContext res.session
+                    } catch (_: Exception) {}
+                    try {
+                        val direct = json.decodeFromString<SessionDetailDto>(bodyStr)
+                        if (direct.session_id.isNotBlank() || direct.messages.isNotEmpty()) return@withContext direct
+                    } catch (_: Exception) {}
+                }
+            } catch (_: Exception) {}
         }
+        null
+    }
+
+    /**
+     * Get the real-time execution status of a session (e.g. is background task still generating).
+     */
+    suspend fun getSessionStatus(sessionId: String): SessionStatusDto? = withContext(Dispatchers.IO) {
+        val urls = listOf(
+            "$baseUrl/v1/sessions/$sessionId/status",
+            "$baseUrl/api/session/status?session_id=$sessionId"
+        )
+        for (url in urls) {
+            try {
+                val req = Request.Builder()
+                    .url(url)
+                    .get()
+                    .header("Authorization", "Bearer $apiKey")
+                    .header("Accept", "application/json")
+                    .build()
+
+                okHttpClient.newCall(req).execute().use { resp ->
+                    if (!resp.isSuccessful) return@use
+                    val bodyStr = resp.body?.string() ?: return@use
+                    try {
+                        return@withContext json.decodeFromString<SessionStatusDto>(bodyStr)
+                    } catch (_: Exception) {}
+                }
+            } catch (_: Exception) {}
+        }
+        null
     }
 
     /**
      * Create a new session on the server.
      */
     suspend fun createSession(title: String = "Chat", model: String = "hermes-agent"): SessionDto? = withContext(Dispatchers.IO) {
+        if (!checkAuthStatus()) {
+            login()
+        }
+
         val reqBody = json.encodeToString(NewSessionRequest(title = title, model = model))
         val req = Request.Builder()
             .url("$baseUrl/api/session/new")
@@ -193,7 +333,16 @@ class HermesApiClient(
             okHttpClient.newCall(req).execute().use { resp ->
                 if (!resp.isSuccessful) return@withContext null
                 val bodyStr = resp.body?.string() ?: return@withContext null
-                json.decodeFromString<SessionDto>(bodyStr)
+                try {
+                    val res = json.decodeFromString<NewSessionResponse>(bodyStr)
+                    res.session
+                } catch (_: Exception) {
+                    try {
+                        json.decodeFromString<SessionDto>(bodyStr)
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
             }
         } catch (_: Exception) {
             null
@@ -218,6 +367,88 @@ class HermesApiClient(
         } catch (_: Exception) {
             false
         }
+    }
+
+    /**
+     * Rename a session on the server.
+     */
+    suspend fun renameSession(sessionId: String, title: String): Boolean = withContext(Dispatchers.IO) {
+        ensureAuthenticated()
+        val escapedTitle = title.replace("\\", "\\\\").replace("\"", "\\\"")
+        val reqBody = """{"session_id":"$sessionId","title":"$escapedTitle"}""".toRequestBody(JSON_MEDIA_TYPE)
+        val urls = listOf(
+            "$baseUrl/api/session/rename",
+            "$baseUrl/v1/sessions/$sessionId/rename",
+            "$baseUrl/sessions/$sessionId/rename"
+        )
+        for (url in urls) {
+            try {
+                val req = Request.Builder()
+                    .url(url)
+                    .post(reqBody)
+                    .header("Authorization", "Bearer $apiKey")
+                    .header("Accept", "application/json")
+                    .build()
+                okHttpClient.newCall(req).execute().use { resp ->
+                    if (resp.isSuccessful) return@withContext true
+                }
+            } catch (_: Exception) {}
+        }
+        false
+    }
+
+    /**
+     * Use a fast mini model to analyze the conversation messages and generate a concise 3-5 word title.
+     */
+    suspend fun generateChatTitle(userPrompt: String, assistantReply: String): String? = withContext(Dispatchers.IO) {
+        val prompt = "Generate a short, concise, high quality title (3 to 5 words maximum) for this conversation. Output ONLY the plain text title without quotes or punctuation.\n\nUser: ${userPrompt.take(250)}\n\nAssistant: ${assistantReply.take(250)}"
+        val modelsToTry = listOf(
+            "auto/best-fast",
+            "antigravity/gemini-2.5-flash",
+            "groq/llama-3.3-70b-versatile",
+            "claude-3-5-haiku-20241022",
+            "auto/smart"
+        )
+
+        for (modelName in modelsToTry) {
+            val reqBody = ChatCompletionRequest(
+                model = modelName,
+                messages = listOf(
+                    ApiMessage(role = "system", content = "You are a succinct title generator. Output only the title, max 5 words, no punctuation, no quotes."),
+                    ApiMessage(role = "user", content = prompt)
+                ),
+                stream = false,
+                max_tokens = 20
+            )
+
+            try {
+                val jsonString = json.encodeToString(reqBody)
+                val req = Request.Builder()
+                    .url("$baseUrl/v1/chat/completions")
+                    .post(jsonString.toRequestBody(JSON_MEDIA_TYPE))
+                    .header("Authorization", "Bearer $apiKey")
+                    .header("Accept", "application/json")
+                    .build()
+
+                okHttpClient.newCall(req).execute().use { resp ->
+                    if (!resp.isSuccessful) return@use
+                    val bodyStr = resp.body?.string() ?: return@use
+                    val parsed = json.decodeFromString<ChatCompletionResponse>(bodyStr)
+                    val rawTitle = parsed.choices.firstOrNull()?.message?.content?.trim()
+                    if (!rawTitle.isNullOrBlank()) {
+                        val cleanTitle = rawTitle.lines().firstOrNull { it.isNotBlank() }
+                            ?.replace(Regex("""^["'`*#]+|["'`*#.]+$"""), "")
+                            ?.replace(Regex("""^Title:\s*""", RegexOption.IGNORE_CASE), "")
+                            ?.trim()
+                            ?.take(50)
+                        if (!cleanTitle.isNullOrBlank() && cleanTitle.length in 3..55) {
+                            return@withContext cleanTitle
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+        null
     }
 
     /**
@@ -338,11 +569,189 @@ class HermesApiClient(
     }
 
     /**
-     * Streams chat completions via Server-Sent Events (SSE) from the backend.
+     * Pause a running task.
      */
+    suspend fun pauseTask(taskId: String): Boolean = withContext(Dispatchers.IO) {
+        val req = Request.Builder()
+            .url("$baseUrl/v1/tasks/$taskId/pause")
+            .post("{}".toRequestBody(JSON_MEDIA_TYPE))
+            .header("Authorization", "Bearer $apiKey")
+            .build()
+        try {
+            okHttpClient.newCall(req).execute().use { it.isSuccessful }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Resume a paused task.
+     */
+    suspend fun resumeTask(taskId: String): Boolean = withContext(Dispatchers.IO) {
+        val req = Request.Builder()
+            .url("$baseUrl/v1/tasks/$taskId/resume")
+            .post("{}".toRequestBody(JSON_MEDIA_TYPE))
+            .header("Authorization", "Bearer $apiKey")
+            .build()
+        try {
+            okHttpClient.newCall(req).execute().use { it.isSuccessful }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Cancel a task.
+     */
+    suspend fun cancelTask(taskId: String): Boolean = withContext(Dispatchers.IO) {
+        val req = Request.Builder()
+            .url("$baseUrl/v1/tasks/$taskId/cancel")
+            .post("{}".toRequestBody(JSON_MEDIA_TYPE))
+            .header("Authorization", "Bearer $apiKey")
+            .build()
+        try {
+            okHttpClient.newCall(req).execute().use { it.isSuccessful }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Fetch pending approvals.
+     */
+    suspend fun getApprovals(): List<ApprovalDto> = withContext(Dispatchers.IO) {
+        val req = Request.Builder()
+            .url("$baseUrl/v1/approvals")
+            .get()
+            .header("Authorization", "Bearer $apiKey")
+            .build()
+        try {
+            okHttpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext emptyList()
+                val bodyStr = resp.body?.string() ?: return@withContext emptyList()
+                val res = json.decodeFromString<ApprovalsResponse>(bodyStr)
+                res.approvals
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    /**
+     * Approve an action.
+     */
+    suspend fun approveRequest(approvalId: String, reason: String = "Approved by Android client"): Boolean = withContext(Dispatchers.IO) {
+        val body = """{"reason":"$reason"}""".toRequestBody(JSON_MEDIA_TYPE)
+        val req = Request.Builder()
+            .url("$baseUrl/v1/approvals/$approvalId/approve")
+            .post(body)
+            .header("Authorization", "Bearer $apiKey")
+            .build()
+        try {
+            okHttpClient.newCall(req).execute().use { it.isSuccessful }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Deny an action.
+     */
+    suspend fun denyRequest(approvalId: String, reason: String = "Denied by Android client"): Boolean = withContext(Dispatchers.IO) {
+        val body = """{"reason":"$reason"}""".toRequestBody(JSON_MEDIA_TYPE)
+        val req = Request.Builder()
+            .url("$baseUrl/v1/approvals/$approvalId/deny")
+            .post(body)
+            .header("Authorization", "Bearer $apiKey")
+            .build()
+        try {
+            okHttpClient.newCall(req).execute().use { it.isSuccessful }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Fetch server computer runtime status & storage metrics.
+     */
+    suspend fun getHostStatus(): HostStatusDto? = withContext(Dispatchers.IO) {
+        val req = Request.Builder()
+            .url("$baseUrl/v1/computer/status")
+            .get()
+            .header("Authorization", "Bearer $apiKey")
+            .build()
+        try {
+            okHttpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext null
+                val bodyStr = resp.body?.string() ?: return@withContext null
+                json.decodeFromString<HostStatusDto>(bodyStr)
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Fetch knowledge sources and vaults.
+     */
+    suspend fun getKnowledgeSources(): List<KnowledgeSourceDto> = withContext(Dispatchers.IO) {
+        val req = Request.Builder()
+            .url("$baseUrl/v1/knowledge/sources")
+            .get()
+            .header("Authorization", "Bearer $apiKey")
+            .build()
+        try {
+            okHttpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext emptyList()
+                val bodyStr = resp.body?.string() ?: return@withContext emptyList()
+                val res = json.decodeFromString<KnowledgeSourcesResponse>(bodyStr)
+                res.sources
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    /**
+     * Fetch MCP directory servers.
+     */
+    suspend fun getDirectoryServers(): List<DirectoryServerItemDto> = withContext(Dispatchers.IO) {
+        val req = Request.Builder()
+            .url("$baseUrl/v1/directory/servers")
+            .get()
+            .header("Authorization", "Bearer $apiKey")
+            .build()
+        try {
+            okHttpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext emptyList()
+                val bodyStr = resp.body?.string() ?: return@withContext emptyList()
+                val res = json.decodeFromString<DirectoryServersResponse>(bodyStr)
+                if (res.servers.isNotEmpty()) res.servers else res.data
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    /**
+     * Connects to the interactive PTY WebSocket endpoint.
+     */
+    fun connectPtyWebSocket(listener: WebSocketListener): WebSocket {
+        val wsUrl = if (baseUrl.startsWith("https://")) {
+            baseUrl.replace("https://", "wss://") + "/api/pty"
+        } else {
+            baseUrl.replace("http://", "ws://") + "/api/pty"
+        }
+        val request = Request.Builder()
+            .url(wsUrl)
+            .header("Authorization", "Bearer $apiKey")
+            .build()
+        return okHttpClient.newWebSocket(request, listener)
+    }
     fun streamChat(
         messages: List<ChatMessage>,
-        model: String = "hermes-agent"
+        model: String = "hermes-agent",
+        sessionId: String? = null
     ): Flow<StreamEvent> = callbackFlow {
         val apiMessages = messages.map {
             ApiMessage(role = it.role, content = it.content)
@@ -350,16 +759,22 @@ class HermesApiClient(
         val requestBody = ChatCompletionRequest(
             model = model,
             messages = apiMessages,
-            stream = true
+            stream = true,
+            sessionId = sessionId
         )
 
         val jsonString = json.encodeToString(requestBody)
-        val httpReq = Request.Builder()
+        val reqBuilder = Request.Builder()
             .url("$baseUrl/v1/chat/completions")
             .post(jsonString.toRequestBody(JSON_MEDIA_TYPE))
             .header("Authorization", "Bearer $apiKey")
             .header("Accept", "text/event-stream")
-            .build()
+
+        if (!sessionId.isNullOrBlank()) {
+            reqBuilder.header("X-Session-Id", sessionId)
+        }
+
+        val httpReq = reqBuilder.build()
 
         val call = okHttpClient.newCall(httpReq)
         val fullAccumulated = StringBuilder()

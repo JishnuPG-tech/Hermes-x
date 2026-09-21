@@ -66,12 +66,12 @@ fun PrivacyScreen(
                     style = HermesTypography.titleLarge.copy(fontSize = 19.sp, color = TextPrimaryWarm)
                 )
                 Text(
-                    text = "Anthropic believes in transparent data practices",
+                    text = "Apex believes in transparent data practices",
                     style = HermesTypography.bodyLarge.copy(fontSize = 16.5.sp, color = TextPrimaryWarm)
                 )
                 Row {
                     Text(
-                        text = "Keeping your data safe is a priority. Learn how your information is protected when using Anthropic products, and visit our ",
+                        text = "Keeping your data safe is a priority. Learn how your information is protected when using Apex products, and visit our ",
                         style = HermesTypography.bodyMedium.copy(fontSize = 14.5.sp, color = TextMuted, lineHeight = 21.sp)
                     )
                 }
@@ -120,7 +120,7 @@ fun PrivacyScreen(
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Allow the use of your chats and coding sessions to train and improve Anthropic AI models.",
+                        text = "Allow the use of your chats and coding sessions to train and improve Apex AI models.",
                         style = HermesTypography.bodyMedium.copy(fontSize = 14.5.sp, color = TextMuted, lineHeight = 20.sp)
                     )
                     Spacer(modifier = Modifier.height(4.dp))

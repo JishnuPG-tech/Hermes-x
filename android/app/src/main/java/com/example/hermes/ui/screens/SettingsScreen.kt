@@ -34,9 +34,12 @@ fun SettingsScreen(
     onNavigateTimeFocus: () -> Unit = {},
     onNavigatePrivacy: () -> Unit = {},
     onNavigateSharing: () -> Unit = {},
-    onUpgradeClick: () -> Unit = onNavigateBilling
+    onNavigateAuth: () -> Unit = {},
+    onUpgradeClick: () -> Unit = onNavigateBilling,
+    settingsViewModel: SettingsViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
-    var selectedColorMode by remember { mutableStateOf("System") }
+    val themeMode by settingsViewModel.themeMode.collectAsState()
+    val userEmail by settingsViewModel.userEmail.collectAsState()
     var selectedFontStyle by remember { mutableStateOf("Default") }
     var showColorModeDialog by remember { mutableStateOf(false) }
     var showFontStyleDialog by remember { mutableStateOf(false) }
@@ -97,7 +100,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "jishnupg2005@gmail.com",
+                            text = userEmail.ifBlank { "hermes-user" },
                             style = HermesTypography.titleLarge.copy(fontSize = 15.sp, color = TextPrimaryWarm)
                         )
                         Box(
@@ -129,7 +132,7 @@ fun SettingsScreen(
                             .padding(18.dp)
                     ) {
                         Text(
-                            text = "Want more Claude?",
+                            text = "Want more Hermes?",
                             style = HermesTypography.headlineMedium.copy(fontSize = 19.sp, color = TextPrimaryWarm)
                         )
                         Spacer(modifier = Modifier.height(6.dp))
@@ -189,7 +192,7 @@ fun SettingsScreen(
                         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
                         SettingOptionRow(
                             "Color mode",
-                            subtitle = selectedColorMode,
+                            subtitle = themeMode.name.lowercase().replaceFirstChar { it.uppercase() },
                             icon = Icons.Outlined.DarkMode,
                             onClick = { showColorModeDialog = true }
                         )
@@ -268,7 +271,7 @@ fun SettingsScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Claude v2.4.1 (120)",
+                            text = "Hermes v2.4.1 (120)",
                             style = HermesTypography.labelSmall.copy(
                                 fontSize = 12.sp,
                                 color = TextSubtle
@@ -294,17 +297,32 @@ fun SettingsScreen(
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         listOf("System", "Dark", "Light").forEach { mode ->
+                            val currentStr = themeMode.name.lowercase().replaceFirstChar { it.uppercase() }
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(10.dp))
-                                    .clickable { selectedColorMode = mode }
+                                    .clickable {
+                                        val tm = when(mode) {
+                                            "Light" -> com.example.hermes.data.ThemeMode.LIGHT
+                                            "Dark" -> com.example.hermes.data.ThemeMode.DARK
+                                            else -> com.example.hermes.data.ThemeMode.SYSTEM
+                                        }
+                                        settingsViewModel.setThemeMode(tm)
+                                    }
                                     .padding(vertical = 10.dp, horizontal = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 RadioButton(
-                                    selected = selectedColorMode == mode,
-                                    onClick = { selectedColorMode = mode },
+                                    selected = currentStr.equals(mode, true),
+                                    onClick = {
+                                        val tm = when(mode) {
+                                            "Light" -> com.example.hermes.data.ThemeMode.LIGHT
+                                            "Dark" -> com.example.hermes.data.ThemeMode.DARK
+                                            else -> com.example.hermes.data.ThemeMode.SYSTEM
+                                        }
+                                        settingsViewModel.setThemeMode(tm)
+                                    },
                                     colors = RadioButtonDefaults.colors(
                                         selectedColor = AccentBlue,
                                         unselectedColor = TextSubtle
@@ -398,10 +416,14 @@ fun SettingsScreen(
                 containerColor = Color(0xFF1F1E1C),
                 shape = RoundedCornerShape(20.dp),
                 title = { Text("Log out?", color = TextPrimaryWarm) },
-                text = { Text("Are you sure you want to log out of Claude?", color = TextMuted) },
+                text = { Text("Are you sure you want to log out of Hermes?", color = TextMuted) },
                 confirmButton = {
                     Button(
-                        onClick = { showLogoutDialog = false },
+                        onClick = {
+                            showLogoutDialog = false
+                            settingsViewModel.logout()
+                            onNavigateAuth()
+                        },
                         colors = ButtonDefaults.buttonColors(containerColor = DestructiveRed)
                     ) {
                         Text("Log out")

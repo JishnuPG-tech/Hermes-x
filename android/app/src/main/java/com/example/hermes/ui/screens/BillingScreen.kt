@@ -120,7 +120,7 @@ fun BillingScreen(
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
-                            text = "Standard usage limits on Claude 3.5 Sonnet and Haiku. Resets regularly every 5 hours.",
+                            text = "Standard usage limits on Hermes models. Resets regularly every 5 hours.",
                             style = HermesTypography.bodyMedium.copy(
                                 fontSize = 13.5.sp,
                                 color = TextMuted,
@@ -141,7 +141,7 @@ fun BillingScreen(
                             .padding(20.dp)
                     ) {
                         Text(
-                            text = "Claude Pro",
+                            text = "Hermes Pro",
                             style = HermesTypography.headlineMedium.copy(
                                 fontSize = 22.sp,
                                 color = TextPrimaryWarm
@@ -175,7 +175,7 @@ fun BillingScreen(
                         val benefits = listOf(
                             "5x more usage versus Free plan",
                             "Priority access during high-traffic peak hours",
-                            "Access to Claude 3.7 Sonnet reasoning & Claude 3 Opus",
+                            "Access to Hermes reasoning & advanced models",
                             "Create and manage Projects with custom docs",
                             "Artifacts interactive preview & code workbench"
                         )

@@ -171,144 +171,175 @@ fun TasksScreen(
                 }
             }
 
-            // IN FLIGHT EXECUTION CARD
+            // DYNAMIC IN-FLIGHT EXECUTION CARD
             item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(Color(0xFF1C1B19))
-                        .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp))
-                        .padding(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            StatusChip("RUNNING", color = AccentGreen)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("#TSK-8921", style = HermesTypography.labelSmall.copy(color = TextSubtle, fontSize = 12.sp))
-                        }
-                        IconButton(onClick = {}, modifier = Modifier.size(24.dp)) {
-                            Icon(Icons.Default.MoreVert, contentDescription = null, tint = TextMuted)
-                        }
-                    }
+                val primaryTask = liveTasks.firstOrNull { it.status.equals("RUNNING", true) } 
+                    ?: liveTasks.firstOrNull()
 
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Text("Android Client Integration & Verification", style = HermesTypography.titleLarge.copy(fontSize = 17.sp))
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Psychology, contentDescription = null, tint = BrandCoral, modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Supervised by: ", style = HermesTypography.bodyMedium.copy(color = TextSubtle, fontSize = 12.sp))
-                        Text("Hermes Supervisor", style = HermesTypography.bodyMedium.copy(color = TextPrimaryWarm, fontSize = 12.sp))
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
-                        Icon(Icons.Default.Group, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Assigned to: ", style = HermesTypography.bodyMedium.copy(color = TextSubtle, fontSize = 12.sp))
-                        Text("QA Agent & Backend Agent", style = HermesTypography.bodyMedium.copy(color = TextPrimaryWarm, fontSize = 12.sp))
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Text("AUTONOMOUS DIRECTIVE", style = HermesTypography.labelSmall.copy(color = TextSubtle, fontSize = 10.sp, letterSpacing = 1.sp))
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        "Compile Compose UI, execute visual regression tests, verify remote state on Hugging Face space.",
-                        style = HermesTypography.bodyMedium.copy(color = TextMuted, fontSize = 13.sp, lineHeight = 18.sp)
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Sync, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(14.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Step 3 of 5", style = HermesTypography.bodyMedium.copy(color = TextPrimaryWarm, fontSize = 13.sp))
-                        }
-                        Text("78%", style = HermesTypography.bodyMedium.copy(color = AccentBlue, fontSize = 13.sp))
-                    }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    LinearProgressIndicator(
-                        progress = { 0.78f },
-                        modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape),
-                        color = AccentBlue,
-                        trackColor = Color(0xFF2A2926)
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // Command Output
-                    Row(
+                if (primaryTask != null) {
+                    val isTaskPaused = primaryTask.status.equals("PAUSED", true)
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFF141413))
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(Color(0xFF1C1B19))
+                            .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp))
+                            .padding(16.dp)
                     ) {
-                        Text("$ ./gradlew connectedAn...", style = HermesTypography.labelSmall.copy(color = TextPrimaryWarm, fontSize = 11.5.sp))
-                        Text("(14/18 passed)", style = HermesTypography.labelSmall.copy(color = AccentGreen, fontSize = 11.5.sp))
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.BookmarkBorder, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Last checkpoint: cp-android-v1.4 (safe rollback...)", style = HermesTypography.labelSmall.copy(color = TextSubtle, fontSize = 11.sp))
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    // Buttons: Pause, Live Logs, Folder
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = { isPaused = !isPaused },
-                            shape = CircleShape,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF262522)),
-                            modifier = Modifier.weight(1f).height(40.dp)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Icon(if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause, contentDescription = null, tint = TextPrimaryWarm, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(if (isPaused) "Resume" else "Pause", style = HermesTypography.bodyMedium.copy(color = TextPrimaryWarm, fontSize = 13.sp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                StatusChip(
+                                    primaryTask.status.uppercase(),
+                                    color = if (isTaskPaused) AccentWarning else AccentGreen
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    "#${primaryTask.id.take(8).uppercase()}",
+                                    style = HermesTypography.labelSmall.copy(color = TextSubtle, fontSize = 12.sp)
+                                )
+                            }
+                            IconButton(
+                                onClick = { tasksViewModel.cancelTask(primaryTask.id) },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = "Cancel Task", tint = TextMuted, modifier = Modifier.size(16.dp))
+                            }
                         }
 
-                        Button(
-                            onClick = { onNavigateChat("Show live execution logs.") },
-                            shape = CircleShape,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF262522)),
-                            modifier = Modifier.weight(1.3f).height(40.dp)
-                        ) {
-                            Icon(Icons.Default.Dvr, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Text(primaryTask.title, style = HermesTypography.titleLarge.copy(fontSize = 17.sp))
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Psychology, contentDescription = null, tint = BrandCoral, modifier = Modifier.size(14.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Live Logs", style = HermesTypography.bodyMedium.copy(color = TextPrimaryWarm, fontSize = 13.sp))
+                            Text("Supervised by: ", style = HermesTypography.bodyMedium.copy(color = TextSubtle, fontSize = 12.sp))
+                            Text(primaryTask.supervisor ?: "Hermes Supervisor", style = HermesTypography.bodyMedium.copy(color = TextPrimaryWarm, fontSize = 12.sp))
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
+                            Icon(Icons.Default.Group, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Assigned to: ", style = HermesTypography.bodyMedium.copy(color = TextSubtle, fontSize = 12.sp))
+                            Text(primaryTask.agent_name ?: "Autonomous Worker Agent", style = HermesTypography.bodyMedium.copy(color = TextPrimaryWarm, fontSize = 12.sp))
                         }
 
-                        Button(
-                            onClick = {},
-                            shape = CircleShape,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF262522)),
-                            modifier = Modifier.size(40.dp),
-                            contentPadding = PaddingValues(0.dp)
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text("AUTONOMOUS DIRECTIVE", style = HermesTypography.labelSmall.copy(color = TextSubtle, fontSize = 10.sp, letterSpacing = 1.sp))
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            primaryTask.prompt.ifBlank { "Autonomous task execution in progress." },
+                            style = HermesTypography.bodyMedium.copy(color = TextMuted, fontSize = 13.sp, lineHeight = 18.sp)
+                        )
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        val progressPercent = (primaryTask.progress.coerceIn(0f, 1f) * 100).toInt()
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Icon(Icons.Default.Folder, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Sync, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(if (isTaskPaused) "Paused" else "Executing", style = HermesTypography.bodyMedium.copy(color = TextPrimaryWarm, fontSize = 13.sp))
+                            }
+                            Text("$progressPercent%", style = HermesTypography.bodyMedium.copy(color = AccentBlue, fontSize = 13.sp))
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        LinearProgressIndicator(
+                            progress = { primaryTask.progress.coerceIn(0f, 1f) },
+                            modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape),
+                            color = if (isTaskPaused) AccentWarning else AccentBlue,
+                            trackColor = Color(0xFF2A2926)
+                        )
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Interactive Control Buttons
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = {
+                                    if (isTaskPaused) {
+                                        tasksViewModel.resumeTask(primaryTask.id)
+                                    } else {
+                                        tasksViewModel.pauseTask(primaryTask.id)
+                                    }
+                                },
+                                shape = CircleShape,
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF262522)),
+                                modifier = Modifier.weight(1f).height(40.dp)
+                            ) {
+                                Icon(
+                                    if (isTaskPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                    contentDescription = null,
+                                    tint = TextPrimaryWarm,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(if (isTaskPaused) "Resume" else "Pause", style = HermesTypography.bodyMedium.copy(color = TextPrimaryWarm, fontSize = 13.sp))
+                            }
+
+                            Button(
+                                onClick = { onNavigateChat("Show live execution logs for task #${primaryTask.id.take(8)}") },
+                                shape = CircleShape,
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF262522)),
+                                modifier = Modifier.weight(1.3f).height(40.dp)
+                            ) {
+                                Icon(Icons.Default.Dvr, contentDescription = null, tint = AccentBlue, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Live Logs", style = HermesTypography.bodyMedium.copy(color = TextPrimaryWarm, fontSize = 13.sp))
+                            }
+                        }
+                    }
+                } else {
+                    // Clean Empty State when no tasks exist
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(Color(0xFF1C1B19))
+                            .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp))
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF262522)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Checklist, contentDescription = null, tint = TextMuted, modifier = Modifier.size(24.dp))
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text("No Tasks In Flight", style = HermesTypography.headlineMedium.copy(fontSize = 17.sp, color = TextPrimaryWarm))
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "All autonomous swarm workers are idle. Launch a new task or issue a chat directive.",
+                            style = HermesTypography.bodyMedium.copy(color = TextSubtle, fontSize = 13.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = { onNavigateChat("Create a new autonomous task.") },
+                            shape = CircleShape,
+                            colors = ButtonDefaults.buttonColors(containerColor = BrandCoral, contentColor = PureWhite)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Create Task", style = HermesTypography.bodyMedium.copy(fontSize = 13.sp, color = PureWhite))
                         }
                     }
                 }

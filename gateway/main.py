@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, HTMLResponse, RedirectResponse, Response
 
 from gateway.anthropic_bridge import router as anthropic_router
+from gateway.auth_api import router as auth_router
 from gateway.v1_sessions import router as v1_sessions_router
 from gateway.hermes_proxy import router as hermes_proxy_router
 from gateway.omniroute import router as omniroute_router
@@ -19,6 +20,8 @@ from gateway.harness_api import router as harness_router
 from gateway.knowledge_api import router as knowledge_router
 from gateway.computer_api import router as computer_router
 from gateway.voice_api import router as voice_router
+from gateway.sessions_api import router as sessions_api_router
+from gateway.autonomous_chat import router as autonomous_chat_router
 
 
 
@@ -453,6 +456,8 @@ async def logs_service(service: str):
 # Register routers after the gateway's exact health/static/log routes so the
 # legacy /health catch-all cannot shadow them. Keep WebUI before the legacy
 # /api/models aliases and Hermes proxy last.
+app.include_router(autonomous_chat_router)
+app.include_router(sessions_api_router)
 app.include_router(telemetry_router)
 app.include_router(anthropic_router)
 app.include_router(v1_sessions_router)
@@ -460,6 +465,7 @@ app.include_router(harness_router)
 app.include_router(knowledge_router)
 app.include_router(computer_router)
 app.include_router(voice_router)
+app.include_router(auth_router)
 app.include_router(webui_router)
 app.include_router(dashboard_api_router)
 app.include_router(claude_rest_router)

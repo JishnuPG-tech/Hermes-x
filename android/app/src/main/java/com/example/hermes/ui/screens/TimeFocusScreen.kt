@@ -75,7 +75,7 @@ fun TimeFocusScreen(
                     style = HermesTypography.titleMedium.copy(fontSize = 17.sp, color = TextPrimaryWarm)
                 )
                 Text(
-                    text = "Get a nudge to take a break from Claude. You can snooze or adjust anytime.",
+                    text = "Get a nudge to take a break from Hermes. You can snooze or adjust anytime.",
                     style = HermesTypography.bodyMedium.copy(fontSize = 14.5.sp, color = TextMuted, lineHeight = 20.sp)
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -94,7 +94,7 @@ fun TimeFocusScreen(
                     style = HermesTypography.titleMedium.copy(fontSize = 17.sp, color = TextPrimaryWarm)
                 )
                 Text(
-                    text = "Set time limits for Claude. You can dismiss or adjust anytime.",
+                    text = "Set time limits for Hermes. You can dismiss or adjust anytime.",
                     style = HermesTypography.bodyMedium.copy(fontSize = 14.5.sp, color = TextMuted, lineHeight = 20.sp)
                 )
                 Spacer(modifier = Modifier.height(8.dp))

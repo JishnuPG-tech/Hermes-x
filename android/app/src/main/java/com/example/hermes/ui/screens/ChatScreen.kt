@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.hermes.data.ChatMessage
+import com.example.hermes.data.ChatAttachment
 import com.example.hermes.theme.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.example.hermes.ui.components.*
@@ -37,14 +38,18 @@ fun ChatScreen(
     sessionId: String? = null,
     isIncognito: Boolean = false,
     fromVoice: Boolean = false,
+    initialModel: String = "Hermes Smart",
     onOpenDrawer: () -> Unit = {},
     onBack: () -> Unit = {},
     onNavigateVoice: () -> Unit = {},
     onNavigateArtifacts: () -> Unit = {},
     onNavigateArtifactViewer: (String, String, String?, String?) -> Unit = { _, _, _, _ -> },
+    onNavigateConnectors: () -> Unit = {},
     chatViewModel: ChatViewModel = viewModel()
 ) {
     var composerText by remember { mutableStateOf("") }
+    var attachments by remember { mutableStateOf<List<ChatAttachment>>(emptyList()) }
+    var showProjectDialog by remember { mutableStateOf(false) }
     var showSummarySheet by remember { mutableStateOf(false) }
     var selectedSummaryMessage by remember { mutableStateOf<ChatMessage?>(null) }
     var showModelSheet by remember { mutableStateOf(false) }
@@ -52,13 +57,86 @@ fun ChatScreen(
     var showChatOverflowMenu by remember { mutableStateOf(false) }
     var showVoiceEndedBanner by remember { mutableStateOf(fromVoice) }
     var isPinned by remember { mutableStateOf(false) }
-    var selectedModel by remember { mutableStateOf("Sonnet 3.7") }
-    var modelTier by remember { mutableStateOf("Low") }
+    var selectedModel by remember { mutableStateOf(initialModel) }
+    var modelTier by remember {
+        mutableStateOf(
+            when {
+                initialModel.contains("Coding", true) -> "Coding"
+                initialModel.contains("Reasoning", true) -> "Reasoning"
+                initialModel.contains("Turbo", true) -> "Turbo"
+                else -> "Smart"
+            }
+        )
+    }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val webSearchEnabled by chatViewModel.webSearchEnabled.collectAsStateWithLifecycle()
+    val memoryEnabled by chatViewModel.memoryEnabled.collectAsStateWithLifecycle()
+    val selectedProject by chatViewModel.selectedProject.collectAsStateWithLifecycle()
+    val projects by chatViewModel.projects.collectAsStateWithLifecycle()
+
+    val cameraLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.TakePicturePreview()
+    ) { bitmap ->
+        if (bitmap != null) {
+            val stream = java.io.ByteArrayOutputStream()
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, stream)
+            val bytes = stream.toByteArray()
+            val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+            val att = ChatAttachment(
+                id = "cam_" + java.util.UUID.randomUUID().toString().take(8),
+                name = "camera_capture.jpg",
+                mimeType = "image/jpeg",
+                sizeBytes = bytes.size.toLong(),
+                base64Data = base64,
+                isImage = true
+            )
+            attachments = attachments + att
+        }
+    }
+
+    val photoLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            val fileName = uri.lastPathSegment?.substringAfterLast('/') ?: "photo.jpg"
+            val mime = context.contentResolver.getType(uri) ?: "image/jpeg"
+            val att = ChatAttachment(
+                id = "photo_" + java.util.UUID.randomUUID().toString().take(8),
+                name = fileName,
+                mimeType = mime,
+                localUri = uri.toString(),
+                isImage = true
+            )
+            attachments = attachments + att
+        }
+    }
+
+    val fileLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            val fileName = uri.lastPathSegment?.substringAfterLast('/') ?: "document.pdf"
+            val mime = context.contentResolver.getType(uri) ?: "application/octet-stream"
+            val isImg = mime.startsWith("image/")
+            val att = ChatAttachment(
+                id = "file_" + java.util.UUID.randomUUID().toString().take(8),
+                name = fileName,
+                mimeType = mime,
+                localUri = uri.toString(),
+                isImage = isImg
+            )
+            attachments = attachments + att
+        }
+    }
 
     val messages by chatViewModel.messages.collectAsStateWithLifecycle()
     val isStreaming by chatViewModel.isStreaming.collectAsStateWithLifecycle()
     val activeThinking by chatViewModel.activeThinking.collectAsStateWithLifecycle()
     val thinkingPhase by chatViewModel.thinkingPhase.collectAsStateWithLifecycle()
+    val currentSessionId by chatViewModel.currentSessionId.collectAsStateWithLifecycle()
+    val sessions by chatViewModel.sessions.collectAsStateWithLifecycle()
+    val availableModels by chatViewModel.availableModels.collectAsStateWithLifecycle()
 
     val lastUserMessage = messages.lastOrNull { it.role == "user" }?.content ?: ""
     val isCalcPrompt = lastUserMessage.contains("calc", ignoreCase = true) || lastUserMessage.contains("math", ignoreCase = true)
@@ -79,15 +157,21 @@ fun ChatScreen(
     LaunchedEffect(initialPrompt, sessionId) {
         if (!initialPrompt.isNullOrBlank() && sessionId.isNullOrBlank() && !hasSentInitialPrompt) {
             hasSentInitialPrompt = true
-            chatViewModel.sendMessage(initialPrompt)
+            val initialAtts = chatViewModel.consumePendingAttachments()
+            chatViewModel.sendMessage(initialPrompt, model = selectedModel, attachments = initialAtts)
         }
     }
 
     // Auto scroll down when new message or token arrives
     LaunchedEffect(messages.size, messages.lastOrNull()?.content?.length) {
-        if (messages.isNotEmpty()) {
+        val targetIndex = messages.size - 1
+        if (targetIndex >= 0) {
             coroutineScope.launch {
-                listState.animateScrollToItem(messages.size - 1)
+                try {
+                    listState.animateScrollToItem(targetIndex)
+                } catch (_: Exception) {
+                    // Ignore transient layout scroll index shifts
+                }
             }
         }
     }
@@ -182,13 +266,19 @@ fun ChatScreen(
                                 .border(1.dp, Color(0xFF2A2826), RoundedCornerShape(18.dp))
                                 .padding(vertical = 8.dp)
                         ) {
+                            val dynamicChatTitle = sessions.firstOrNull { it.session_id == currentSessionId }?.title
+                                ?: messages.firstOrNull { it.role == "user" }?.content?.lines()?.firstOrNull { it.isNotBlank() }?.take(40)
+                                ?: "Hermes Chat"
+
                             Text(
-                                text = "Claude Android UI/UX design kit documentation",
+                                text = dynamicChatTitle,
                                 style = HermesTypography.bodySmall.copy(
                                     fontSize = 13.sp,
                                     color = Color(0xFF8E8B82),
                                     lineHeight = 17.sp
                                 ),
+                                maxLines = 2,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                 modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp)
                             )
 
@@ -225,6 +315,8 @@ fun ChatScreen(
                                 icon = Icons.Outlined.DeleteOutline,
                                 titleColor = DestructiveRed,
                                 onClick = {
+                                    currentSessionId?.let { chatViewModel.deleteSession(it) }
+                                    chatViewModel.clearMessages()
                                     showChatOverflowMenu = false
                                     onBack()
                                 }
@@ -234,8 +326,97 @@ fun ChatScreen(
                 }
             }
 
-            // Scrollable Conversation Stream
-            LazyColumn(
+            if (messages.isEmpty()) {
+                // Authentic Claude New Chat Welcome View
+                val isKeyboardVisible = WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current) > 0
+                val currentHour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+                val timeGreeting = when (currentHour) {
+                    in 5..11 -> "Good morning, Jishnu"
+                    in 12..16 -> "Good afternoon, Jishnu"
+                    in 17..21 -> "Good evening, Jishnu"
+                    else -> "Back at it, Jishnu"
+                }
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.offset(y = if (isKeyboardVisible) 0.dp else (-16).dp)
+                    ) {
+                        ClaudeStarburst(
+                            size = if (isKeyboardVisible) 36.dp else 52.dp,
+                            color = BrandCoral
+                        )
+                        Spacer(modifier = Modifier.height(if (isKeyboardVisible) 8.dp else 18.dp))
+
+                        Text(
+                            text = timeGreeting,
+                            style = HermesTypography.displayLarge.copy(
+                                fontSize = if (isKeyboardVisible) 24.sp else 32.sp,
+                                lineHeight = if (isKeyboardVisible) 28.sp else 38.sp,
+                                color = TextPrimaryWarm,
+                                fontWeight = FontWeight.Normal
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Text(
+                            text = "How can Hermes help you today?",
+                            style = HermesTypography.bodyLarge.copy(
+                                fontSize = 15.sp,
+                                color = TextMuted
+                            )
+                        )
+
+                        if (!isKeyboardVisible) {
+                            Spacer(modifier = Modifier.height(28.dp))
+
+                            val prompts = listOf(
+                                "Write a script or function",
+                                "Analyze and debug code",
+                                "Plan an autonomous task",
+                                "Explain a technical concept"
+                            )
+
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                prompts.forEach { prompt ->
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth(0.92f)
+                                            .clip(RoundedCornerShape(16.dp))
+                                            .background(Color(0xFF1E1D1B))
+                                            .border(1.dp, BorderSubtle, RoundedCornerShape(16.dp))
+                                            .clickable {
+                                                chatViewModel.sendMessage(prompt)
+                                            }
+                                            .padding(horizontal = 18.dp, vertical = 13.dp)
+                                    ) {
+                                        Text(
+                                            text = prompt,
+                                            style = HermesTypography.bodyMedium.copy(
+                                                fontSize = 14.5.sp,
+                                                color = TextPrimaryWarm,
+                                                fontWeight = FontWeight.Normal
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Scrollable Conversation Stream
+                LazyColumn(
                 state = listState,
                 modifier = Modifier
                     .weight(1f)
@@ -510,7 +691,7 @@ fun ChatScreen(
                                     ClaudeStarburst(size = 20.dp, color = BrandCoral)
                                     Column(horizontalAlignment = Alignment.End) {
                                         Text(
-                                            text = "Claude is AI and can make mistakes.",
+                                            text = "Hermes is AI and can make mistakes.",
                                             style = HermesTypography.labelSmall.copy(
                                                 fontSize = 11.5.sp,
                                                 color = Color(0xFF8E8B82)
@@ -530,6 +711,7 @@ fun ChatScreen(
                     }
                 }
             }
+        }
 
             // Post-Voice Banner
             if (showVoiceEndedBanner) {
@@ -546,10 +728,14 @@ fun ChatScreen(
             ClaudeHomeComposer(
                 text = composerText,
                 onTextChange = { composerText = it },
+                attachments = attachments,
+                onRemoveAttachment = { removeId ->
+                    attachments = attachments.filter { it.id != removeId }
+                },
                 selectedModel = selectedModel,
                 modelTier = modelTier,
                 showProBanner = false,
-                placeholder = "Reply to Claude...",
+                placeholder = "Reply to Hermes...",
                 isIncognito = isIncognito,
                 isStreaming = isStreaming,
                 onStopGeneration = { chatViewModel.stopGeneration() },
@@ -557,10 +743,12 @@ fun ChatScreen(
                 onAttachClick = { showAddSheet = true },
                 onVoiceClick = onNavigateVoice,
                 onSend = {
-                    if (composerText.isNotBlank()) {
+                    if (composerText.isNotBlank() || attachments.isNotEmpty()) {
                         val textToSend = composerText
+                        val currentAtts = attachments
                         composerText = ""
-                        chatViewModel.sendMessage(textToSend)
+                        attachments = emptyList()
+                        chatViewModel.sendMessage(textToSend, model = selectedModel, attachments = currentAtts)
                     }
                 }
             )
@@ -598,8 +786,15 @@ fun ChatScreen(
         if (showModelSheet) {
             ModelSelectSheet(
                 selectedModel = selectedModel,
+                serverModels = availableModels,
                 onModelSelected = {
                     selectedModel = it
+                    modelTier = when {
+                        it.contains("Coding", true) -> "Coding"
+                        it.contains("Reasoning", true) -> "Reasoning"
+                        it.contains("Turbo", true) -> "Turbo"
+                        else -> "Smart"
+                    }
                     showModelSheet = false
                 },
                 onDismiss = { showModelSheet = false }
@@ -610,12 +805,97 @@ fun ChatScreen(
         if (showAddSheet) {
             AddToChatSheet(
                 onDismiss = { showAddSheet = false },
-                onCameraClick = { showAddSheet = false },
-                onPhotosClick = { showAddSheet = false },
-                onFilesClick = { showAddSheet = false },
-                onProjectClick = { showAddSheet = false },
-                onToolAccessClick = { showAddSheet = false },
-                onConnectorsClick = { showAddSheet = false }
+                webSearchEnabled = webSearchEnabled,
+                onWebSearchChange = { chatViewModel.setWebSearchEnabled(it) },
+                memoryEnabled = memoryEnabled,
+                onMemoryChange = { chatViewModel.setMemoryEnabled(it) },
+                selectedProjectName = selectedProject?.name,
+                onCameraClick = {
+                    showAddSheet = false
+                    cameraLauncher.launch(null)
+                },
+                onPhotosClick = {
+                    showAddSheet = false
+                    photoLauncher.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly))
+                },
+                onFilesClick = {
+                    showAddSheet = false
+                    fileLauncher.launch(arrayOf("*/*"))
+                },
+                onProjectClick = {
+                    showAddSheet = false
+                    showProjectDialog = true
+                },
+                onToolAccessClick = {
+                    showAddSheet = false
+                },
+                onConnectorsClick = {
+                    showAddSheet = false
+                    onNavigateConnectors()
+                }
+            )
+        }
+
+        // Project Selection Dialog
+        if (showProjectDialog) {
+            AlertDialog(
+                onDismissRequest = { showProjectDialog = false },
+                containerColor = Color(0xFF1F1E1C),
+                shape = RoundedCornerShape(20.dp),
+                title = { Text("Select Project", color = TextPrimaryWarm) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable {
+                                    chatViewModel.setSelectedProject(null)
+                                    showProjectDialog = false
+                                }
+                                .padding(vertical = 8.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedProject == null,
+                                onClick = {
+                                    chatViewModel.setSelectedProject(null)
+                                    showProjectDialog = false
+                                }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("None (Standalone chat)", color = TextPrimaryWarm)
+                        }
+                        projects.forEach { prj ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable {
+                                        chatViewModel.setSelectedProject(prj)
+                                        showProjectDialog = false
+                                    }
+                                    .padding(vertical = 8.dp, horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = selectedProject?.id == prj.id,
+                                    onClick = {
+                                        chatViewModel.setSelectedProject(prj)
+                                        showProjectDialog = false
+                                    }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(prj.name, color = TextPrimaryWarm)
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showProjectDialog = false }) {
+                        Text("Done", color = AccentBlue)
+                    }
+                }
             )
         }
 

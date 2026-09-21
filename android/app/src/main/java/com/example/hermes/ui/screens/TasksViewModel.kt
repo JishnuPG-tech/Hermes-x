@@ -28,4 +28,16 @@ class TasksViewModel(
         if (title.isBlank()) return
         repository.createNewTask(title.trim(), prompt.trim())
     }
+
+    fun pauseTask(taskId: String) {
+        repository.pauseTask(taskId)
+    }
+
+    fun resumeTask(taskId: String) {
+        repository.resumeTask(taskId)
+    }
+
+    fun cancelTask(taskId: String) {
+        repository.cancelTask(taskId)
+    }
 }

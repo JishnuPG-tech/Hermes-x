@@ -18,13 +18,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hermes.theme.*
+import kotlinx.coroutines.launch
 
 @Composable
 fun ProfileScreen(
     onBack: () -> Unit
 ) {
-    var fullName by remember { mutableStateOf("Jishnu PG") }
-    var preferredName by remember { mutableStateOf("Jishnu") }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
+    val prefs = remember { com.example.hermes.data.PreferencesManager.getInstance(context) }
+    val savedName by prefs.userName.collectAsState(initial = "")
+    val savedEmail by prefs.userEmail.collectAsState(initial = "")
+    var fullName by remember(savedName) { mutableStateOf(savedName.ifBlank { "User" }) }
+    var preferredName by remember(savedName) { mutableStateOf(savedName.substringBefore(' ').ifBlank { "User" }) }
     var customInstructions by remember {
         mutableStateOf("Senior full-stack engineer and AI systems developer. Prefer concise, production-ready Kotlin Jetpack Compose and modern architecture patterns.")
     }
@@ -104,7 +110,7 @@ fun ProfileScreen(
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
-                            text = "What should Claude call you?",
+                            text = "What should Hermes call you?",
                             style = HermesTypography.labelMedium.copy(
                                 color = TextSubtle,
                                 fontSize = 13.sp
@@ -138,7 +144,7 @@ fun ProfileScreen(
                             )
                         )
                         Text(
-                            text = "What would you like Claude to know about you to provide better responses? e.g. preferred coding languages, response length, context about your work or projects.",
+                            text = "What would you like Hermes to know about you to provide better responses? e.g. preferred coding languages, response length, context about your work or projects.",
                             style = HermesTypography.bodySmall.copy(
                                 color = TextMuted,
                                 fontSize = 12.5.sp,
@@ -168,7 +174,12 @@ fun ProfileScreen(
                 // Save Button
                 item {
                     Button(
-                        onClick = onBack,
+                        onClick = {
+                            scope.launch {
+                                prefs.setUserProfile(fullName, savedEmail)
+                            }
+                            onBack()
+                        },
                         shape = CircleShape,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = PureWhite,

@@ -26,6 +26,8 @@ import androidx.compose.ui.unit.sp
 import com.example.hermes.theme.*
 import com.example.hermes.ui.components.ClaudeToggle
 
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+
 @Composable
 fun CapabilitiesScreen(
     onBack: () -> Unit
@@ -55,7 +57,7 @@ fun CapabilitiesScreen(
                 modifier = Modifier.align(Alignment.CenterStart)
             ) {
                 Icon(
-                    imageVector = Icons.Default.ArrowBack,
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
                     tint = TextPrimaryWarm,
                     modifier = Modifier.size(24.dp)
@@ -88,7 +90,7 @@ fun CapabilitiesScreen(
                 // Web search
                 CapabilityItem(
                     title = "Web search",
-                    description = "Claude will automatically search the web when it determines it needs current information",
+                    description = "Hermes will automatically search the web when it determines it needs current information",
                     icon = Icons.Outlined.Language,
                     checked = webSearchEnabled,
                     onCheckedChange = { webSearchEnabled = it }
@@ -111,7 +113,7 @@ fun CapabilitiesScreen(
                 // Inline visualizations (BETA)
                 CapabilityItem(
                     title = "Inline visualizations",
-                    description = "Allow Claude to generate interactive visualizations, charts, and diagrams directly in the conversation.",
+                    description = "Allow Hermes to generate interactive visualizations, charts, and diagrams directly in the conversation.",
                     icon = Icons.Outlined.BarChart,
                     badge = "BETA",
                     checked = inlineVisualizationsEnabled,
@@ -123,7 +125,7 @@ fun CapabilitiesScreen(
                 // Code execution and file creation
                 CapabilityItem(
                     title = "Code execution and file creation",
-                    description = "Allow Claude to execute code and create and edit docs, spreadsheets, presentations, PDFs, and data reports.",
+                    description = "Allow Hermes to execute code and create and edit docs, spreadsheets, presentations, PDFs, and data reports.",
                     icon = Icons.Outlined.Code,
                     checked = codeExecutionEnabled,
                     onCheckedChange = { codeExecutionEnabled = it }
@@ -159,7 +161,7 @@ fun CapabilitiesScreen(
                     // Generate memory
                     CapabilityItem(
                         title = "Generate memory from chats",
-                        description = "Allow Claude to generate memory from your chats.",
+                        description = "Allow Hermes to generate memory from your chats.",
                         checked = generateMemoryEnabled,
                         onCheckedChange = { generateMemoryEnabled = it }
                     )
@@ -184,7 +186,7 @@ fun CapabilitiesScreen(
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "Allow Claude to save details about sensitive topics like health conditions or religious beliefs to memory. ",
+                                    text = "Allow Hermes to save details about sensitive topics like health conditions or religious beliefs to memory. ",
                                     style = HermesTypography.bodyMedium.copy(fontSize = 13.5.sp, color = TextMuted, lineHeight = 18.sp)
                                 )
                                 Text(
@@ -223,7 +225,7 @@ fun CapabilitiesScreen(
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "View and manage what Claude remembers.",
+                                text = "View and manage what Hermes remembers.",
                                 style = HermesTypography.bodyMedium.copy(fontSize = 13.5.sp, color = TextMuted)
                             )
                         }
@@ -250,7 +252,7 @@ fun CapabilitiesScreen(
                     // Auto
                     ToolAccessOptionRow(
                         title = "Auto",
-                        description = "Claude chooses for you",
+                        description = "Hermes chooses for you",
                         isSelected = selectedToolAccess == "Auto",
                         onClick = { selectedToolAccess = "Auto" }
                     )

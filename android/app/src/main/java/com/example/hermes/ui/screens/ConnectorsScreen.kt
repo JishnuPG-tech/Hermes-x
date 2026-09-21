@@ -5,13 +5,15 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.NorthEast
+import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,14 +22,19 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.hermes.theme.*
 import com.example.hermes.ui.components.ClaudeToggle
 
 @Composable
 fun ConnectorsScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    viewModel: ConnectorsViewModel = viewModel()
 ) {
     var discoveryEnabled by remember { mutableStateOf(true) }
+    val knowledgeSources by viewModel.knowledgeSources.collectAsStateWithLifecycle()
+    val directoryServers by viewModel.directoryServers.collectAsStateWithLifecycle()
 
     Column(
         modifier = Modifier
@@ -46,7 +53,7 @@ fun ConnectorsScreen(
                 modifier = Modifier.align(Alignment.CenterStart)
             ) {
                 Icon(
-                    imageVector = Icons.Default.ArrowBack,
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
                     tint = TextPrimaryWarm,
                     modifier = Modifier.size(24.dp)
@@ -60,12 +67,12 @@ fun ConnectorsScreen(
             )
 
             IconButton(
-                onClick = { },
+                onClick = { viewModel.refresh() },
                 modifier = Modifier.align(Alignment.CenterEnd)
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = "Add connector",
+                    contentDescription = "Refresh connectors",
                     tint = TextPrimaryWarm,
                     modifier = Modifier.size(24.dp)
                 )
@@ -106,7 +113,7 @@ fun ConnectorsScreen(
                         )
                         Spacer(modifier = Modifier.height(3.dp))
                         Text(
-                            text = "Claude will help you find available connectors in your directory.",
+                            text = "Hermes will discover and query configured knowledge sources and active MCP tools.",
                             style = HermesTypography.bodyMedium.copy(fontSize = 13.5.sp, color = TextMuted, lineHeight = 18.sp)
                         )
                     }
@@ -118,7 +125,7 @@ fun ConnectorsScreen(
                 }
             }
 
-            // Card 2: Connectors List Group
+            // Card 2: Dynamic Live Connectors & Vault Sources
             item {
                 Column(
                     modifier = Modifier
@@ -127,23 +134,55 @@ fun ConnectorsScreen(
                         .background(Color(0xFF1F1E1D))
                         .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp))
                 ) {
-                    ConnectorRow("Anthropic Economic Index", badge = "9")
-                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
-                    ConnectorRow("Context7", badge = "2")
-                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
-                    ConnectorRow("Figma", badge = "37")
-                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
-                    ConnectorRow("Firecrawl", badge = "6")
-                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
-                    ConnectorRow("Hugging Face", badge = "5")
-                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
-                    ConnectorRow("Lovable", badge = "41")
-                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
-                    ConnectorRow("Google Drive", isExternal = true)
-                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
-                    ConnectorRow("Huggingfac", isExternal = true)
-                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
-                    ConnectorRow("Huggingface", isExternal = true)
+                    val allItems = mutableListOf<ConnectorUiModel>()
+
+                    // Knowledge sources (Notion, Obsidian, Vaults)
+                    knowledgeSources.forEach { ks ->
+                        allItems.add(
+                            ConnectorUiModel(
+                                name = ks.name.replaceFirstChar { it.uppercase() },
+                                subtitle = "Type: ${ks.type} • Status: ${ks.status}",
+                                badge = if (ks.primary) "Primary" else null,
+                                isExternal = !ks.primary
+                            )
+                        )
+                    }
+
+                    // Directory MCP servers
+                    directoryServers.forEach { ds ->
+                        allItems.add(
+                            ConnectorUiModel(
+                                name = ds.name.ifBlank { ds.id },
+                                subtitle = ds.description.ifBlank { "${ds.tools.size} active tools" },
+                                badge = if (ds.tools.isNotEmpty()) "${ds.tools.size}" else null,
+                                isExternal = false
+                            )
+                        )
+                    }
+
+                    if (allItems.isNotEmpty()) {
+                        allItems.forEachIndexed { index, item ->
+                            if (index > 0) {
+                                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
+                            }
+                            ConnectorRow(item.name, item.subtitle, item.badge, item.isExternal)
+                        }
+                    } else {
+                        // Clean empty state
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Outlined.Storage, contentDescription = null, tint = TextMuted, modifier = Modifier.size(24.dp))
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text("No Connectors Configured", style = HermesTypography.titleMedium.copy(color = TextPrimaryWarm))
+                                Text("Register MCP servers or Notion/Obsidian in config to bind connectors.", style = HermesTypography.bodyMedium.copy(color = TextSubtle, fontSize = 12.sp))
+                            }
+                        }
+                    }
                 }
             }
 
@@ -154,9 +193,17 @@ fun ConnectorsScreen(
     }
 }
 
+private data class ConnectorUiModel(
+    val name: String,
+    val subtitle: String,
+    val badge: String? = null,
+    val isExternal: Boolean = false
+)
+
 @Composable
 private fun ConnectorRow(
     name: String,
+    subtitle: String,
     badge: String? = null,
     isExternal: Boolean = false
 ) {
@@ -176,29 +223,35 @@ private fun ConnectorRow(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(PureWhite),
+                    .background(Color(0xFF2E2D2A)),
                 contentAlignment = Alignment.Center
             ) {
-                // Service icon placeholder container
+                Icon(Icons.Outlined.Storage, contentDescription = null, tint = BrandCoral, modifier = Modifier.size(18.dp))
             }
             Spacer(modifier = Modifier.width(14.dp))
-            Text(
-                text = name,
-                style = HermesTypography.titleLarge.copy(fontSize = 16.sp, color = TextPrimaryWarm)
-            )
+            Column {
+                Text(
+                    text = name,
+                    style = HermesTypography.titleLarge.copy(fontSize = 16.sp, color = TextPrimaryWarm)
+                )
+                Text(
+                    text = subtitle,
+                    style = HermesTypography.bodyMedium.copy(fontSize = 12.sp, color = TextSubtle)
+                )
+            }
         }
 
         if (badge != null) {
             Box(
                 modifier = Modifier
-                    .size(26.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF233E60)),
+                    .background(Color(0xFF233E60))
+                    .padding(horizontal = 8.dp, vertical = 3.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = badge,
-                    style = HermesTypography.labelSmall.copy(color = AccentBlue, fontSize = 12.sp)
+                    style = HermesTypography.labelSmall.copy(color = AccentBlue, fontSize = 11.sp)
                 )
             }
         } else if (isExternal) {

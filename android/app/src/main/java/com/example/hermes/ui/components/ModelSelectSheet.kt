@@ -20,39 +20,61 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.hermes.data.HermesDataRepository
 import com.example.hermes.theme.*
 
 data class ModelOption(
     val name: String,
     val description: String,
-    val badge: String? = null
+    val badge: String? = null,
+    val modelId: String = "auto/best-chat"
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModelSelectSheet(
     selectedModel: String,
+    serverModels: List<com.example.hermes.data.ModelOptionDto> = emptyList(),
     onModelSelected: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val serverModels by HermesDataRepository.instance.availableModels.collectAsState()
-    val models = if (serverModels.isNotEmpty()) {
-        serverModels.map { m ->
-            ModelOption(
-                name = m.display_name ?: m.name,
-                description = m.description?.text ?: "Hermes AI model",
-                badge = if (m.id.contains("pro", true) || m.id.contains("max", true) || m.id.contains("sonnet", true)) "Pro" else null
-            )
-        }
-    } else {
-        listOf(
-            ModelOption("Sonnet 3.7", "Most efficient for everyday tasks", "Pro"),
-            ModelOption("Haiku 3.5", "Fastest for quick answers"),
-            ModelOption("Hermes Smart", "Balanced intelligence and deep reasoning"),
-            ModelOption("Hermes Coding Pro", "Specialized for advanced code and tasks", "Pro"),
-            ModelOption("Hermes Turbo", "Ultra-low latency inference")
+    val officialModels = listOf(
+        ModelOption(
+            name = "Hermes Smart",
+            description = "General intelligence, dialogue & creative agent workflows",
+            badge = null,
+            modelId = "auto/best-chat"
+        ),
+        ModelOption(
+            name = "Hermes Coding",
+            description = "High precision code synthesis, refactoring & review",
+            badge = "Code",
+            modelId = "auto/best-coding"
+        ),
+        ModelOption(
+            name = "Hermes Reasoning",
+            description = "Deep reasoning, complex logic & multi-step planning",
+            badge = "Reasoning",
+            modelId = "auto/best-reasoning"
+        ),
+        ModelOption(
+            name = "Hermes Turbo",
+            description = "Ultra-low latency inference for rapid prototyping & quick edits",
+            badge = "Turbo",
+            modelId = "auto/best-coding-fast"
         )
+    )
+
+    val models = officialModels.map { official ->
+        val matched = serverModels.firstOrNull { 
+            it.id == official.modelId || 
+            it.name.equals(official.name, ignoreCase = true) ||
+            (it.display_name?.equals(official.name, ignoreCase = true) == true)
+        }
+        if (matched != null && !matched.description?.text.isNullOrBlank()) {
+            official.copy(description = matched.description?.text ?: official.description)
+        } else {
+            official
+        }
     }
 
     ModalBottomSheet(

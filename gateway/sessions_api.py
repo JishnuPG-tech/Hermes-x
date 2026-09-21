@@ -109,8 +109,10 @@ async def create_session(request: Request):
 @router.get("/hermes/v1/sessions")
 async def list_sessions(limit: int = Query(50, le=100)):
     items = list(_SESSIONS.values())
+    sliced = items[-limit:]
     return {
-        "data": items[-limit:],
+        "data": sliced,
+        "sessions": sliced,
         "has_more": len(items) > limit,
         "first_id": items[0]["id"] if items else None,
         "last_id": items[-1]["id"] if items else None
@@ -121,24 +123,76 @@ async def list_sessions(limit: int = Query(50, le=100)):
 @router.get("/api/v1/sessions/{session_id}")
 @router.get("/hermes/v1/sessions/{session_id}")
 async def get_session(session_id: str):
-    if session_id not in _SESSIONS:
-        # Check if conversation_uuid was passed instead of session_id
-        if session_id in _CONV_TO_SESSION:
-            session_id = _CONV_TO_SESSION[session_id]
+    sess_id = session_id or ""
+    if sess_id not in _SESSIONS:
+        if sess_id in _CONV_TO_SESSION:
+            sess_id = _CONV_TO_SESSION[sess_id]
         else:
-            # Auto-provision session for client UUID
             now = _now_iso()
-            _SESSIONS[session_id] = {
-                "id": session_id,
-                "conversation_uuid": session_id,
-                "title": "Chat Session",
+            _SESSIONS[sess_id] = {
+                "id": sess_id,
+                "session_id": sess_id,
+                "conversation_uuid": sess_id,
+                "title": "Chat",
                 "created_at": now,
                 "updated_at": now
             }
-            _MESSAGES[session_id] = []
+            _MESSAGES[sess_id] = []
             _save_data()
-            
-    return _SESSIONS[session_id]
+
+    sess = dict(_SESSIONS[sess_id])
+    sess["session_id"] = sess.get("session_id") or sess_id
+    msgs = _MESSAGES.get(sess_id, [])
+    sess["messages"] = msgs
+    sess["message_count"] = len(msgs)
+
+    try:
+        from gateway.autonomous_chat import _ACTIVE_RUNS
+        active_run = _ACTIVE_RUNS.get(sess_id)
+        is_running = bool(active_run and not active_run.is_finished)
+        sess["is_streaming"] = is_running
+        sess["status"] = "running" if is_running else "idle"
+        sess["has_active_run"] = is_running
+    except Exception:
+        sess["is_streaming"] = False
+        sess["status"] = "idle"
+        sess["has_active_run"] = False
+
+    return {
+        "session": sess,
+        **sess
+    }
+
+@router.get("/api/session")
+async def get_session_query(request: Request, session_id: Optional[str] = Query(None)):
+    sid = session_id or request.query_params.get("session_id") or ""
+    if not sid:
+        raise HTTPException(status_code=400, detail="session_id is required")
+    return await get_session(session_id=sid)
+
+@router.get("/api/session/status")
+@router.get("/v1/sessions/{session_id}/status")
+async def get_session_status_endpoint(request: Request, session_id: Optional[str] = None):
+    sid = session_id or request.query_params.get("session_id") or ""
+    try:
+        from gateway.autonomous_chat import _ACTIVE_RUNS
+        active_run = _ACTIVE_RUNS.get(sid)
+        is_running = bool(active_run and not active_run.is_finished)
+        return {
+            "session_id": sid,
+            "is_streaming": is_running,
+            "status": "running" if is_running else "idle",
+            "current_text": active_run.accumulated_text if active_run else None,
+            "has_active_run": is_running
+        }
+    except Exception:
+        return {
+            "session_id": sid,
+            "is_streaming": False,
+            "status": "idle",
+            "current_text": None,
+            "has_active_run": False
+        }
 
 @router.delete("/v1/sessions/{session_id}")
 @router.delete("/sessions/{session_id}")
@@ -152,6 +206,43 @@ async def delete_session(session_id: str):
         asyncio.create_task(broadcast_session_event(session_id, "session.deleted", {"session_id": session_id}))
         return {"status": "deleted", "id": session_id}
     return {"status": "not_found", "id": session_id}
+
+@router.post("/v1/sessions/{session_id}/rename")
+@router.post("/sessions/{session_id}/rename")
+@router.post("/api/v1/sessions/{session_id}/rename")
+@router.post("/api/session/rename")
+@router.patch("/v1/sessions/{session_id}")
+async def rename_session(request: Request, session_id: Optional[str] = None):
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    
+    sid = session_id or body.get("session_id") or ""
+    title = body.get("title") or body.get("name") or ""
+    title = str(title).strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="title is required")
+    
+    if sid not in _SESSIONS:
+        if sid in _CONV_TO_SESSION:
+            sid = _CONV_TO_SESSION[sid]
+        else:
+            now = _now_iso()
+            _SESSIONS[sid] = {
+                "id": sid,
+                "session_id": sid,
+                "conversation_uuid": sid,
+                "title": title,
+                "created_at": now,
+                "updated_at": now
+            }
+    
+    _SESSIONS[sid]["title"] = title[:120]
+    _SESSIONS[sid]["updated_at"] = _now_iso()
+    _save_data()
+    asyncio.create_task(broadcast_session_event(sid, "session.updated", _SESSIONS[sid]))
+    return {"ok": True, "status": "updated", "session": _SESSIONS[sid], **_SESSIONS[sid]}
 
 # -------------------------------------------------------------
 # B. Message History Management

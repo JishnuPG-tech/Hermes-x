@@ -26,6 +26,12 @@ import com.example.hermes.theme.*
 @Composable
 fun AddToChatSheet(
     onDismiss: () -> Unit,
+    webSearchEnabled: Boolean = true,
+    onWebSearchChange: (Boolean) -> Unit = {},
+    memoryEnabled: Boolean = true,
+    onMemoryChange: (Boolean) -> Unit = {},
+    selectedProjectName: String? = null,
+    toolAccessDescription: String = "Auto",
     onCameraClick: () -> Unit = {},
     onPhotosClick: () -> Unit = {},
     onFilesClick: () -> Unit = {},
@@ -33,8 +39,8 @@ fun AddToChatSheet(
     onToolAccessClick: () -> Unit = {},
     onConnectorsClick: () -> Unit = {}
 ) {
-    var webSearchEnabled by remember { mutableStateOf(true) }
-    var memoryEnabled by remember { mutableStateOf(true) }
+    var localWebSearch by remember(webSearchEnabled) { mutableStateOf(webSearchEnabled) }
+    var localMemory by remember(memoryEnabled) { mutableStateOf(memoryEnabled) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -131,7 +137,11 @@ fun AddToChatSheet(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { webSearchEnabled = !webSearchEnabled }
+                        .clickable {
+                            val newVal = !localWebSearch
+                            localWebSearch = newVal
+                            onWebSearchChange(newVal)
+                        }
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
@@ -161,8 +171,11 @@ fun AddToChatSheet(
                         )
                     }
                     Switch(
-                        checked = webSearchEnabled,
-                        onCheckedChange = { webSearchEnabled = it },
+                        checked = localWebSearch,
+                        onCheckedChange = {
+                            localWebSearch = it
+                            onWebSearchChange(it)
+                        },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = PureWhite,
                             checkedTrackColor = AccentBlue,
@@ -178,7 +191,11 @@ fun AddToChatSheet(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { memoryEnabled = !memoryEnabled }
+                        .clickable {
+                            val newVal = !localMemory
+                            localMemory = newVal
+                            onMemoryChange(newVal)
+                        }
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
@@ -208,8 +225,11 @@ fun AddToChatSheet(
                         )
                     }
                     Switch(
-                        checked = memoryEnabled,
-                        onCheckedChange = { memoryEnabled = it },
+                        checked = localMemory,
+                        onCheckedChange = {
+                            localMemory = it
+                            onMemoryChange(it)
+                        },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = PureWhite,
                             checkedTrackColor = AccentBlue,
@@ -257,7 +277,7 @@ fun AddToChatSheet(
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "None",
+                                text = selectedProjectName ?: "None",
                                 style = HermesTypography.bodySmall.copy(fontSize = 12.5.sp, color = Color(0xFF8E8B82))
                             )
                         }
@@ -299,7 +319,7 @@ fun AddToChatSheet(
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "Auto",
+                                text = toolAccessDescription,
                                 style = HermesTypography.bodySmall.copy(fontSize = 12.5.sp, color = Color(0xFF8E8B82))
                             )
                         }

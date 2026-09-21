@@ -5,7 +5,7 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowBackground">#141413</item>
         <item name="android:windowSplashScreenBackground">#141413</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/logo_claude_splash</item>
-        <item name="android:windowSplashScreenBrandingImage">@drawable/branding_claude_splash</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">#141413</item>
     </style>
 </resources>

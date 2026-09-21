@@ -27,6 +27,11 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.InsertDriveFile
+import com.example.hermes.data.ChatAttachment
 import com.example.hermes.theme.*
 
 fun Modifier.dashedBorder(
@@ -43,7 +48,7 @@ fun Modifier.dashedBorder(
     drawRoundRect(
         color = color,
         topLeft = Offset(strokePx / 2f, strokePx / 2f),
-        size = Size(size.width - strokePx, size.height - strokePx),
+        size = Size(this.size.width - strokePx, this.size.height - strokePx),
         cornerRadius = CornerRadius(radiusPx, radiusPx),
         style = Stroke(
             width = strokePx,
@@ -57,10 +62,12 @@ fun ClaudeHomeComposer(
     modifier: Modifier = Modifier,
     text: String,
     onTextChange: (String) -> Unit,
-    selectedModel: String = "Sonnet 5",
-    modelTier: String = "Low",
-    showProBanner: Boolean = true,
-    placeholder: String = if (showProBanner) "Chat with Claude..." else "Reply to Claude...",
+    attachments: List<ChatAttachment> = emptyList(),
+    onRemoveAttachment: (String) -> Unit = {},
+    selectedModel: String = "Hermes Smart",
+    modelTier: String = "Smart",
+    showProBanner: Boolean = false,
+    placeholder: String = "Reply to Hermes...",
     isIncognito: Boolean = false,
     isStreaming: Boolean = false,
     onModelClick: () -> Unit = {},
@@ -73,57 +80,74 @@ fun ClaudeHomeComposer(
     val baseModifier = if (isIncognito) {
         modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(28.dp))
-            .background(Color(0xFF1B1A18))
-            .dashedBorder(strokeWidth = 1.2.dp, color = Color(0xFF4A4843), cornerRadius = 28.dp)
-            .padding(10.dp)
+            .clip(RoundedCornerShape(26.dp))
+            .background(Color(0xFF1E1D1B))
+            .dashedBorder(strokeWidth = 1.2.dp, color = Color(0xFF4A4843), cornerRadius = 26.dp)
+            .padding(horizontal = 14.dp, vertical = 12.dp)
     } else {
         modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(28.dp))
-            .background(Color(0xFF1B1A18))
-            .border(1.dp, BorderSubtle, RoundedCornerShape(28.dp))
-            .padding(10.dp)
+            .clip(RoundedCornerShape(26.dp))
+            .background(Color(0xFF1E1D1B))
+            .border(1.dp, Color(0xFF2E2C29), RoundedCornerShape(26.dp))
+            .padding(horizontal = 14.dp, vertical = 12.dp)
     }
 
     Column(modifier = baseModifier) {
-        // Top Pro Upgrade Banner (12-00-55, 12-06-53)
-        if (showProBanner) {
-            Row(
+        // Attachment Preview Chips
+        if (attachments.isNotEmpty()) {
+            LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(Color(0xFF242320))
-                    .clickable(onClick = onUpgradeClick)
-                    .padding(horizontal = 16.dp, vertical = 11.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .padding(horizontal = 2.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = "Get more with Claude Pro",
-                    style = HermesTypography.bodyMedium.copy(
-                        color = Color(0xFFB0AEA5),
-                        fontSize = 13.5.sp
-                    )
-                )
-                Text(
-                    text = "Upgrade to Pro",
-                    style = HermesTypography.bodyMedium.copy(
-                        color = Color(0xFFB395F7),
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
-                        fontSize = 13.5.sp
-                    )
-                )
+                items(attachments, key = { it.id }) { att ->
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF2B2A27))
+                            .border(1.dp, BorderSubtle, RoundedCornerShape(12.dp))
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = if (att.isImage) Icons.Outlined.Image else Icons.Outlined.InsertDriveFile,
+                            contentDescription = null,
+                            tint = BrandCoral,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = att.name.take(20),
+                            style = HermesTypography.bodySmall.copy(
+                                fontSize = 12.sp,
+                                color = TextPrimaryWarm
+                            ),
+                            maxLines = 1
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Remove attachment",
+                            tint = TextSubtle,
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clickable { onRemoveAttachment(att.id) }
+                        )
+                    }
+                }
             }
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(6.dp))
         }
 
-        // Chat Input Field
+        // Chat Input Field (generous height, never compressed)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = if (showProBanner) 4.dp else 8.dp),
-            contentAlignment = Alignment.CenterStart
+                .heightIn(min = 46.dp, max = 140.dp)
+                .padding(horizontal = 4.dp, vertical = 4.dp),
+            contentAlignment = Alignment.TopStart
         ) {
             val effectivePlaceholder = if (isStreaming) "Sending..." else placeholder
             if (text.isEmpty()) {
@@ -148,27 +172,26 @@ fun ClaudeHomeComposer(
             )
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        // Bottom Controls Row: [+] , [Model Pill] , [Mic] , [Waveform / Send]
+        // Bottom Controls Row: [+] [Model Pill] ... [Mic] [Waveform/Send]
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 2.dp, vertical = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(top = 2.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             // Left Group: Add Attachment Button & Model Selector Chip
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Add (+) icon button (12-00-55)
+                // Add (+) icon button
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(38.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF2A2926))
+                        .background(Color(0xFF2C2B28))
                         .clickable(onClick = onAttachClick),
                     contentAlignment = Alignment.Center
                 ) {
@@ -180,46 +203,52 @@ fun ClaudeHomeComposer(
                     )
                 }
 
-                // Model Selector Chip (12-00-55: "Sonnet 5 Low")
+                // Clean Model Selector Chip (Exact Claude pill layout)
+                val cleanModelName = remember(selectedModel) {
+                    when {
+                        selectedModel.contains("Coding", ignoreCase = true) -> "Coding"
+                        selectedModel.contains("Reasoning", ignoreCase = true) -> "Reasoning"
+                        selectedModel.contains("Turbo", ignoreCase = true) -> "Turbo"
+                        selectedModel.contains("Smart", ignoreCase = true) -> "Smart"
+                        else -> selectedModel.removePrefix("Hermes ").ifBlank { selectedModel }
+                    }
+                }
+
                 Row(
                     modifier = Modifier
-                        .height(40.dp)
+                        .height(38.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF2A2926))
+                        .background(Color(0xFF2C2B28))
                         .clickable(onClick = onModelClick)
                         .padding(horizontal = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = selectedModel,
+                        text = "Hermes $cleanModelName",
                         style = HermesTypography.bodyMedium.copy(
                             color = TextPrimaryWarm,
                             fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
                             fontSize = 13.5.sp
-                        )
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = modelTier,
-                        style = HermesTypography.bodyMedium.copy(
-                            color = Color(0xFF8E8B82),
-                            fontSize = 13.sp
-                        )
+                        ),
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                 }
             }
 
-            // Right Group: Dictation Mic & Realtime Voice Waveform / Send Button
+            Spacer(modifier = Modifier.weight(1f))
+
+            // Right Group: Dictation Mic & Voice Waveform / Send Button
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Dictation Mic Button (12-00-55)
+                // Dictation Mic Button
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(38.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF2A2926))
+                        .background(Color(0xFF2C2B28))
                         .clickable(onClick = onVoiceClick),
                     contentAlignment = Alignment.Center
                 ) {
@@ -231,12 +260,10 @@ fun ClaudeHomeComposer(
                     )
                 }
 
-                // If streaming: Show authentic Stop Generation square button (Screenshot 2)
-                // Otherwise: Animated Send Pill (Waveform when empty, Coral Arrow when text typed)
                 if (isStreaming) {
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(38.dp)
                             .clip(CircleShape)
                             .background(Color(0xFF262523))
                             .border(1.dp, Color(0xFF383632), CircleShape)
@@ -251,7 +278,7 @@ fun ClaudeHomeComposer(
                         )
                     }
                 } else {
-                    val canSend = text.isNotBlank()
+                    val canSend = text.isNotBlank() || attachments.isNotEmpty()
                     AnimatedContent(
                         targetState = canSend,
                         transitionSpec = {
@@ -261,10 +288,9 @@ fun ClaudeHomeComposer(
                         label = "SendButtonAnimation"
                     ) { isSending ->
                         if (isSending) {
-                            // Solid Coral Circle with White Arrow (21-44-47)
                             Box(
                                 modifier = Modifier
-                                    .size(40.dp)
+                                    .size(38.dp)
                                     .clip(CircleShape)
                                     .background(BrandCoral)
                                     .clickable(onClick = onSend),
@@ -278,10 +304,9 @@ fun ClaudeHomeComposer(
                                 )
                             }
                         } else {
-                            // Solid Pure White Circle with Black Waveform Icon (12-00-55)
                             Box(
                                 modifier = Modifier
-                                    .size(40.dp)
+                                    .size(38.dp)
                                     .clip(CircleShape)
                                     .background(PureWhite)
                                     .clickable(onClick = onVoiceClick),
