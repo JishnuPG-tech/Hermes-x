@@ -36,7 +36,19 @@ class CodeViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 1450)
 
-    val gitBranch: StateFlow<String> = MutableStateFlow("main").asStateFlow()
+    val gitBranch: StateFlow<String> = kotlinx.coroutines.flow.combine(
+        repository.hostStatus,
+        repository.projects
+    ) { status, projects ->
+        val activeProj = projects.firstOrNull()?.workspace?.ifBlank { null }
+            ?: projects.firstOrNull()?.name?.ifBlank { null }
+        when {
+            activeProj != null -> activeProj.lowercase().replace(" ", "-")
+            status != null && status.storage_root.isNotBlank() && status.storage_root != "/" ->
+                status.storage_root.trimEnd('/').substringAfterLast("/").ifBlank { "main" }
+            else -> "main"
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "main")
 
     private val _selectedTab = MutableStateFlow(CodeViewTab.AGENT)
     val selectedTab: StateFlow<CodeViewTab> = _selectedTab.asStateFlow()
@@ -70,6 +82,7 @@ class CodeViewModel(
     init {
         repository.fetchApprovals()
         repository.fetchHostStatus()
+        repository.fetchProjects()
         fetchFiles("")
         refreshBrowserStatus()
     }
@@ -176,6 +189,8 @@ class CodeViewModel(
 
     fun refresh() {
         repository.fetchApprovals()
+        repository.fetchHostStatus()
+        repository.fetchProjects()
         fetchFiles(_currentPath.value)
         refreshBrowserStatus()
     }

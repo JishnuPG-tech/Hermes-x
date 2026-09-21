@@ -80,6 +80,7 @@ fun SettingsScreen(
     var showHelpDialog by remember { mutableStateOf(false) }
     var showPrivacyDialog by remember { mutableStateOf(false) }
     var showTermsDialog by remember { mutableStateOf(false) }
+    var showAboutDialog by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -109,7 +110,7 @@ fun SettingsScreen(
                     style = HermesTypography.headlineMedium.copy(fontSize = 20.sp, color = TextPrimaryWarm)
                 )
 
-                IconButton(onClick = {}) {
+                IconButton(onClick = { showAboutDialog = true }) {
                     Icon(Icons.Outlined.Info, contentDescription = "Info", tint = TextPrimaryWarm)
                 }
             }
@@ -515,6 +516,38 @@ fun SettingsScreen(
                     )
                 },
                 confirmButton = { TextButton(onClick = { showTermsDialog = false }) { Text("Close", color = AccentBlue) } }
+            )
+        }
+
+        // About Dialog
+        if (showAboutDialog) {
+            AlertDialog(
+                onDismissRequest = { showAboutDialog = false },
+                containerColor = Color(0xFF1F1E1C),
+                shape = RoundedCornerShape(22.dp),
+                title = { Text("About Hermes", style = HermesTypography.headlineMedium.copy(fontSize = 19.sp, color = TextPrimaryWarm)) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = appVersionText,
+                            style = HermesTypography.titleLarge.copy(fontSize = 14.5.sp, color = BrandCoral)
+                        )
+                        Text(
+                            text = "Autonomous AI Agent & Knowledge Space client built with Jetpack Compose, Room persistence, and full-duplex WebSocket protocols.",
+                            style = HermesTypography.bodyMedium.copy(color = TextMuted, fontSize = 13.5.sp, lineHeight = 19.sp)
+                        )
+                        HorizontalDivider(color = BorderSubtle)
+                        Text(
+                            text = "Connected Account: $userEmail",
+                            style = HermesTypography.bodyMedium.copy(color = TextSubtle, fontSize = 12.sp)
+                        )
+                        Text(
+                            text = "Engine: Antigravity / Gemini-2.5-Flash",
+                            style = HermesTypography.bodyMedium.copy(color = TextSubtle, fontSize = 12.sp)
+                        )
+                    }
+                },
+                confirmButton = { TextButton(onClick = { showAboutDialog = false }) { Text("Close", color = AccentBlue) } }
             )
         }
 

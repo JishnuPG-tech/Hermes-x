@@ -204,21 +204,31 @@ fun TasksScreen(
                         )
                     }
 
-                    val defaultRoles = if (workforceRoles.isNotEmpty()) workforceRoles else listOf(
-                        WorkforceRoleDto("Orchestrator", "Coordinates task DAG breakdown, subtask delegation, and synthesis.", listOf("read_file", "list_directory"), "Execution plan & synthesis deliverable"),
-                        WorkforceRoleDto("Architect", "Designs software architecture, data contracts, and API boundaries.", listOf("read_file", "write_file"), "Technical specification"),
-                        WorkforceRoleDto("Developer", "Writes production code, modules, and tests.", listOf("read_file", "write_file", "edit_file", "bash_exec"), "Source code files & diffs"),
-                        WorkforceRoleDto("QA Engineer", "Executes unit and integration tests and verifies criteria.", listOf("read_file", "write_file", "bash_exec"), "Verification evidence & test suite"),
-                        WorkforceRoleDto("Security Reviewer", "Audits code for vulnerabilities and secret leakage.", listOf("read_file", "list_directory"), "Security assessment report"),
-                        WorkforceRoleDto("DevOps", "Configures builds, containers, and deployment health.", listOf("bash_exec", "read_file", "write_file"), "Build configurations & logs")
-                    )
-
-                    items(defaultRoles, key = { it.name }) { role ->
-                        val isActive = liveTasks.any { task ->
-                            task.status.equals("RUNNING", ignoreCase = true) &&
-                            task.subtasks.any { sub -> sub.role.equals(role.name, ignoreCase = true) && sub.status.equals("running", ignoreCase = true) }
+                    if (workforceRoles.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(Icons.Outlined.GroupWork, contentDescription = null, tint = TextMuted, modifier = Modifier.size(36.dp))
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text("No active workforce roles", style = HermesTypography.titleMedium.copy(color = TextPrimaryWarm))
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text("Workforce roles will appear when registered with the Hermes coordinator.", style = HermesTypography.bodySmall.copy(color = TextSubtle))
+                                }
+                            }
                         }
-                        WorkforceRoleCard(role = role, isActive = isActive)
+                    } else {
+                        items(workforceRoles, key = { it.name }) { role ->
+                            val isActive = liveTasks.any { task ->
+                                task.status.equals("RUNNING", ignoreCase = true) &&
+                                task.subtasks.any { sub -> sub.role.equals(role.name, ignoreCase = true) && sub.status.equals("running", ignoreCase = true) }
+                            }
+                            WorkforceRoleCard(role = role, isActive = isActive)
+                        }
                     }
                 }
             }

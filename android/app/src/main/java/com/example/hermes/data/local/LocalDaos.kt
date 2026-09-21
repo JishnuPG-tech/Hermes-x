@@ -43,6 +43,9 @@ interface MessageDao {
 
     @Query("DELETE FROM messages WHERE user_id = :userId")
     suspend fun clearMessagesForUser(userId: String)
+
+    @Query("SELECT * FROM messages WHERE user_id = :userId AND (content LIKE '%' || :query || '%' OR thinking LIKE '%' || :query || '%') ORDER BY timestamp DESC LIMIT 50")
+    suspend fun searchMessages(query: String, userId: String): List<MessageEntity>
 }
 
 @Dao

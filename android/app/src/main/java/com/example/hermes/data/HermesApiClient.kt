@@ -1113,15 +1113,29 @@ class HermesApiClient(
     /**
      * Connects to the full-duplex Voice WebSocket endpoint.
      */
-    fun connectVoiceWebSocket(listener: WebSocketListener): WebSocket {
-        val wsUrl = if (baseUrl.startsWith("https://")) {
+    fun connectVoiceWebSocket(
+        listener: WebSocketListener,
+        persona: String? = null,
+        language: String? = null,
+        pace: String? = null
+    ): WebSocket {
+        val baseWs = if (baseUrl.startsWith("https://")) {
             baseUrl.replace("https://", "wss://") + "/v1/voice/ws"
         } else {
             baseUrl.replace("http://", "ws://") + "/v1/voice/ws"
         }
 
+        val urlBuilder = StringBuilder(baseWs)
+        val params = mutableListOf<String>()
+        if (!persona.isNullOrBlank()) params.add("persona=" + java.net.URLEncoder.encode(persona, "UTF-8"))
+        if (!language.isNullOrBlank()) params.add("language=" + java.net.URLEncoder.encode(language, "UTF-8"))
+        if (!pace.isNullOrBlank()) params.add("pace=" + java.net.URLEncoder.encode(pace, "UTF-8"))
+        if (params.isNotEmpty()) {
+            urlBuilder.append("?").append(params.joinToString("&"))
+        }
+
         val request = Request.Builder()
-            .url(wsUrl)
+            .url(urlBuilder.toString())
             .header("Authorization", "Bearer $apiKey")
             .build()
 

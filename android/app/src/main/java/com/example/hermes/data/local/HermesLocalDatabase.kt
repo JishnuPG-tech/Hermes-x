@@ -497,6 +497,18 @@ class HermesLocalDatabase private constructor(context: Context) :
         override suspend fun clearMessagesForUser(userId: String) {
             writableDatabase.delete("messages", "user_id = ?", arrayOf(userId))
         }
+        override suspend fun searchMessages(query: String, userId: String): List<MessageEntity> {
+            val list = mutableListOf<MessageEntity>()
+            val pattern = "%$query%"
+            readableDatabase.query(
+                "messages", null, "user_id = ? AND (content LIKE ? OR thinking LIKE ?)", arrayOf(userId, pattern, pattern), null, null, "timestamp DESC LIMIT 50"
+            ).use { cursor ->
+                while (cursor.moveToNext()) {
+                    list.add(cursor.toMessageEntity())
+                }
+            }
+            return list
+        }
     }
 
     val taskDao: TaskDao = object : TaskDao {

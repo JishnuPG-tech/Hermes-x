@@ -6,9 +6,11 @@ import com.example.hermes.stream.StreamSmoothingEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.Response
@@ -114,7 +116,9 @@ class HermesDataRepository(
     private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var smoother: StreamSmoothingEngine? = null
     private var activeStreamJob: kotlinx.coroutines.Job? = null
-    private var localDb: HermesLocalDatabase? = null
+    private var roomDb: HermesRoomDatabase? = null
+    @Volatile
+    private var activeUserId: String = "guest"
     private var prefsManager: PreferencesManager? = null
     private var ptyWebSocket: WebSocket? = null
 
@@ -209,22 +213,39 @@ class HermesDataRepository(
         }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     fun setContext(context: Context) {
-        val db = HermesLocalDatabase.getInstance(context)
+        val db = HermesRoomDatabase.getInstance(context)
         val prefs = PreferencesManager.getInstance(context)
-        localDb = db
+        roomDb = db
         prefsManager = prefs
 
-        // Listen for active user ID change to partition local DB
+        // Listen for active user ID change to partition local Room queries
         repositoryScope.launch(Dispatchers.IO) {
             prefs.currentUserId.collect { userId ->
-                db.setActiveUser(userId)
+                activeUserId = userId
+                val cachedSessions = db.sessionDao().getSessionsList(userId)
+                if (cachedSessions.isNotEmpty()) {
+                    val localDtos = cachedSessions.map {
+                        SessionDto(
+                            session_id = it.id,
+                            title = it.title,
+                            model = it.model,
+                            updated_at = it.updatedAt / 1000.0
+                        )
+                    }
+                    val localIds = localDtos.map { it.session_id }.toSet()
+                    val remoteOnly = _sessions.value.filter { it.session_id !in localIds }
+                    _sessions.value = (localDtos + remoteOnly).sortedByDescending { it.updated_at }
+                }
             }
         }
 
-        // Load cached entities from SQLite
+        // Load cached entities from Room reactively
         repositoryScope.launch(Dispatchers.IO) {
-            db.sessionsFlow.collect { cachedSessions ->
+            prefs.currentUserId.flatMapLatest { userId ->
+                db.sessionDao().getSessions(userId)
+            }.collect { cachedSessions ->
                 val localDtos = cachedSessions.map {
                     SessionDto(
                         session_id = it.id,
@@ -240,7 +261,9 @@ class HermesDataRepository(
         }
 
         repositoryScope.launch(Dispatchers.IO) {
-            db.tasksFlow.collect { cachedTasks ->
+            prefs.currentUserId.flatMapLatest { userId ->
+                db.taskDao().getTasks(userId)
+            }.collect { cachedTasks ->
                 if (_tasks.value.isEmpty() && cachedTasks.isNotEmpty()) {
                     _tasks.value = cachedTasks.map {
                         TaskDto(
@@ -257,7 +280,9 @@ class HermesDataRepository(
         }
 
         repositoryScope.launch(Dispatchers.IO) {
-            db.projectsFlow.collect { cachedProjects ->
+            prefs.currentUserId.flatMapLatest { userId ->
+                db.projectDao().getProjects(userId)
+            }.collect { cachedProjects ->
                 if (_projects.value.isEmpty() && cachedProjects.isNotEmpty()) {
                     _projects.value = cachedProjects.map {
                         ProjectDto(
@@ -272,7 +297,9 @@ class HermesDataRepository(
         }
 
         repositoryScope.launch(Dispatchers.IO) {
-            db.artifactsFlow.collect { cachedArtifacts ->
+            prefs.currentUserId.flatMapLatest { userId ->
+                db.artifactDao().getArtifacts(userId)
+            }.collect { cachedArtifacts ->
                 if (_allArtifacts.value.isEmpty() && cachedArtifacts.isNotEmpty()) {
                     _allArtifacts.value = cachedArtifacts.map {
                         ArtifactItemDto(
@@ -315,7 +342,7 @@ class HermesDataRepository(
     override suspend fun logout() {
         stopGeneration()
         prefsManager?.clearAuth()
-        localDb?.setActiveUser("guest")
+        activeUserId = "guest"
         _messages.value = emptyList()
         _sessions.value = emptyList()
         _tasks.value = emptyList()
@@ -341,8 +368,8 @@ class HermesDataRepository(
                 val verifiedEmail = data?.account?.email_address?.ifBlank { email } ?: email
                 val verifiedName = data?.account?.display_name?.ifBlank { name } ?: name
 
-                // 1. Partition local database immediately by verified email
-                localDb?.setActiveUser(verifiedEmail)
+                // 1. Partition Room queries immediately by verified email
+                activeUserId = verifiedEmail
 
                 // 2. Persist verified profile and server auth token
                 prefsManager?.setUserProfile(verifiedName, verifiedEmail, avatar)
@@ -463,14 +490,15 @@ class HermesDataRepository(
             )
             _sessions.value = listOf(newSessionDto) + _sessions.value.filter { it.session_id != activeSessionId }
 
-            // Persist immediately in local database
-            localDb?.let { db ->
+            // Persist immediately in Room database
+            roomDb?.let { db ->
                 repositoryScope.launch(Dispatchers.IO) {
-                    db.upsertSessions(listOf(SessionEntity(
+                    db.sessionDao().upsertSessions(listOf(SessionEntity(
                         id = activeSessionId,
                         title = chatTitle,
                         model = resolvedModel,
-                        updatedAt = System.currentTimeMillis()
+                        updatedAt = System.currentTimeMillis(),
+                        userId = activeUserId
                     )))
                 }
             }
@@ -504,15 +532,16 @@ class HermesDataRepository(
         _thinkingPhase.value = ThinkingPhase.THOUGHT_PROCESS
 
         val currentSession = _currentSessionId.value ?: activeSessionId
-        localDb?.let { db ->
+        roomDb?.let { db ->
             repositoryScope.launch(Dispatchers.IO) {
-                db.saveMessages(listOf(
+                db.messageDao().insertMessages(listOf(
                     MessageEntity(
                         id = userMsg.id,
                         sessionId = currentSession,
                         role = userMsg.role,
                         content = userMsg.content,
-                        timestamp = userMsg.timestamp
+                        timestamp = userMsg.timestamp,
+                        userId = activeUserId
                     ),
                     MessageEntity(
                         id = assistantMsgId,
@@ -522,7 +551,8 @@ class HermesDataRepository(
                         thinking = null,
                         timestamp = System.currentTimeMillis(),
                         isStreaming = true,
-                        stepTitle = "Thought process"
+                        stepTitle = "Thought process",
+                        userId = activeUserId
                     )
                 ))
             }
@@ -605,14 +635,15 @@ class HermesDataRepository(
                                     code = artifactMeta.code
                                 )
                                 _allArtifacts.value = listOf(newArtifact) + _allArtifacts.value.filter { it.title != newArtifact.title }
-                                localDb?.let { db ->
+                                roomDb?.let { db ->
                                     repositoryScope.launch(Dispatchers.IO) {
-                                        db.upsertArtifacts(listOf(ArtifactEntity(
+                                        db.artifactDao().upsertArtifacts(listOf(ArtifactEntity(
                                             id = newArtifact.id,
                                             title = newArtifact.title,
                                             type = newArtifact.type,
                                             language = newArtifact.language ?: "",
-                                            code = newArtifact.code ?: ""
+                                            code = newArtifact.code ?: "",
+                                            userId = activeUserId
                                         )))
                                     }
                                 }
@@ -648,17 +679,18 @@ class HermesDataRepository(
                                 }
                             }
 
-                            // Save message exchange to local cache
+                            // Save message exchange to local Room cache
                             val currentSession = _currentSessionId.value ?: activeSessionId
-                            localDb?.let { db ->
+                            roomDb?.let { db ->
                                 repositoryScope.launch(Dispatchers.IO) {
-                                    db.saveMessages(listOf(
+                                    db.messageDao().insertMessages(listOf(
                                         MessageEntity(
                                             id = userMsg.id,
                                             sessionId = currentSession,
                                             role = userMsg.role,
                                             content = userMsg.content,
-                                            timestamp = userMsg.timestamp
+                                            timestamp = userMsg.timestamp,
+                                            userId = activeUserId
                                         ),
                                         MessageEntity(
                                             id = assistantMsgId,
@@ -672,16 +704,18 @@ class HermesDataRepository(
                                             artifactType = artifactMeta?.type,
                                             artifactLanguage = artifactMeta?.language,
                                             artifactCode = artifactMeta?.code,
-                                            stepTitle = artifactMeta?.stepTitle
+                                            stepTitle = artifactMeta?.stepTitle,
+                                            userId = activeUserId
                                         )
                                     ))
 
-                                    // Update session updated_at in local DB
-                                    db.upsertSessions(listOf(SessionEntity(
+                                    // Update session updated_at in local Room DB
+                                    db.sessionDao().upsertSessions(listOf(SessionEntity(
                                         id = currentSession,
                                         title = chatTitle,
                                         model = model,
-                                        updatedAt = System.currentTimeMillis()
+                                        updatedAt = System.currentTimeMillis(),
+                                        userId = activeUserId
                                     )))
                                 }
                             }
@@ -888,19 +922,19 @@ class HermesDataRepository(
     }
 
     override fun fetchSessions() {
-        repositoryScope.launch {
-            localDb?.refreshAll()
+        repositoryScope.launch(Dispatchers.IO) {
             try {
                 val serverSessions = apiClient.getSessions()
                 if (serverSessions.isNotEmpty()) {
                     _sessions.value = serverSessions
-                    localDb?.let { db ->
-                        db.upsertSessions(serverSessions.map {
+                    roomDb?.let { db ->
+                        db.sessionDao().upsertSessions(serverSessions.map {
                             SessionEntity(
                                 id = it.session_id,
                                 title = it.title,
                                 model = it.model ?: "hermes-agent",
-                                updatedAt = (it.updated_at * 1000).toLong()
+                                updatedAt = (it.updated_at * 1000).toLong(),
+                                userId = activeUserId
                             )
                         })
                     }
@@ -910,7 +944,7 @@ class HermesDataRepository(
     }
 
     override fun loadSession(sessionId: String) {
-        repositoryScope.launch {
+        repositoryScope.launch(Dispatchers.IO) {
             // Guard: If we are currently actively streaming for this exact session,
             // DO NOT wipe the active stream with stale cache!
             if (_currentSessionId.value == sessionId && _isStreaming.value) {
@@ -919,9 +953,9 @@ class HermesDataRepository(
 
             _currentSessionId.value = sessionId
 
-            // 1. Immediately load and render from local cache (0ms delay)
-            localDb?.let { db ->
-                val cached = db.getMessagesForSession(sessionId)
+            // 1. Immediately load and render from Room cache (0ms delay)
+            roomDb?.let { db ->
+                val cached = db.messageDao().getMessagesForSession(sessionId, activeUserId)
                 if (cached.isNotEmpty() && (!_isStreaming.value || _messages.value.isEmpty())) {
                     _messages.value = cached.map {
                         ChatMessage(
@@ -954,8 +988,8 @@ class HermesDataRepository(
                     _sessions.value = _sessions.value.map { s ->
                         if (s.session_id == sessionId) s.copy(title = serverTitle) else s
                     }
-                    localDb?.let { db ->
-                        db.updateSessionTitle(sessionId, serverTitle)
+                    roomDb?.let { db ->
+                        db.sessionDao().updateSessionTitle(sessionId, activeUserId, serverTitle)
                     }
                 }
             }
@@ -979,9 +1013,9 @@ class HermesDataRepository(
                 }
                 _messages.value = mapped
 
-                // Update local cache with remote messages
-                localDb?.let { db ->
-                    db.saveMessages(mapped.map { m ->
+                // Update Room cache with remote messages
+                roomDb?.let { db ->
+                    db.messageDao().insertMessages(mapped.map { m ->
                         MessageEntity(
                             id = m.id,
                             sessionId = sessionId,
@@ -994,7 +1028,8 @@ class HermesDataRepository(
                             artifactType = m.artifactType,
                             artifactLanguage = m.artifactLanguage,
                             artifactCode = m.artifactCode,
-                            stepTitle = m.stepTitle
+                            stepTitle = m.stepTitle,
+                            userId = activeUserId
                         )
                     })
                 }
@@ -1057,8 +1092,8 @@ class HermesDataRepository(
                                 if (!updatedDetail.is_streaming) {
                                     _isStreaming.value = false
                                     _activeThinking.value = null
-                                    localDb?.let { db ->
-                                        db.saveMessages(updatedMapped.map { m ->
+                                    roomDb?.let { db ->
+                                        db.messageDao().insertMessages(updatedMapped.map { m ->
                                             MessageEntity(
                                                 id = m.id,
                                                 sessionId = sessionId,
@@ -1071,7 +1106,8 @@ class HermesDataRepository(
                                                 artifactType = m.artifactType,
                                                 artifactLanguage = m.artifactLanguage,
                                                 artifactCode = m.artifactCode,
-                                                stepTitle = m.stepTitle
+                                                stepTitle = m.stepTitle,
+                                                userId = activeUserId
                                             )
                                         })
                                     }
@@ -1098,9 +1134,10 @@ class HermesDataRepository(
     }
 
     override fun deleteSession(sessionId: String) {
-        repositoryScope.launch {
+        repositoryScope.launch(Dispatchers.IO) {
             apiClient.deleteSession(sessionId)
-            localDb?.deleteSession(sessionId)
+            roomDb?.sessionDao()?.deleteSession(sessionId, activeUserId)
+            roomDb?.messageDao()?.deleteMessagesForSession(sessionId, activeUserId)
             _sessions.value = _sessions.value.filter { it.session_id != sessionId }
             if (_currentSessionId.value == sessionId) {
                 _currentSessionId.value = null
@@ -1120,10 +1157,10 @@ class HermesDataRepository(
             } else s
         }
 
-        // 2. Persist in local SQLite database
-        localDb?.let { db ->
+        // 2. Persist in local Room database
+        roomDb?.let { db ->
             repositoryScope.launch(Dispatchers.IO) {
-                db.updateSessionTitle(sessionId, clean)
+                db.sessionDao().updateSessionTitle(sessionId, activeUserId, clean)
             }
         }
 
@@ -1134,17 +1171,18 @@ class HermesDataRepository(
     }
 
     override fun fetchProjects() {
-        repositoryScope.launch {
+        repositoryScope.launch(Dispatchers.IO) {
             val list = apiClient.getProjects()
             if (list.isNotEmpty()) {
                 _projects.value = list
-                localDb?.let { db ->
-                    db.upsertProjects(list.map {
+                roomDb?.let { db ->
+                    db.projectDao().upsertProjects(list.map {
                         ProjectEntity(
                             id = it.id,
                             name = it.name,
                             description = it.description,
-                            createdAt = (it.created_at * 1000).toLong()
+                            createdAt = (it.created_at * 1000).toLong(),
+                            userId = activeUserId
                         )
                     })
                 }
@@ -1153,15 +1191,16 @@ class HermesDataRepository(
     }
 
     override fun createNewProject(name: String, description: String) {
-        repositoryScope.launch {
+        repositoryScope.launch(Dispatchers.IO) {
             val created = apiClient.createProject(name, description)
             if (created != null) {
                 _projects.value = listOf(created) + _projects.value
-                localDb?.let { db ->
-                    db.upsertProjects(listOf(ProjectEntity(
+                roomDb?.let { db ->
+                    db.projectDao().upsertProjects(listOf(ProjectEntity(
                         id = created.id,
                         name = created.name,
-                        description = created.description
+                        description = created.description,
+                        userId = activeUserId
                     )))
                 }
             }
@@ -1178,19 +1217,20 @@ class HermesDataRepository(
     }
 
     override fun fetchTasks() {
-        repositoryScope.launch {
+        repositoryScope.launch(Dispatchers.IO) {
             val fetched = apiClient.getTasks()
             if (fetched.isNotEmpty()) {
                 _tasks.value = fetched
-                localDb?.let { db ->
-                    db.upsertTasks(fetched.map {
+                roomDb?.let { db ->
+                    db.taskDao().upsertTasks(fetched.map {
                         TaskEntity(
                             id = it.id,
                             title = it.title,
                             prompt = it.prompt,
                             status = it.status,
                             progress = it.progress,
-                            agentName = it.agent_name
+                            agentName = it.agent_name,
+                            userId = activeUserId
                         )
                     })
                 }
@@ -1199,18 +1239,19 @@ class HermesDataRepository(
     }
 
     override fun createNewTask(title: String, prompt: String) {
-        repositoryScope.launch {
+        repositoryScope.launch(Dispatchers.IO) {
             val created = apiClient.createTask(title, prompt)
             if (created != null) {
                 _tasks.value = listOf(created) + _tasks.value
-                localDb?.let { db ->
-                    db.upsertTasks(listOf(TaskEntity(
+                roomDb?.let { db ->
+                    db.taskDao().upsertTasks(listOf(TaskEntity(
                         id = created.id,
                         title = created.title,
                         prompt = created.prompt,
                         status = created.status,
                         progress = created.progress,
-                        agentName = created.agent_name
+                        agentName = created.agent_name,
+                        userId = activeUserId
                     )))
                 }
             }
@@ -1218,32 +1259,32 @@ class HermesDataRepository(
     }
 
     override fun pauseTask(taskId: String) {
-        repositoryScope.launch {
+        repositoryScope.launch(Dispatchers.IO) {
             apiClient.pauseTask(taskId)
             _tasks.value = _tasks.value.map {
                 if (it.id == taskId) it.copy(status = "PAUSED") else it
             }
-            localDb?.updateTaskStatus(taskId, "PAUSED")
+            roomDb?.taskDao()?.updateTaskStatus(taskId, activeUserId, "PAUSED")
         }
     }
 
     override fun resumeTask(taskId: String) {
-        repositoryScope.launch {
+        repositoryScope.launch(Dispatchers.IO) {
             apiClient.resumeTask(taskId)
             _tasks.value = _tasks.value.map {
                 if (it.id == taskId) it.copy(status = "RUNNING") else it
             }
-            localDb?.updateTaskStatus(taskId, "RUNNING")
+            roomDb?.taskDao()?.updateTaskStatus(taskId, activeUserId, "RUNNING")
         }
     }
 
     override fun cancelTask(taskId: String) {
-        repositoryScope.launch {
+        repositoryScope.launch(Dispatchers.IO) {
             apiClient.cancelTask(taskId)
             _tasks.value = _tasks.value.map {
                 if (it.id == taskId) it.copy(status = "CANCELLED") else it
             }
-            localDb?.updateTaskStatus(taskId, "CANCELLED")
+            roomDb?.taskDao()?.updateTaskStatus(taskId, activeUserId, "CANCELLED")
         }
     }
 
@@ -1407,8 +1448,32 @@ class HermesDataRepository(
         return apiClient.getOmniRouteTelemetry()
     }
 
-    override suspend fun searchMessagesFts(query: String): List<FtsSearchResultDto> {
-        return localDb?.searchMessagesFts(query) ?: emptyList()
+    override suspend fun searchMessagesFts(query: String): List<FtsSearchResultDto> = withContext(Dispatchers.IO) {
+        if (query.isBlank()) return@withContext emptyList()
+        val matches = roomDb?.messageDao()?.searchMessages(query, activeUserId) ?: emptyList()
+        val sessionsMap = _sessions.value.associateBy { it.session_id }
+        matches.map { entity ->
+            val session = sessionsMap[entity.sessionId]
+            val text = entity.content.ifBlank { entity.thinking ?: "" }
+            val snippet = extractSnippet(text, query)
+            FtsSearchResultDto(
+                sessionId = entity.sessionId,
+                sessionTitle = session?.title ?: "Chat",
+                role = entity.role,
+                snippet = snippet,
+                timestamp = entity.timestamp
+            )
+        }
+    }
+
+    private fun extractSnippet(content: String, query: String): String {
+        val idx = content.indexOf(query, ignoreCase = true)
+        if (idx < 0) return content.take(120)
+        val start = (idx - 40).coerceAtLeast(0)
+        val end = (idx + query.length + 60).coerceAtMost(content.length)
+        val prefix = if (start > 0) "…" else ""
+        val suffix = if (end < content.length) "…" else ""
+        return prefix + content.substring(start, end).replace("\n", " ") + suffix
     }
 
     override fun clearMessages() {

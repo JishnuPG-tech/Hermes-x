@@ -1,0 +1,49 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'gateway/**'
+      - 'harness/**'
+      - 'hermes_core/**'
+      - 'ignis/**'
+      - '*.py'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'gateway/**'
+      - 'harness/**'
+      - 'hermes_core/**'
+      - 'ignis/**'
+      - '*.py'
+      - '.github/workflows/backend-ci.yml'
+
+jobs:
+  lint-and-validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install fastapi "uvicorn[standard]" httpx aiohttp requests beautifulsoup4 pydantic python-multipart pyjwt cryptography edge-tts pytest flake8
+
+      - name: Lint with flake8
+        run: |
+          # Stop build if there are Python syntax errors or undefined names
+          flake8 gateway harness --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: Validate Python Modules Compilation
+        run: |
+          python -m compileall gateway harness

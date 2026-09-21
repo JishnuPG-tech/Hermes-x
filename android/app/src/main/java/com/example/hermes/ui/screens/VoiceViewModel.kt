@@ -28,6 +28,9 @@ import java.io.FileOutputStream
 import java.util.LinkedList
 import java.util.Queue
 
+import com.example.hermes.data.PreferencesManager
+import kotlinx.coroutines.flow.first
+
 enum class VoiceState {
     CONNECTING,
     CONNECTED,
@@ -44,6 +47,7 @@ class VoiceViewModel(
 ) : AndroidViewModel(application) {
 
     private val apiClient: HermesApiClient = HermesApiClient.instance
+    private val prefs: PreferencesManager = PreferencesManager.getInstance(application)
 
     private val _voiceState = MutableStateFlow(VoiceState.CONNECTING)
     val voiceState: StateFlow<VoiceState> = _voiceState.asStateFlow()
@@ -56,6 +60,10 @@ class VoiceViewModel(
 
     private val _selectedVoice = MutableStateFlow("en-US-ChristopherNeural")
     val selectedVoice: StateFlow<String> = _selectedVoice.asStateFlow()
+
+    private var currentPersona: String = "Rounded"
+    private var currentLanguage: String = "English (United Kingdom)"
+    private var currentPace: String = "Normal"
 
     private var webSocket: WebSocket? = null
 
@@ -70,7 +78,23 @@ class VoiceViewModel(
     private val mainHandler = Handler(Looper.getMainLooper())
 
     init {
-        connect()
+        viewModelScope.launch {
+            try {
+                currentPersona = prefs.voicePersona.first()
+                currentLanguage = prefs.voiceLanguage.first()
+                currentPace = prefs.voicePace.first()
+
+                // Map persona to neural voice profile
+                _selectedVoice.value = when (currentPersona) {
+                    "Airy" -> "en-US-AriaNeural"
+                    "Mellow" -> "en-US-GuyNeural"
+                    "Glassy" -> "en-US-JennyNeural"
+                    "Brass" -> "en-US-EricNeural"
+                    else -> "en-US-ChristopherNeural"
+                }
+            } catch (_: Exception) {}
+            connect()
+        }
         initSpeechRecognizer()
     }
 
@@ -80,11 +104,21 @@ class VoiceViewModel(
     }
 
     private fun sendSessionOpen() {
+        val speedValue = when (currentPace) {
+            "Slow" -> 0.85
+            "Fast" -> 1.25
+            else -> 1.0
+        }
         val openPayload = JSONObject().apply {
             put("type", "session_open")
             put("voice", _selectedVoice.value)
-            put("speed", 1.0)
+            put("speed", speedValue)
             put("sample_rate", 24000)
+            put("client_metadata", JSONObject().apply {
+                put("persona", currentPersona)
+                put("language", currentLanguage)
+                put("pace", currentPace)
+            })
         }
         webSocket?.send(openPayload.toString())
     }
@@ -95,32 +129,37 @@ class VoiceViewModel(
 
         viewModelScope.launch {
             try {
-                webSocket = apiClient.connectVoiceWebSocket(object : WebSocketListener() {
-                    override fun onOpen(webSocket: WebSocket, response: Response) {
-                        _voiceState.value = VoiceState.LISTENING
-                        _statusText.value = "Listening..."
-                        sendSessionOpen()
-                        startListening()
-                    }
+                webSocket = apiClient.connectVoiceWebSocket(
+                    listener = object : WebSocketListener() {
+                        override fun onOpen(webSocket: WebSocket, response: Response) {
+                            _voiceState.value = VoiceState.LISTENING
+                            _statusText.value = "Listening..."
+                            sendSessionOpen()
+                            startListening()
+                        }
 
-                    override fun onMessage(webSocket: WebSocket, text: String) {
-                        handleTextMessage(text)
-                    }
+                        override fun onMessage(webSocket: WebSocket, text: String) {
+                            handleTextMessage(text)
+                        }
 
-                    override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
-                        handleBinaryAudio(bytes.toByteArray())
-                    }
+                        override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
+                            handleBinaryAudio(bytes.toByteArray())
+                        }
 
-                    override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                        _voiceState.value = VoiceState.ERROR
-                        _statusText.value = "Voice service standby"
-                    }
+                        override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                            _voiceState.value = VoiceState.ERROR
+                            _statusText.value = "Voice service standby"
+                        }
 
-                    override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                        _voiceState.value = VoiceState.DISCONNECTED
-                        _statusText.value = "Disconnected"
-                    }
-                })
+                        override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                            _voiceState.value = VoiceState.DISCONNECTED
+                            _statusText.value = "Disconnected"
+                        }
+                    },
+                    persona = currentPersona,
+                    language = currentLanguage,
+                    pace = currentPace
+                )
             } catch (e: Exception) {
                 _voiceState.value = VoiceState.ERROR
                 _statusText.value = "Voice service standby"

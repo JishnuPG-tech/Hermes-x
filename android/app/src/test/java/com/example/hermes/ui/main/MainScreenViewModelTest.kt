@@ -66,6 +66,25 @@ class MainScreenViewModelTest {
     assertEquals(1, tasks.size)
     assertEquals("task-1", tasks.first().id)
   }
+
+  @Test
+  fun codeViewModel_gitBranch_defaultsToMain() = runTest {
+    val fakeRepo = FakeHermesRepository()
+    val viewModel = com.example.hermes.ui.screens.CodeViewModel(fakeRepo)
+    backgroundScope.launch(testDispatcher) { viewModel.gitBranch.collect() }
+    testScheduler.advanceUntilIdle()
+    assertEquals("main", viewModel.gitBranch.value)
+  }
+
+  @Test
+  fun codeViewModel_gitBranch_derivesFromProjects() = runTest {
+    val fakeRepo = FakeHermesRepository()
+    fakeRepo.setProjects(listOf(ProjectDto(id = "p1", name = "Hermes Feature", workspace = "feature-v2")))
+    val viewModel = com.example.hermes.ui.screens.CodeViewModel(fakeRepo)
+    backgroundScope.launch(testDispatcher) { viewModel.gitBranch.collect() }
+    testScheduler.advanceUntilIdle()
+    assertEquals("feature-v2", viewModel.gitBranch.value)
+  }
 }
 
 private class FakeHermesRepository : DataRepository {
@@ -98,6 +117,7 @@ private class FakeHermesRepository : DataRepository {
 
   private val _projects = MutableStateFlow<List<ProjectDto>>(emptyList())
   override val projects: StateFlow<List<ProjectDto>> = _projects.asStateFlow()
+  fun setProjects(list: List<ProjectDto>) { _projects.value = list }
 
   private val _availableModels = MutableStateFlow<List<ModelOptionDto>>(emptyList())
   override val availableModels: StateFlow<List<ModelOptionDto>> = _availableModels.asStateFlow()
