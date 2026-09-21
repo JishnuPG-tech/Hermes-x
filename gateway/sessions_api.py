@@ -80,7 +80,9 @@ async def create_session(request: Request):
         body = await request.json()
     except Exception:
         body = {}
-    
+
+    user_id = request.headers.get("X-User-ID", "").strip() or body.get("user_id", "")
+
     session_id = body.get("id") or f"sess_{uuid.uuid4().hex[:24]}"
     conv_uuid = body.get("conversation_uuid") or str(uuid.uuid4())
     title = body.get("title")
@@ -91,7 +93,8 @@ async def create_session(request: Request):
         "conversation_uuid": conv_uuid,
         "title": title,
         "created_at": now,
-        "updated_at": now
+        "updated_at": now,
+        "user_id": user_id
     }
     
     _SESSIONS[session_id] = session_obj
@@ -107,8 +110,10 @@ async def create_session(request: Request):
 @router.get("/sessions")
 @router.get("/api/v1/sessions")
 @router.get("/hermes/v1/sessions")
-async def list_sessions(limit: int = Query(50, le=100)):
+async def list_sessions(limit: int = Query(50, le=100), user_id: str = Query("")):
     items = list(_SESSIONS.values())
+    if user_id:
+        items = [s for s in items if s.get("user_id", "") == user_id]
     sliced = items[-limit:]
     return {
         "data": sliced,
@@ -310,12 +315,14 @@ async def append_session_message(session_id: str, request: Request):
         else:
             # Auto-provision
             now = _now_iso()
+            user_id = request.headers.get("X-User-ID", "").strip()
             _SESSIONS[session_id] = {
                 "id": session_id,
                 "conversation_uuid": session_id,
                 "title": "Chat",
                 "created_at": now,
-                "updated_at": now
+                "updated_at": now,
+                "user_id": user_id
             }
             _MESSAGES[session_id] = []
             

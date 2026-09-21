@@ -1,9 +1,11 @@
 package com.example.hermes.ui.screens
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -20,13 +22,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.hermes.data.ChatMessage
-import com.example.hermes.data.ChatAttachment
+import com.example.hermes.data.*
 import com.example.hermes.theme.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.example.hermes.ui.components.*
@@ -70,6 +76,11 @@ fun ChatScreen(
     }
 
     val context = androidx.compose.ui.platform.LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
+    val haptics = LocalHapticFeedback.current
+    var showMessageOptionsSheet by remember { mutableStateOf(false) }
+    var selectedOptionsMessage by remember { mutableStateOf<ChatMessage?>(null) }
+    var copiedMessageId by remember { mutableStateOf<String?>(null) }
     val webSearchEnabled by chatViewModel.webSearchEnabled.collectAsStateWithLifecycle()
     val memoryEnabled by chatViewModel.memoryEnabled.collectAsStateWithLifecycle()
     val selectedProject by chatViewModel.selectedProject.collectAsStateWithLifecycle()
@@ -467,7 +478,18 @@ fun ChatScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(end = 4.dp),
+                                .padding(end = 4.dp)
+                                .pointerInput(message.id) {
+                                    detectTapGestures(
+                                        onLongPress = {
+                                            if (message.content.isNotBlank()) {
+                                                selectedOptionsMessage = message
+                                                showMessageOptionsSheet = true
+                                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            }
+                                        }
+                                    )
+                                },
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             val isMessageStreaming = message.isStreaming || (index == messages.lastIndex && isStreaming)
@@ -495,34 +517,15 @@ fun ChatScreen(
                                             .padding(vertical = 4.dp, horizontal = 2.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        when (thinkingPhase) {
-                                             com.example.hermes.data.ThinkingPhase.CREATING_FILE -> {
-                                                ClaudeNoteAddIcon(
-                                                    size = 18.dp,
-                                                    tint = Color(0xFF8E8B82)
-                                                )
-                                            }
-                                            com.example.hermes.data.ThinkingPhase.FINALIZING -> {
-                                                Icon(
-                                                    imageVector = Icons.Outlined.Schedule,
-                                                    contentDescription = null,
-                                                    tint = Color(0xFF8E8B82),
-                                                    modifier = Modifier.size(18.dp)
-                                                )
-                                            }
-                                            else -> {
-                                                // Solid Coral Dot (Screenshot 3 & 4)
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(7.dp)
-                                                        .clip(CircleShape)
-                                                        .background(BrandCoral)
-                                                )
-                                            }
-                                        }
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .clip(CircleShape)
+                                                .background(BrandCoral)
+                                        )
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text(
-                                            text = activeThinking ?: "Thought process",
+                                            text = thinkingPhase.toDisplayString(),
                                             style = HermesTypography.bodyMedium.copy(
                                                 fontSize = 14.5.sp,
                                                 color = Color(0xFF8E8B82)
@@ -537,12 +540,8 @@ fun ChatScreen(
                                         )
                                     }
 
-                                    // Authentic 8-Frame Sequential Coral Starburst Animation
-                                    ClaudeSparkThinkingAnimation(
-                                        size = 28.dp,
-                                        tint = BrandCoral,
-                                        modifier = Modifier.padding(start = 2.dp)
-                                    )
+                                    // Pulsing coral dot — Claude-style loading indicator
+                                    HermesThinkingDot(modifier = Modifier.padding(start = 2.dp))
                                 }
                             } else {
                                 // Response ready / streamed -> Discreet single-line stepper
@@ -647,6 +646,9 @@ fun ChatScreen(
                                         content = message.content,
                                         modifier = Modifier.fillMaxWidth()
                                     )
+                                    if (isMessageStreaming) {
+                                        StreamingBlinkingCursor()
+                                    }
                                 }
 
                                 // Assistant Action Row (Copy, Share, Listen, Thumbs Up, Thumbs Down, Regenerate)
@@ -658,40 +660,80 @@ fun ChatScreen(
                                     horizontalArrangement = Arrangement.spacedBy(18.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Outlined.ContentCopy,
+                                        imageVector = if (copiedMessageId == message.id) Icons.Filled.Check else Icons.Outlined.ContentCopy,
                                         contentDescription = "Copy",
-                                        tint = Color(0xFF8E8B82),
-                                        modifier = Modifier.size(19.dp).clickable { }
+                                        tint = if (copiedMessageId == message.id) BrandCoral else Color(0xFF8E8B82),
+                                        modifier = Modifier
+                                            .size(19.dp)
+                                            .clip(CircleShape)
+                                            .clickable {
+                                                clipboardManager.setText(AnnotatedString(message.content))
+                                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                copiedMessageId = message.id
+                                            }
                                     )
                                     Icon(
                                         imageVector = Icons.Outlined.Share,
                                         contentDescription = "Share",
                                         tint = Color(0xFF8E8B82),
-                                        modifier = Modifier.size(19.dp).clickable { }
+                                        modifier = Modifier
+                                            .size(19.dp)
+                                            .clip(CircleShape)
+                                            .clickable {
+                                                val sendIntent = android.content.Intent().apply {
+                                                    action = android.content.Intent.ACTION_SEND
+                                                    putExtra(android.content.Intent.EXTRA_TEXT, message.content)
+                                                    type = "text/plain"
+                                                }
+                                                context.startActivity(android.content.Intent.createChooser(sendIntent, "Share response"))
+                                            }
                                     )
                                     Icon(
                                         imageVector = Icons.Outlined.PlayArrow,
                                         contentDescription = "Listen",
                                         tint = Color(0xFF8E8B82),
-                                        modifier = Modifier.size(20.dp).clickable { }
+                                        modifier = Modifier
+                                            .size(20.dp)
+                                            .clip(CircleShape)
+                                            .clickable {
+                                                onNavigateVoice()
+                                            }
                                     )
                                     Icon(
                                         imageVector = Icons.Outlined.ThumbUp,
                                         contentDescription = "Good",
                                         tint = Color(0xFF8E8B82),
-                                        modifier = Modifier.size(19.dp).clickable { }
+                                        modifier = Modifier
+                                            .size(19.dp)
+                                            .clip(CircleShape)
+                                            .clickable {
+                                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            }
                                     )
                                     Icon(
                                         imageVector = Icons.Outlined.ThumbDown,
                                         contentDescription = "Bad",
                                         tint = Color(0xFF8E8B82),
-                                        modifier = Modifier.size(19.dp).clickable { }
+                                        modifier = Modifier
+                                            .size(19.dp)
+                                            .clip(CircleShape)
+                                            .clickable {
+                                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            }
                                     )
                                     Icon(
                                         imageVector = Icons.Outlined.Refresh,
                                         contentDescription = "Regenerate",
                                         tint = Color(0xFF8E8B82),
-                                        modifier = Modifier.size(19.dp).clickable { }
+                                        modifier = Modifier
+                                            .size(19.dp)
+                                            .clip(CircleShape)
+                                            .clickable {
+                                                val lastUserMsg = messages.lastOrNull { it.role == "user" }
+                                                if (lastUserMsg != null) {
+                                                    chatViewModel.sendMessage(lastUserMsg.content, selectedModel)
+                                                }
+                                            }
                                     )
                                 }
 
@@ -1023,6 +1065,174 @@ fun ChatScreen(
                 },
                 onDismiss = { activeApprovalToReview = null }
             )
+        }
+
+        // Message Actions Bottom Sheet (Long-press)
+        if (showMessageOptionsSheet && selectedOptionsMessage != null) {
+            val optMsg = selectedOptionsMessage!!
+            MessageActionsSheet(
+                message = optMsg,
+                onCopy = {
+                    clipboardManager.setText(AnnotatedString(optMsg.content))
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    copiedMessageId = optMsg.id
+                },
+                onShare = {
+                    val sendIntent = android.content.Intent().apply {
+                        action = android.content.Intent.ACTION_SEND
+                        putExtra(android.content.Intent.EXTRA_TEXT, optMsg.content)
+                        type = "text/plain"
+                    }
+                    context.startActivity(android.content.Intent.createChooser(sendIntent, "Share response"))
+                },
+                onRegenerate = {
+                    val lastUserMsg = messages.lastOrNull { it.role == "user" }
+                    if (lastUserMsg != null) {
+                        chatViewModel.sendMessage(lastUserMsg.content, selectedModel)
+                    }
+                },
+                onDismiss = { showMessageOptionsSheet = false }
+            )
+        }
+    }
+}
+
+@Composable
+fun StreamingBlinkingCursor(modifier: Modifier = Modifier) {
+    val infiniteTransition = rememberInfiniteTransition(label = "cursor_blink")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 500, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "cursor_alpha"
+    )
+
+    Box(
+        modifier = modifier
+            .padding(top = 2.dp, start = 2.dp)
+            .size(width = 3.dp, height = 18.dp)
+            .clip(RoundedCornerShape(1.5.dp))
+            .background(BrandCoral.copy(alpha = alpha))
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MessageActionsSheet(
+    message: ChatMessage,
+    onCopy: () -> Unit,
+    onShare: () -> Unit,
+    onRegenerate: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xFF1F1E1C),
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .padding(vertical = 10.dp)
+                    .width(36.dp)
+                    .height(4.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF3E3C38))
+            )
+        }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 8.dp)
+                .navigationBarsPadding(),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = "MESSAGE ACTIONS",
+                style = HermesTypography.labelSmall.copy(
+                    fontSize = 11.sp,
+                    color = TextMuted,
+                    letterSpacing = 0.8.sp,
+                    fontWeight = FontWeight.SemiBold
+                ),
+                modifier = Modifier.padding(bottom = 6.dp)
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable {
+                        onCopy()
+                        onDismiss()
+                    }
+                    .padding(vertical = 12.dp, horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.ContentCopy,
+                    contentDescription = null,
+                    tint = TextPrimaryWarm,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(14.dp))
+                Text(
+                    text = "Copy message",
+                    style = HermesTypography.bodyLarge.copy(color = TextPrimaryWarm, fontSize = 15.sp)
+                )
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable {
+                        onShare()
+                        onDismiss()
+                    }
+                    .padding(vertical = 12.dp, horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Share,
+                    contentDescription = null,
+                    tint = TextPrimaryWarm,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(14.dp))
+                Text(
+                    text = "Share message",
+                    style = HermesTypography.bodyLarge.copy(color = TextPrimaryWarm, fontSize = 15.sp)
+                )
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable {
+                        onRegenerate()
+                        onDismiss()
+                    }
+                    .padding(vertical = 12.dp, horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Refresh,
+                    contentDescription = null,
+                    tint = TextPrimaryWarm,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(14.dp))
+                Text(
+                    text = "Regenerate response",
+                    style = HermesTypography.bodyLarge.copy(color = TextPrimaryWarm, fontSize = 15.sp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
         }
     }
 }

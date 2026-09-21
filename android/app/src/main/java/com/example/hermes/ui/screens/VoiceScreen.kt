@@ -37,6 +37,8 @@ fun VoiceScreen(
     val voiceState by voiceViewModel.voiceState.collectAsStateWithLifecycle()
     val captionText by voiceViewModel.statusText.collectAsStateWithLifecycle()
     val isMuted by voiceViewModel.isMuted.collectAsStateWithLifecycle()
+    val selectedModel by voiceViewModel.selectedModel.collectAsStateWithLifecycle()
+    var showModelSheet by remember { mutableStateOf(false) }
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
@@ -141,11 +143,11 @@ fun VoiceScreen(
                     },
                 contentAlignment = Alignment.Center
             ) {
-                if (voiceState == VoiceState.CONNECTING || voiceState == VoiceState.THINKING) {
-                    ClaudeSparkThinkingAnimation(size = 54.dp, tint = BrandCoral)
-                } else {
-                    ClaudeSpark(size = 54.dp, tint = BrandCoral)
-                }
+                // Pulsing coral dot — replaces starburst logo
+                HermesThinkingDot(
+                    size = if (voiceState == VoiceState.CONNECTING || voiceState == VoiceState.THINKING) 56.dp else 52.dp,
+                    color = com.example.hermes.theme.BrandCoral
+                )
             }
 
             Spacer(modifier = Modifier.height(28.dp))
@@ -219,19 +221,19 @@ fun VoiceScreen(
                     )
                 }
 
-                // Model Switcher Pill: "Sonnet ⬍"
+                // Model Switcher Pill: e.g. "Hermes Smart ⬍"
                 Row(
                     modifier = Modifier
                         .height(48.dp)
                         .clip(CircleShape)
                         .background(Color(0xFF201F1D))
                         .border(1.dp, BorderSubtle, CircleShape)
-                        .clickable { /* Switch Model */ }
+                        .clickable { showModelSheet = true }
                         .padding(horizontal = 20.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Hermes Smart",
+                        text = selectedModel,
                         style = HermesTypography.titleLarge.copy(
                             fontSize = 15.sp,
                             color = TextPrimaryWarm,
@@ -264,6 +266,18 @@ fun VoiceScreen(
                     )
                 }
             }
+        }
+
+        // Model Select Sheet
+        if (showModelSheet) {
+            ModelSelectSheet(
+                selectedModel = selectedModel,
+                onModelSelected = {
+                    voiceViewModel.setModel(it)
+                    showModelSheet = false
+                },
+                onDismiss = { showModelSheet = false }
+            )
         }
     }
 }

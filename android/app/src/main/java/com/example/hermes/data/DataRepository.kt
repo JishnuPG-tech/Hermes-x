@@ -109,6 +109,15 @@ enum class ThinkingPhase {
     COMPLETED
 }
 
+fun ThinkingPhase.toDisplayString(): String = when (this) {
+    ThinkingPhase.IDLE -> "Thought process"
+    ThinkingPhase.THOUGHT_PROCESS -> "Thought process"
+    ThinkingPhase.BUILDING -> "Building…"
+    ThinkingPhase.CREATING_FILE -> "Creating file…"
+    ThinkingPhase.FINALIZING -> "Finalizing…"
+    ThinkingPhase.COMPLETED -> "Thought process"
+}
+
 class HermesDataRepository(
     private val apiClient: HermesApiClient = HermesApiClient.instance
 ) : DataRepository {
@@ -221,6 +230,14 @@ class HermesDataRepository(
         prefsManager = prefs
 
         // Listen for active user ID change to partition local Room queries
+        repositoryScope.launch(Dispatchers.IO) {
+            prefs.googleSub.collect { sub ->
+                if (sub.isNotBlank()) {
+                    apiClient.updateUserId(sub)
+                }
+            }
+        }
+
         repositoryScope.launch(Dispatchers.IO) {
             prefs.currentUserId.collect { userId ->
                 activeUserId = userId
@@ -343,6 +360,7 @@ class HermesDataRepository(
         stopGeneration()
         prefsManager?.clearAuth()
         activeUserId = "guest"
+        apiClient.updateUserId("")
         _messages.value = emptyList()
         _sessions.value = emptyList()
         _tasks.value = emptyList()
@@ -367,17 +385,23 @@ class HermesDataRepository(
                 val serverToken = data?.secret ?: data?.sessionKey ?: ""
                 val verifiedEmail = data?.account?.email_address?.ifBlank { email } ?: email
                 val verifiedName = data?.account?.display_name?.ifBlank { name } ?: name
+                // google_sub is the permanent unique ID — use it as the cloud sync key
+                val googleSub = data?.google_sub?.ifBlank { verifiedEmail } ?: verifiedEmail
 
                 // 1. Partition Room queries immediately by verified email
                 activeUserId = verifiedEmail
 
-                // 2. Persist verified profile and server auth token
-                prefsManager?.setUserProfile(verifiedName, verifiedEmail, avatar)
+                // 2. Persist verified profile, server auth token, and cloud sync sub
+                prefsManager?.setUserProfile(verifiedName, verifiedEmail, avatar, googleSub)
                 if (serverToken.isNotBlank()) {
                     prefsManager?.setAuthToken(serverToken)
                 }
+                prefsManager?.setGoogleSub(googleSub)
 
-                // 3. Trigger initial sync for authenticated account
+                // 3. Wire google_sub into API client for X-User-ID header
+                apiClient.updateUserId(googleSub)
+
+                // 4. Trigger initial sync for authenticated account
                 repositoryScope.launch {
                     fetchSessions()
                     fetchProjects()
@@ -470,12 +494,30 @@ class HermesDataRepository(
         val activeSessionId = _currentSessionId.value ?: ("sess_" + UUID.randomUUID().toString().replace("-", "").take(16))
         _currentSessionId.value = activeSessionId
 
-        val chatTitle = if (isNewChat) {
-            content.lines().firstOrNull { it.isNotBlank() }?.trim()?.take(40)
-                ?: attachments.firstOrNull()?.name?.take(40)
-                ?: "Chat"
+        val autoTitle = if (content.isNotBlank()) {
+            val firstLine = content.lines().firstOrNull { it.isNotBlank() }?.trim() ?: ""
+            val clean = firstLine.replace(Regex("""^[#*>\s\-]+"""), "").replace(Regex("""\s+"""), " ")
+            val words = clean.split(" ")
+            val titleCandidate = if (words.size > 5) {
+                words.take(5).joinToString(" ")
+            } else {
+                clean.take(35)
+            }
+            titleCandidate.ifBlank { "New chat" }.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
         } else {
-            _sessions.value.firstOrNull { it.session_id == activeSessionId }?.title ?: "Chat"
+            attachments.firstOrNull()?.name?.take(35) ?: "New chat"
+        }
+
+        val chatTitle = if (isNewChat) {
+            autoTitle
+        } else {
+            val existing = _sessions.value.firstOrNull { it.session_id == activeSessionId }?.title
+            if (existing.isNullOrBlank() || existing == "Chat" || existing == "New chat") {
+                updateSessionTitle(activeSessionId, autoTitle)
+                autoTitle
+            } else {
+                existing
+            }
         }
 
         if (isNewChat) {
@@ -505,7 +547,7 @@ class HermesDataRepository(
 
             // Sync with backend asynchronously
             repositoryScope.launch(Dispatchers.IO) {
-                apiClient.createSession(title = chatTitle, model = resolvedModel)
+                apiClient.createSession(title = chatTitle, model = resolvedModel, sessionId = activeSessionId)
             }
         }
 

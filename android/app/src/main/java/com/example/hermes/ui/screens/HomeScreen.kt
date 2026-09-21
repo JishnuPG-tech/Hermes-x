@@ -160,17 +160,12 @@ fun HomeScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.offset(y = if (isKeyboardVisible) 0.dp else (-20).dp)
                 ) {
-                    ClaudeStarburst(
-                        size = if (isKeyboardVisible) 36.dp else 56.dp,
-                        color = BrandCoral
-                    )
-                    Spacer(modifier = Modifier.height(if (isKeyboardVisible) 8.dp else 20.dp))
                     Text(
                         text = greetingText,
                         style = HermesTypography.displayLarge.copy(
                             fontSize = if (isKeyboardVisible) 24.sp else 32.sp,
                             lineHeight = if (isKeyboardVisible) 28.sp else 38.sp,
-                            color = TextPrimaryWarm
+                            color = PureWhite
                         )
                     )
                 }

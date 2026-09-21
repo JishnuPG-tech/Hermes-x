@@ -13,7 +13,7 @@ val HairlineDivider = Color(0xFF302F2C)
 val BorderSubtle = Color(0xFF282724)
 
 // Typography & Content Colors
-val TextPrimaryWarm = Color(0xFFFAF9F5)
+val TextPrimaryWarm = Color(0xFFFFFFFF) // Pure pitch white (Claude exact typography)
 val TextMuted = Color(0xFFB0AEA5)
 val TextSubtle = Color(0xFF8E8B82)
 val TextPlaceholder = Color(0xFF6E6C64)

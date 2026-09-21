@@ -61,24 +61,25 @@ fun ClaudeDrawerContent(
                 .fillMaxSize()
                 .padding(horizontal = 24.dp, vertical = 16.dp)
         ) {
-            // Hermes Serif Wordmark — Claude-authentic compact size
+            // Hermes Serif Wordmark — Exact Claude Reference (Image 3: 36sp serif normal weight)
             Text(
                 text = "Hermes",
                 style = HermesTypography.displayLarge.copy(
-                    fontSize = 26.sp,
-                    color = TextPrimaryWarm,
-                    lineHeight = 30.sp,
+                    fontFamily = AnthropicSerif,
+                    fontSize = 36.sp,
+                    color = PureWhite,
+                    lineHeight = 42.sp,
                     fontWeight = FontWeight.Normal
                 ),
                 modifier = Modifier
-                    .padding(top = 8.dp, bottom = 20.dp)
+                    .padding(top = 8.dp, bottom = 24.dp)
                     .clickable(onClick = onNavigateHome)
             )
 
-            // Primary Navigation Menu Links (12-01-18: Chats, Projects, Code, Artifacts)
+            // Primary Navigation Menu Links (Exact Claude Reference: Chats, Projects, Code, Artifacts)
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(22.dp)
+                verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
                 // Chats
                 Row(
@@ -91,15 +92,16 @@ fun ClaudeDrawerContent(
                     Icon(
                         imageVector = Icons.Outlined.ChatBubbleOutline,
                         contentDescription = null,
-                        tint = TextPrimaryWarm,
-                        modifier = Modifier.size(23.dp)
+                        tint = PureWhite,
+                        modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(20.dp))
                     Text(
                         text = "Chats",
                         style = HermesTypography.bodyLarge.copy(
-                            fontSize = 20.sp,
-                            color = TextPrimaryWarm
+                            fontSize = 19.sp,
+                            color = PureWhite,
+                            fontWeight = FontWeight.Normal
                         )
                     )
                 }
@@ -112,13 +114,14 @@ fun ClaudeDrawerContent(
                         .padding(vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    CanisterIcon(size = 22.dp, tint = TextPrimaryWarm)
+                    CanisterIcon(size = 23.dp, tint = PureWhite)
                     Spacer(modifier = Modifier.width(20.dp))
                     Text(
                         text = "Projects",
                         style = HermesTypography.bodyLarge.copy(
-                            fontSize = 20.sp,
-                            color = TextPrimaryWarm
+                            fontSize = 19.sp,
+                            color = PureWhite,
+                            fontWeight = FontWeight.Normal
                         )
                     )
                 }
@@ -131,13 +134,14 @@ fun ClaudeDrawerContent(
                         .padding(vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    CodeBracketsIcon(size = 22.dp, tint = TextPrimaryWarm)
+                    CodeBracketsIcon(size = 23.dp, tint = PureWhite)
                     Spacer(modifier = Modifier.width(20.dp))
                     Text(
                         text = "Code",
                         style = HermesTypography.bodyLarge.copy(
-                            fontSize = 20.sp,
-                            color = TextPrimaryWarm
+                            fontSize = 19.sp,
+                            color = PureWhite,
+                            fontWeight = FontWeight.Normal
                         )
                     )
                 }
@@ -150,26 +154,27 @@ fun ClaudeDrawerContent(
                         .padding(vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    ArtifactShapesIcon(size = 22.dp, tint = TextPrimaryWarm)
+                    ArtifactShapesIcon(size = 23.dp, tint = PureWhite)
                     Spacer(modifier = Modifier.width(20.dp))
                     Text(
                         text = "Artifacts",
                         style = HermesTypography.bodyLarge.copy(
-                            fontSize = 20.sp,
-                            color = TextPrimaryWarm
+                            fontSize = 19.sp,
+                            color = PureWhite,
+                            fontWeight = FontWeight.Normal
                         )
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(26.dp))
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             val pinnedSessions = sessions.filter { it.pinned }
             val recentSessions = sessions.filter { !it.pinned }.take(8)
 
-            // Scrollable Pinned & Recents
+            // Scrollable Pinned & Recents (Exact Claude Reference: Title Case headers, 16sp regular white items)
             LazyColumn(
                 modifier = Modifier
                     .weight(1f)
@@ -185,30 +190,35 @@ fun ClaudeDrawerContent(
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Normal
                             ),
-                            modifier = Modifier.padding(bottom = 8.dp)
+                            modifier = Modifier.padding(start = 2.dp, bottom = 12.dp)
                         )
                     }
 
                     items(pinnedSessions.size) { index ->
                         val item = pinnedSessions[index]
-                        Text(
-                            text = item.title.ifBlank { "Untitled" },
-                            style = HermesTypography.bodyLarge.copy(
-                                fontSize = 16.5.sp,
-                                color = TextPrimaryWarm,
-                                lineHeight = 22.sp
-                            ),
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
                                 .clickable { onOpenRecentChat(item.session_id) }
-                                .padding(vertical = 8.dp),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                                .padding(vertical = 9.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = item.title.ifBlank { "New chat" },
+                                style = HermesTypography.bodyLarge.copy(
+                                    fontSize = 16.sp,
+                                    color = PureWhite,
+                                    fontWeight = FontWeight.Normal
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
 
                     item {
-                        Spacer(modifier = Modifier.height(14.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
                         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
                         Spacer(modifier = Modifier.height(14.dp))
                     }
@@ -223,26 +233,31 @@ fun ClaudeDrawerContent(
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Normal
                             ),
-                            modifier = Modifier.padding(bottom = 8.dp)
+                            modifier = Modifier.padding(start = 2.dp, bottom = 12.dp)
                         )
                     }
 
                     items(recentSessions.size) { index ->
                         val item = recentSessions[index]
-                        Text(
-                            text = item.title.ifBlank { "Untitled" },
-                            style = HermesTypography.bodyLarge.copy(
-                                fontSize = 16.5.sp,
-                                color = TextPrimaryWarm,
-                                lineHeight = 22.sp
-                            ),
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
                                 .clickable { onOpenRecentChat(item.session_id) }
-                                .padding(vertical = 8.dp),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                                .padding(vertical = 9.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = item.title.ifBlank { "New chat" },
+                                style = HermesTypography.bodyLarge.copy(
+                                    fontSize = 16.sp,
+                                    color = PureWhite,
+                                    fontWeight = FontWeight.Normal
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
 
@@ -261,56 +276,26 @@ fun ClaudeDrawerContent(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            val isAdmin = com.example.hermes.data.PreferencesManager.isUserAdmin(userEmail)
-            // Salmon Circle Avatar with User Initial & Admin info
+            // Salmon Circle Avatar with User Initial (Exact Claude reference: Image 3)
             val initial = userName.trim().firstOrNull()?.uppercaseChar()?.toString()
                 ?: userEmail.trim().firstOrNull()?.uppercaseChar()?.toString()
-                ?: "U"
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
+                ?: "J"
+            Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .clickable(onClick = onNavigateSettings)
-                    .padding(end = 8.dp)
+                    .size(46.dp)
+                    .clip(CircleShape)
+                    .background(AvatarSalmon)
+                    .clickable(onClick = onNavigateSettings),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(AvatarSalmon),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = initial,
-                        style = HermesTypography.headlineMedium.copy(
-                            color = PureWhite,
-                            fontSize = 19.sp,
-                            fontWeight = FontWeight.Medium
-                        )
+                Text(
+                    text = initial,
+                    style = HermesTypography.headlineMedium.copy(
+                        color = PureWhite,
+                        fontSize = 19.sp,
+                        fontWeight = FontWeight.Medium
                     )
-                }
-                if (isAdmin) {
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column {
-                        Text(
-                            text = userName.ifBlank { "Jishnu" },
-                            style = HermesTypography.bodyMedium.copy(
-                                color = TextPrimaryWarm,
-                                fontWeight = FontWeight.Medium,
-                                fontSize = 14.sp
-                            ),
-                            maxLines = 1
-                        )
-                        Spacer(modifier = Modifier.height(1.dp))
-                        Text(
-                            text = "Hermes Max",
-                            style = HermesTypography.labelSmall.copy(
-                                color = TextMuted,
-                                fontSize = 11.sp
-                            )
-                        )
-                    }
-                }
+                )
             }
 
             // New Chat Solid White Pill (12-01-18)

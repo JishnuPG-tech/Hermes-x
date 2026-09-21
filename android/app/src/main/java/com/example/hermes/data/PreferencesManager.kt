@@ -29,6 +29,7 @@ class PreferencesManager(private val context: Context) {
         val KEY_USER_NAME = stringPreferencesKey("user_name")
         val KEY_USER_EMAIL = stringPreferencesKey("user_email")
         val KEY_USER_AVATAR = stringPreferencesKey("user_avatar")
+        val KEY_GOOGLE_SUB = stringPreferencesKey("google_sub")
 
         val KEY_FONT_STYLE = stringPreferencesKey("font_style")
         val KEY_VOICE_PERSONA = stringPreferencesKey("voice_persona")
@@ -214,6 +215,7 @@ class PreferencesManager(private val context: Context) {
             prefs.remove(KEY_USER_NAME)
             prefs.remove(KEY_USER_EMAIL)
             prefs.remove(KEY_USER_AVATAR)
+            prefs.remove(KEY_GOOGLE_SUB)
         }
     }
 
@@ -233,12 +235,21 @@ class PreferencesManager(private val context: Context) {
         }
     }
 
-    suspend fun setUserProfile(name: String, email: String, avatar: String = "") {
+    suspend fun setUserProfile(name: String, email: String, avatar: String = "", googleSub: String = "") {
         context.hermesDataStore.edit { prefs ->
             prefs[KEY_USER_NAME] = name
             prefs[KEY_USER_EMAIL] = email
             prefs[KEY_USER_AVATAR] = avatar
+            if (googleSub.isNotBlank()) prefs[KEY_GOOGLE_SUB] = googleSub
         }
+    }
+
+    val googleSub: Flow<String> = context.hermesDataStore.data
+        .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+        .map { it[KEY_GOOGLE_SUB] ?: "" }
+
+    suspend fun setGoogleSub(sub: String) {
+        context.hermesDataStore.edit { it[KEY_GOOGLE_SUB] = sub }
     }
 
     val fontStyle: Flow<String> = context.hermesDataStore.data

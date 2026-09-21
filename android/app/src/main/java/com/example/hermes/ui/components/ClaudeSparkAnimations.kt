@@ -1,8 +1,11 @@
 package com.example.hermes.ui.components
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -11,6 +14,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
@@ -169,6 +174,42 @@ fun ClaudeSparkShimmerAnimation(
             contentDescription = "Shimmer Animation",
             colorFilter = ColorFilter.tint(tint),
             modifier = Modifier.size(size)
+        )
+    }
+}
+
+/**
+ * Pulsing coral dot — Claude-style loading/thinking indicator.
+ * Replaces the starburst logo in all chat loading states.
+ * Animation: scale pulses 0.55 → 1.0 → 0.55 in a 700ms loop.
+ */
+@Composable
+fun HermesThinkingDot(
+    modifier: Modifier = Modifier,
+    size: Dp = 12.dp,
+    color: Color = BrandCoral
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "hermes_dot_pulse")
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 0.55f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 700, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "dot_scale"
+    )
+
+    Box(
+        modifier = modifier.size(size),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(size)
+                .scale(scale)
+                .clip(CircleShape)
+                .background(color)
         )
     }
 }

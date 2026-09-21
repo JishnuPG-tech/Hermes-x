@@ -332,7 +332,10 @@ data class SessionsResponse(
 data class NewSessionRequest(
     val title: String? = null,
     val model: String? = null,
-    val workspace: String? = null
+    val workspace: String? = null,
+    val id: String? = null,
+    val session_id: String? = null,
+    val user_id: String? = null
 )
 
 @Serializable
@@ -453,7 +456,8 @@ data class VerifyGoogleResponse(
     val secret: String? = null,
     val sessionKey: String? = null,
     val account: GoogleAccountDto? = null,
-    val state: String? = null
+    val state: String? = null,
+    val google_sub: String? = null
 )
 
 @Serializable

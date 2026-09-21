@@ -234,6 +234,7 @@ async def google_login(payload: GoogleAuthRequest, response: Response):
         return {
             "success": True,
             "account": account_data,
+            "google_sub": user_id,
             "secret": session_key,
             "sessionKey": session_key,
             "sso_url": None,

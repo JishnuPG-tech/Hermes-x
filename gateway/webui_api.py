@@ -451,17 +451,20 @@ def _touch(session_id: str) -> None:
     session_store._save_data()
 
 
-def _new_session(payload: Optional[Dict[str, Any]] = None, owner: str = WEBUI_PRINCIPAL) -> str:
+def _new_session(payload: Optional[Dict[str, Any]] = None, owner: str = WEBUI_PRINCIPAL, user_id: str = "") -> str:
     payload = payload or {}
     raw_id = payload.get("session_id") or payload.get("id")
     session_id = str(raw_id) if raw_id else f"sess_{secrets.token_hex(12)}"
     if not SESSION_ID_RE.fullmatch(session_id):
         raise HTTPException(status_code=400, detail="Invalid session id")
+    eff_user_id = user_id or str(payload.get("user_id") or "").strip()
     if session_id in session_store._SESSIONS:
         existing = session_store._SESSIONS[session_id]
         if existing.get("webui_owner") not in {None, owner}:
             raise HTTPException(status_code=404, detail="Session not found")
         existing.setdefault("webui_owner", owner)
+        if eff_user_id and not existing.get("user_id"):
+            existing["user_id"] = eff_user_id
         session_store._save_data()
         return session_id
     project_id = payload.get("project_id")
@@ -482,6 +485,7 @@ def _new_session(payload: Optional[Dict[str, Any]] = None, owner: str = WEBUI_PR
         "pinned": False,
         "archived": False,
         "webui_owner": owner,
+        "user_id": eff_user_id,
     }
     session_store._MESSAGES[session_id] = []
     session_store._CONV_TO_SESSION[session_id] = session_id
@@ -499,9 +503,14 @@ async def list_webui_sessions(
     order: str = "created",
 ):
     owner = _require_access(request)
+    user_id = request.headers.get("X-User-ID", "").strip() or request.query_params.get("user_id", "").strip()
     values = []
     for sid in list(session_store._SESSIONS):
         if _session_owner(sid) not in {None, owner}:
+            continue
+        sess = session_store._SESSIONS.get(sid) or {}
+        sess_user = sess.get("user_id", "")
+        if user_id and sess_user and sess_user != user_id:
             continue
         _owned_session(sid, owner)
         summary = _summary(sid)
@@ -677,8 +686,9 @@ async def session_usage(request: Request, session_id: str):
 async def create_webui_session(request: Request):
     owner = _require_access(request)
     payload = await _body(request)
-    session_id = _new_session(payload, owner)
-    logger.info("WebUI session created: %s", session_id)
+    user_id = request.headers.get("X-User-ID", "").strip() or str(payload.get("user_id") or "").strip()
+    session_id = _new_session(payload, owner, user_id=user_id)
+    logger.info("WebUI session created: %s for user: %s", session_id, user_id or "anonymous")
     return {"ok": True, "session": _summary(session_id)}
 
 

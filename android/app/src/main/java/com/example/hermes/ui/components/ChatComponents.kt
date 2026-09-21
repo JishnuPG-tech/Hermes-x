@@ -53,7 +53,7 @@ fun ExtendedThinkingBox(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (isThinking) {
-                    ClaudeSparkThinkingAnimation(size = 18.dp, tint = BrandCoral)
+                    HermesThinkingDot(size = 10.dp)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Thinking…",

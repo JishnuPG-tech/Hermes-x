@@ -74,12 +74,18 @@ class HermesApiClient(
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
+    private var userId: String = ""
+
     fun updateBaseUrl(newUrl: String) {
         baseUrl = newUrl.trimEnd('/')
     }
 
     fun updateApiKey(newKey: String) {
         apiKey = newKey
+    }
+
+    fun updateUserId(id: String) {
+        userId = id
     }
 
     fun getBaseUrl(): String = baseUrl
@@ -216,19 +222,22 @@ class HermesApiClient(
     suspend fun getSessions(): List<SessionDto> = withContext(Dispatchers.IO) {
         ensureAuthenticated()
 
+        // Append user_id filter if we have a known google_sub
+        val userFilter = if (userId.isNotBlank()) "?user_id=${userId}" else ""
         val urls = listOf(
-            "$baseUrl/api/sessions",
-            "$baseUrl/v1/sessions",
-            "$baseUrl/sessions"
+            "$baseUrl/api/sessions$userFilter",
+            "$baseUrl/v1/sessions$userFilter",
+            "$baseUrl/sessions$userFilter"
         )
         for (url in urls) {
             try {
-                val req = Request.Builder()
+                val reqBuilder = Request.Builder()
                     .url(url)
                     .get()
                     .header("Authorization", "Bearer $apiKey")
                     .header("Accept", "application/json")
-                    .build()
+                if (userId.isNotBlank()) reqBuilder.header("X-User-ID", userId)
+                val req = reqBuilder.build()
 
                 okHttpClient.newCall(req).execute().use { resp ->
                     if (!resp.isSuccessful) return@use
@@ -317,17 +326,28 @@ class HermesApiClient(
     /**
      * Create a new session on the server.
      */
-    suspend fun createSession(title: String = "Chat", model: String = "hermes-agent"): SessionDto? = withContext(Dispatchers.IO) {
+    suspend fun createSession(title: String = "Chat", model: String = "hermes-agent", sessionId: String? = null): SessionDto? = withContext(Dispatchers.IO) {
         if (!checkAuthStatus()) {
             login()
         }
 
-        val reqBody = json.encodeToString(NewSessionRequest(title = title, model = model))
-        val req = Request.Builder()
+        val reqBody = json.encodeToString(
+            NewSessionRequest(
+                title = title,
+                model = model,
+                id = sessionId,
+                session_id = sessionId,
+                user_id = if (userId.isNotBlank()) userId else null
+            )
+        )
+        val reqBuilder = Request.Builder()
             .url("$baseUrl/api/session/new")
             .post(reqBody.toRequestBody(JSON_MEDIA_TYPE))
             .header("Authorization", "Bearer $apiKey")
-            .build()
+        if (userId.isNotBlank()) {
+            reqBuilder.header("X-User-ID", userId)
+        }
+        val req = reqBuilder.build()
 
         try {
             okHttpClient.newCall(req).execute().use { resp ->
@@ -449,6 +469,53 @@ class HermesApiClient(
             } catch (_: Exception) {}
         }
         null
+    }
+
+    /**
+     * Non-streaming fallback for voice responses or quick queries.
+     */
+    suspend fun sendChatMessageFallback(
+        prompt: String,
+        model: String = "auto/best-chat"
+    ): String = withContext(Dispatchers.IO) {
+        val resolvedModel = when (model) {
+            "Hermes Smart" -> "auto/best-chat"
+            "Hermes Coding" -> "auto/best-coding"
+            "Hermes Reasoning" -> "auto/best-reasoning"
+            "Hermes Turbo" -> "auto/best-coding-fast"
+            else -> if (model.isBlank()) "auto/best-chat" else model
+        }
+        val reqBody = ChatCompletionRequest(
+            model = resolvedModel,
+            messages = listOf(
+                ApiMessage(
+                    role = "system",
+                    content = "You are Hermes, a helpful, brilliant AI companion. Provide a concise, clear, natural spoken answer in 1-3 sentences without markdown formatting, code blocks, or bullet points."
+                ),
+                ApiMessage(role = "user", content = prompt)
+            ),
+            stream = false,
+            max_tokens = 250
+        )
+
+        try {
+            val jsonString = json.encodeToString(reqBody)
+            val req = Request.Builder()
+                .url("$baseUrl/v1/chat/completions")
+                .post(jsonString.toRequestBody(JSON_MEDIA_TYPE))
+                .header("Authorization", "Bearer $apiKey")
+                .header("Accept", "application/json")
+                .build()
+
+            okHttpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@use ""
+                val bodyStr = resp.body?.string() ?: return@use ""
+                val parsed = json.decodeFromString<ChatCompletionResponse>(bodyStr)
+                parsed.choices.firstOrNull()?.message?.content?.trim() ?: ""
+            }
+        } catch (_: Exception) {
+            ""
+        }
     }
 
     /**
