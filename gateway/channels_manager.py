@@ -450,7 +450,7 @@ async def process_telegram_update(update: Dict[str, Any], token: Optional[str] =
                         json={"chat_id": chat_id, "text": reply_text[:4000]}
                     )
     except Exception as e:
-        logger.warning(f"Telegram network notification: {e}")
+        logger.debug(f"Telegram network notification: {e}")
     return True
 
 # ── Telegram Bot Daemon (Fallback Polling) ───────────────────────
@@ -467,6 +467,11 @@ class TelegramBotService:
             logger.info("Telegram bot service disabled or token missing.")
             return
 
+        # Check if standalone telegram_bot daemon is already active to prevent duplicate poller collisions
+        if os.environ.get("TELEGRAM_BOT_TOKEN") and (os.path.exists("/app/hermes_core/telegram_bot.py") or os.path.exists("hermes_core/telegram_bot.py")):
+            logger.info("Standalone HermesTelegram daemon is active; bypassing gateway polling loop to avoid conflict.")
+            return
+
         # Auto-configure webhook on startup for maximum reliability
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -479,7 +484,7 @@ class TelegramBotService:
                     logger.info(f"Telegram Webhook set to {webhook_url} (0-latency push mode active)")
                     return
         except Exception as e:
-            logger.warning(f"Telegram setWebhook failed, using background poller: {e}")
+            logger.debug(f"Telegram setWebhook failed, using background poller: {e}")
 
         self.running = True
         self.task = asyncio.create_task(self._poll_loop(cfg["token"]))
@@ -494,6 +499,7 @@ class TelegramBotService:
 
     async def _poll_loop(self, token: str):
         api_base = f"https://api.telegram.org/bot{token}"
+        consecutive_errors = 0
 
         async with httpx.AsyncClient(timeout=35.0) as client:
             while self.running:
@@ -503,9 +509,11 @@ class TelegramBotService:
                         params={"offset": self.last_update_id + 1, "timeout": 20}
                     )
                     if resp.status_code != 200:
-                        await asyncio.sleep(8)
+                        consecutive_errors += 1
+                        await asyncio.sleep(min(60, 5 * (2 ** min(consecutive_errors, 3))))
                         continue
 
+                    consecutive_errors = 0
                     updates = resp.json().get("result", [])
                     for update in updates:
                         self.last_update_id = max(self.last_update_id, update.get("update_id", 0))
@@ -514,8 +522,10 @@ class TelegramBotService:
                 except asyncio.CancelledError:
                     break
                 except Exception as e:
-                    logger.warning(f"Telegram poller retry: {e}")
-                    await asyncio.sleep(8)
+                    consecutive_errors += 1
+                    backoff_sec = min(60, 5 * (2 ** min(consecutive_errors, 4)))
+                    logger.debug(f"Telegram poller retry: {e} (backing off {backoff_sec}s)")
+                    await asyncio.sleep(backoff_sec)
 
 # ── Gmail / Email Agent Daemon ──────────────────────────────────
 
