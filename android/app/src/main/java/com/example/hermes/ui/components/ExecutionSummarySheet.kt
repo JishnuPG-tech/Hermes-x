@@ -5,9 +5,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material3.*
@@ -18,9 +21,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hermes.theme.*
+
+data class SummaryStage(
+    val title: String,
+    val description: String,
+    val isCompleted: Boolean,
+    val isActive: Boolean
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,7 +39,8 @@ fun ExecutionSummarySheet(
     onDismiss: () -> Unit,
     onStopGeneration: () -> Unit = {},
     isThinkingActive: Boolean = false,
-    promptTopic: String = "Building a Python calculator for a mobile app.",
+    promptTopic: String = "Thought process",
+    thinkingContent: String? = null,
     artifactName: String? = null,
     artifactType: String? = null,
     thinkingPhase: com.example.hermes.data.ThinkingPhase = com.example.hermes.data.ThinkingPhase.IDLE,
@@ -36,13 +48,58 @@ fun ExecutionSummarySheet(
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "ThinkingPulse")
     val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.5f,
+        initialValue = 0.4f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = LinearEasing),
+            animation = tween(700, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "AlphaPulse"
+    )
+
+    // Build the 5 chronological stages from the task beginning to final serve
+    val cleanPrompt = promptTopic.trim().removePrefix("Thought process").ifBlank { "Task execution" }
+    val isDone = !isThinkingActive
+
+    val stages = listOf(
+        SummaryStage(
+            title = "Analysing the request",
+            description = "Deconstructing intent, parameters, and context for $cleanPrompt",
+            isCompleted = true,
+            isActive = isThinkingActive && thinkingPhase == com.example.hermes.data.ThinkingPhase.THOUGHT_PROCESS
+        ),
+        SummaryStage(
+            title = "Executing command & tools",
+            description = if (!artifactName.isNullOrBlank()) "Executing code generation and artifact compilation"
+                          else "Executing server operations, live inspections, and autonomous tool logic",
+            isCompleted = isDone || thinkingPhase in listOf(
+                com.example.hermes.data.ThinkingPhase.CREATING_FILE,
+                com.example.hermes.data.ThinkingPhase.FINALIZING,
+                com.example.hermes.data.ThinkingPhase.COMPLETED
+            ),
+            isActive = isThinkingActive && thinkingPhase == com.example.hermes.data.ThinkingPhase.BUILDING
+        ),
+        SummaryStage(
+            title = "Inspecting output & results",
+            description = "Validating syntax, return codes, and output accuracy",
+            isCompleted = isDone || thinkingPhase in listOf(
+                com.example.hermes.data.ThinkingPhase.FINALIZING,
+                com.example.hermes.data.ThinkingPhase.COMPLETED
+            ),
+            isActive = isThinkingActive && thinkingPhase == com.example.hermes.data.ThinkingPhase.CREATING_FILE
+        ),
+        SummaryStage(
+            title = "Organising for user",
+            description = "Structuring clear, loyal, and respectful response presentation",
+            isCompleted = isDone || thinkingPhase == com.example.hermes.data.ThinkingPhase.COMPLETED,
+            isActive = isThinkingActive && thinkingPhase == com.example.hermes.data.ThinkingPhase.FINALIZING
+        ),
+        SummaryStage(
+            title = "Ready to serve",
+            description = if (isDone) "Final response generated and served to user" else "Finalizing response output",
+            isCompleted = isDone,
+            isActive = isThinkingActive && thinkingPhase == com.example.hermes.data.ThinkingPhase.COMPLETED
+        )
     )
 
     ModalBottomSheet(
@@ -76,7 +133,7 @@ fun ExecutionSummarySheet(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 28.dp)
+                    .padding(bottom = 20.dp)
             ) {
                 IconButton(
                     onClick = onDismiss,
@@ -102,112 +159,108 @@ fun ExecutionSummarySheet(
                 )
             }
 
-            // Stepper Timeline (Exact Replica of Screenshot 4, 5, 6, 7)
+            // Scrollable Timeline Container
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
                     .padding(bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
-                // Step 1: Prompt Execution (Topic Header)
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.width(24.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .padding(top = 6.dp)
-                                .size(9.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF5A5852))
-                        )
-                        val hasArtifact = !artifactName.isNullOrBlank() && (thinkingPhase == com.example.hermes.data.ThinkingPhase.CREATING_FILE ||
-                                thinkingPhase == com.example.hermes.data.ThinkingPhase.FINALIZING ||
-                                thinkingPhase == com.example.hermes.data.ThinkingPhase.COMPLETED ||
-                                !isThinkingActive)
+                stages.forEachIndexed { index, stage ->
+                    val isLast = index == stages.lastIndex
 
-                        if (hasArtifact || isThinkingActive) {
-                            Box(
-                                modifier = Modifier
-                                    .width(1.5.dp)
-                                    .height(60.dp)
-                                    .background(Color(0xFF35332E))
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = promptTopic,
-                            style = HermesTypography.displayLarge.copy(
-                                fontSize = 19.sp,
-                                color = TextPrimaryWarm,
-                                lineHeight = 25.sp,
-                                fontFamily = AnthropicSerif,
-                                fontWeight = FontWeight.Normal
-                            )
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
-                }
-
-                // Step 2: Artifact Creation Step (Screenshots 5 & 6)
-                val hasArtifact = !artifactName.isNullOrBlank() && (thinkingPhase == com.example.hermes.data.ThinkingPhase.CREATING_FILE ||
-                        thinkingPhase == com.example.hermes.data.ThinkingPhase.FINALIZING ||
-                        thinkingPhase == com.example.hermes.data.ThinkingPhase.COMPLETED ||
-                        !isThinkingActive)
-
-                if (hasArtifact && !artifactName.isNullOrBlank()) {
-                    val safeArtifactName = artifactName
-                    val safeArtifactType = artifactType ?: "Document · MD"
                     Row(modifier = Modifier.fillMaxWidth()) {
+                        // Left Timeline Rail
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.width(24.dp)
+                            modifier = Modifier.width(26.dp)
                         ) {
                             Box(
                                 modifier = Modifier
                                     .padding(top = 4.dp)
                                     .size(18.dp)
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(Color(0xFF2B2A27)),
+                                    .clip(CircleShape)
+                                    .background(
+                                        when {
+                                            stage.isActive -> BrandCoral.copy(alpha = pulseAlpha)
+                                            stage.isCompleted -> Color(0xFF2E2C28)
+                                            else -> Color(0xFF22211F)
+                                        }
+                                    )
+                                    .border(
+                                        1.dp,
+                                        when {
+                                            stage.isActive -> BrandCoral
+                                            stage.isCompleted -> Color(0xFF5A5852)
+                                            else -> Color(0xFF35332E)
+                                        },
+                                        CircleShape
+                                    ),
                                 contentAlignment = Alignment.Center
                             ) {
-                                if (thinkingPhase == com.example.hermes.data.ThinkingPhase.CREATING_FILE) {
-                                    ClaudeNoteAddIcon(size = 13.dp, tint = TextMuted)
-                                } else {
+                                if (stage.isCompleted && !stage.isActive) {
                                     Icon(
-                                        imageVector = Icons.Outlined.Terminal,
-                                        contentDescription = "Artifact",
-                                        tint = TextMuted,
-                                        modifier = Modifier.size(13.dp)
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = TextPrimaryWarm,
+                                        modifier = Modifier.size(11.dp)
+                                    )
+                                } else if (stage.isActive) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(7.dp)
+                                            .clip(CircleShape)
+                                            .background(PureWhite)
                                     )
                                 }
                             }
-                            if (isThinkingActive) {
+
+                            if (!isLast) {
                                 Box(
                                     modifier = Modifier
                                         .width(1.5.dp)
-                                        .height(52.dp)
-                                        .background(Color(0xFF35332E))
+                                        .height(if (index == 1 && !artifactName.isNullOrBlank()) 90.dp else 48.dp)
+                                        .background(
+                                            if (stage.isCompleted) Color(0xFF423F3A)
+                                            else Color(0xFF2A2825)
+                                        )
                                 )
                             }
                         }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            if (thinkingPhase == com.example.hermes.data.ThinkingPhase.CREATING_FILE) {
-                                Text(
-                                    text = "Creating $safeArtifactName",
-                                    style = HermesTypography.displayLarge.copy(
-                                        fontSize = 18.sp,
-                                        color = TextPrimaryWarm,
-                                        fontFamily = AnthropicSerif,
-                                        fontWeight = FontWeight.Normal
-                                    )
+
+                        Spacer(modifier = Modifier.width(14.dp))
+
+                        // Stage Content
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(bottom = if (isLast) 12.dp else 16.dp)
+                        ) {
+                            Text(
+                                text = stage.title,
+                                style = HermesTypography.displayLarge.copy(
+                                    fontSize = 17.5.sp,
+                                    color = if (stage.isActive || stage.isCompleted) TextPrimaryWarm else TextMuted,
+                                    fontFamily = AnthropicSerif,
+                                    fontWeight = FontWeight.Normal
                                 )
-                            } else {
-                                // File badge card (Screenshot 6: "Created" badge + file name)
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = stage.description,
+                                style = HermesTypography.bodySmall.copy(
+                                    fontSize = 12.5.sp,
+                                    color = TextMuted,
+                                    lineHeight = 17.sp
+                                )
+                            )
+
+                            // Artifact Card attached under Stage 2
+                            if (index == 1 && !artifactName.isNullOrBlank()) {
+                                val safeArtifactName = artifactName
+                                val safeArtifactType = artifactType ?: "Document · MD"
+                                Spacer(modifier = Modifier.height(10.dp))
                                 Row(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(10.dp))
@@ -242,55 +295,23 @@ fun ExecutionSummarySheet(
                                             fontSize = 12.5.sp,
                                             fontFamily = JetBrainsMono,
                                             color = TextPrimaryWarm
-                                        )
+                                        ),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
                             }
-                            Spacer(modifier = Modifier.height(16.dp))
                         }
-                    }
-                }
-
-                // Step 3: Active Thinking or Completed Step (Screenshot 4, 5, 6)
-                if (isThinkingActive) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .width(24.dp)
-                                .padding(top = 6.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(9.dp)
-                                    .clip(CircleShape)
-                                    .background(BrandCoral.copy(alpha = pulseAlpha))
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Text(
-                            text = "Thinking",
-                            style = HermesTypography.displayLarge.copy(
-                                fontSize = 19.sp,
-                                color = TextPrimaryWarm,
-                                fontFamily = AnthropicSerif,
-                                fontWeight = FontWeight.Normal
-                            ),
-                            modifier = Modifier.weight(1f)
-                        )
                     }
                 }
             }
 
-            // Bottom Stop Generation Button (Screenshot 4)
+            // Bottom Stop Generation Button (when thinking is active)
             if (isThinkingActive) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp, bottom = 16.dp),
+                        .padding(top = 4.dp, bottom = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Row(

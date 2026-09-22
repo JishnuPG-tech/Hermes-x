@@ -10,5 +10,6 @@ data class ChatAttachment(
     val sizeBytes: Long = 0,
     val localUri: String? = null,
     val base64Data: String? = null,
-    val isImage: Boolean = false
+    val isImage: Boolean = false,
+    val extractedText: String? = null
 )

@@ -135,7 +135,8 @@ class EdgeTTSProvider(TTSProvider):
             )
 
         voice = request.voice or self._default_voice
-        speed_delta = f"{int((request.speed - 1.0) * 100):+d}%" if request.speed != 1.0 else self._rate
+        req_speed = request.speed if request.speed is not None else 1.0
+        speed_delta = f"{int((req_speed - 1.0) * 100):+d}%" if req_speed != 1.0 else self._rate
 
         communicate = edge_tts.Communicate(
             clean_text,
@@ -189,7 +190,8 @@ class EdgeTTSProvider(TTSProvider):
             return
 
         voice = request.voice or self._default_voice
-        speed_delta = f"{int((request.speed - 1.0) * 100):+d}%" if request.speed != 1.0 else self._rate
+        req_speed = request.speed if request.speed is not None else 1.0
+        speed_delta = f"{int((req_speed - 1.0) * 100):+d}%" if req_speed != 1.0 else self._rate
 
         communicate = edge_tts.Communicate(
             clean_text,

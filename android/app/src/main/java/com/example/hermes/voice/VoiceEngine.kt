@@ -88,12 +88,14 @@ class VoiceEngine private constructor(private val appContext: Context) {
             if (_voiceState.value != EngineVoiceState.MUTED) {
                 _voiceState.value = EngineVoiceState.SPEAKING
             }
+            sendPlaybackState("started")
         },
         onPlaybackCompleted = {
             if (_voiceState.value != EngineVoiceState.MUTED) {
                 _voiceState.value = EngineVoiceState.LISTENING
                 _statusText.value = "Listening…"
             }
+            sendPlaybackState("completed")
         }
     )
 
@@ -175,18 +177,42 @@ class VoiceEngine private constructor(private val appContext: Context) {
         }
     }
 
+    private fun sendPlaybackState(state: String) {
+        val turnId = activeTurnId
+        activeWebSocket?.let { ws ->
+            try {
+                val payload = JSONObject().apply {
+                    put("type", "playback_state")
+                    put("state", state)
+                    if (turnId != null) {
+                        put("turn_id", turnId)
+                    }
+                }
+                ws.send(payload.toString())
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to send playback_state: ${e.message}")
+            }
+        }
+    }
+
     fun interruptAndBargeIn() {
         Log.i(TAG, "Barge-in triggered: flushing audio player and canceling server turn")
+        sendPlaybackState("interrupted")
         activeTurnId = null
         player.stopAndFlush()
         audioAccumulator.reset()
 
         activeWebSocket?.let { ws ->
             val cancelPayload = JSONObject().apply {
-                put("type", "command_cancel")
+                put("type", "user_interrupt")
                 put("scope", "turn")
             }
             ws.send(cancelPayload.toString())
+            val legacyCancel = JSONObject().apply {
+                put("type", "command_cancel")
+                put("scope", "turn")
+            }
+            ws.send(legacyCancel.toString())
         }
 
         if (!_isMuted.value) {
@@ -221,6 +247,12 @@ class VoiceEngine private constructor(private val appContext: Context) {
 
         _liveRms.value = rms
 
+        // Prefix 0x01 for multiplexed protocol
+        val taggedChunk = ByteArray(chunk.size + 1).apply {
+            this[0] = 0x01.toByte()
+            System.arraycopy(chunk, 0, this, 1, chunk.size)
+        }
+
         // Self-listening loop elimination:
         // While assistant is actively playing through the loudspeaker, suppress mic streaming.
         // Only if user voice energy crosses the elevated barge-in threshold (RMS > 0.22f) do we interrupt.
@@ -230,13 +262,19 @@ class VoiceEngine private constructor(private val appContext: Context) {
                 interruptAndBargeIn()
                 _voiceState.value = EngineVoiceState.USER_SPEAKING
                 _statusText.value = "Listening…"
-                activeWebSocket?.send(chunk.toByteString())
+                activeWebSocket?.send(taggedChunk.toByteString())
             }
             return
         }
 
+        if (rms > 0.035f && _voiceState.value == EngineVoiceState.LISTENING) {
+            _voiceState.value = EngineVoiceState.USER_SPEAKING
+        } else if (rms <= 0.02f && _voiceState.value == EngineVoiceState.USER_SPEAKING) {
+            _voiceState.value = EngineVoiceState.LISTENING
+        }
+
         // Normal listening state: stream binary PCM chunk to WebSocket
-        activeWebSocket?.send(chunk.toByteString())
+        activeWebSocket?.send(taggedChunk.toByteString())
     }
 
     private fun connectWebSocket() {
@@ -270,16 +308,25 @@ class VoiceEngine private constructor(private val appContext: Context) {
 
                     override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
                         if (gen != connectionGeneration.get()) return
-                        if (activeTurnId == null) {
-                            // Turn was cancelled or barge-in occurred; discard obsolete audio bytes
-                            return
+                        val raw = bytes.toByteArray()
+                        if (raw.isEmpty()) return
+                        // Strip 0x02 multiplex header if present
+                        val audioData = if (raw[0] == 0x02.toByte()) {
+                            raw.copyOfRange(1, raw.size)
+                        } else {
+                            raw
                         }
-                        audioAccumulator.write(bytes.toByteArray())
+                        audioAccumulator.write(audioData)
                     }
 
                     override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                         if (gen != connectionGeneration.get()) return
                         Log.w(TAG, "Voice WebSocket failed (gen=$gen): ${t.message}. Retrying in 2s...")
+                        val pendingAudio = audioAccumulator.toByteArray()
+                        if (pendingAudio.isNotEmpty()) {
+                            player.enqueue(pendingAudio)
+                            audioAccumulator.reset()
+                        }
                         _voiceState.value = EngineVoiceState.ERROR
                         _statusText.value = "Reconnecting..."
                         scheduleReconnect(2000L)
@@ -288,6 +335,11 @@ class VoiceEngine private constructor(private val appContext: Context) {
                     override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                         if (gen != connectionGeneration.get()) return
                         Log.i(TAG, "Voice WebSocket closed (gen=$gen, code=$code): $reason")
+                        val pendingAudio = audioAccumulator.toByteArray()
+                        if (pendingAudio.isNotEmpty()) {
+                            player.enqueue(pendingAudio)
+                            audioAccumulator.reset()
+                        }
                         _voiceState.value = EngineVoiceState.DISCONNECTED
                         _statusText.value = "Reconnecting..."
                         scheduleReconnect(1500L)
@@ -328,6 +380,8 @@ class VoiceEngine private constructor(private val appContext: Context) {
             put("voice", _selectedVoice.value)
             put("speed", speedValue)
             put("sample_rate", 24000)
+            put("input_sample_rate", 16000)
+            put("output_sample_rate", 24000)
             put("client_metadata", JSONObject().apply {
                 put("persona", currentPersona)
                 put("language", currentLanguage)
@@ -343,6 +397,13 @@ class VoiceEngine private constructor(private val appContext: Context) {
         try {
             val json = JSONObject(text)
             when (json.optString("type")) {
+                "session_ready" -> {
+                    Log.i(TAG, "Server session ready")
+                    if (!_isMuted.value && !player.isCurrentlyPlaying()) {
+                        _voiceState.value = EngineVoiceState.LISTENING
+                        _statusText.value = "Listening…"
+                    }
+                }
                 "assistant_state" -> {
                     val state = json.optString("state")
                     when (state) {
@@ -352,7 +413,13 @@ class VoiceEngine private constructor(private val appContext: Context) {
                                 _statusText.value = "Listening…"
                             }
                         }
-                        "thinking" -> {
+                        "capturing" -> {
+                            if (!_isMuted.value) {
+                                _voiceState.value = EngineVoiceState.USER_SPEAKING
+                                _statusText.value = "Listening…"
+                            }
+                        }
+                        "thinking", "transcribing" -> {
                             _voiceState.value = EngineVoiceState.THINKING
                             _statusText.value = "Thinking…"
                         }
@@ -367,29 +434,51 @@ class VoiceEngine private constructor(private val appContext: Context) {
                         }
                     }
                 }
+                "transcript_partial" -> {
+                    val phrase = json.optString("text")
+                    if (phrase.isNotBlank()) {
+                        _statusText.value = "“$phrase”"
+                    }
+                }
+                "transcript_final" -> {
+                    val phrase = json.optString("text")
+                    if (phrase.isNotBlank()) {
+                        _statusText.value = "“$phrase”"
+                    }
+                }
                 "assistant_text" -> {
                     val phrase = json.optString("text")
                     if (phrase.isNotBlank()) {
                         _statusText.value = phrase
                     }
                 }
-                "audio_start" -> {
-                    val turnId = json.optString("turn_id").ifBlank { null }
+                "audio_start", "tts_start" -> {
+                    val turnId = json.optString("turn_id").ifBlank { "turn_active" }
                     activeTurnId = turnId
                     audioAccumulator.reset()
                 }
-                "audio_end" -> {
+                "audio_end", "tts_end" -> {
                     val turnId = json.optString("turn_id").ifBlank { null }
-                    if (turnId != null && activeTurnId != null && turnId != activeTurnId) {
+                    if (turnId != null && activeTurnId != null && turnId != activeTurnId && activeTurnId != "turn_active") {
                         Log.d(TAG, "Discarding audio_end for obsolete turn $turnId (active: $activeTurnId)")
                         audioAccumulator.reset()
                         return
                     }
                     val audioBytes = audioAccumulator.toByteArray()
-                    if (audioBytes.isNotEmpty() && activeTurnId != null) {
+                    if (audioBytes.isNotEmpty()) {
                         player.enqueue(audioBytes)
                     }
                     audioAccumulator.reset()
+                }
+                "agent_interrupted" -> {
+                    Log.i(TAG, "Agent interrupted confirmation received from server")
+                    activeTurnId = null
+                    player.stopAndFlush()
+                    audioAccumulator.reset()
+                    if (!_isMuted.value) {
+                        _voiceState.value = EngineVoiceState.LISTENING
+                        _statusText.value = "Listening…"
+                    }
                 }
                 "task_update" -> {
                     val summary = json.optString("action_summary")

@@ -16,6 +16,8 @@ import asyncio
 import base64
 import json
 import logging
+import math
+import struct
 import time
 import uuid
 from typing import Any, AsyncIterator, Dict, List, Optional
@@ -35,6 +37,7 @@ from harness.voice.models import (
     AudioStartMessage,
     CommandCancelMessage,
     ErrorMessage,
+    PlaybackStateMessage,
     SessionOpenMessage,
     TaskUpdateMessage,
     TextInputMessage,
@@ -113,11 +116,14 @@ class VoiceGateway:
 
                 if "bytes" in message and message["bytes"]:
                     raw_bytes = message["bytes"]
+                    # Support multiplexed 0x01 mic frame header
+                    if len(raw_bytes) > 1 and raw_bytes[0] == 0x01 and (len(raw_bytes) - 1) % 2 == 0:
+                        raw_bytes = raw_bytes[1:]
 
                     # ── Self-listening loop guard ──────────────────────────────────
-                    # While assistant is actively speaking, do NOT accumulate loudspeaker
-                    # audio into turns. Check only for high-energy user acoustic barge-in.
-                    if session.is_speaking:
+                    # While assistant is actively speaking or playing out loud, do NOT accumulate
+                    # loudspeaker audio into turns. Check only for high-energy user acoustic barge-in.
+                    if session.is_speaking or session.assistant_audio_active:
                         count = len(raw_bytes) // 2
                         if count > 0:
                             shorts = struct.unpack(f"<{count}h", raw_bytes[: count * 2])
@@ -127,6 +133,7 @@ class VoiceGateway:
                                 logger.info("Acoustic barge-in detected during speech (RMS=%.1f) in session %s", rms, sid)
                                 self._trigger_barge_in(sid)
                                 session.is_speaking = False
+                                session.assistant_audio_active = False
                                 audio_in_buffer.clear()
                                 turn_detector.reset()
                         continue
@@ -155,14 +162,14 @@ class VoiceGateway:
 
                     mtype = data.get("type")
 
-                    if mtype == "session_open":
+                    if mtype in ("session_open", "session_start"):
                         open_msg = SessionOpenMessage.model_validate(data)
-                        session.voice = open_msg.voice
-                        session.speed = open_msg.speed
-                        session.sample_rate = open_msg.sample_rate
-                        session.client_metadata = open_msg.client_metadata
-                        user_name = (open_msg.client_metadata or {}).get("user_name") or "Jishnu"
-                        greet_requested = (open_msg.client_metadata or {}).get("greet", False)
+                        session.voice = open_msg.voice or "en-US-ChristopherNeural"
+                        session.speed = open_msg.speed if open_msg.speed is not None else 1.0
+                        session.sample_rate = open_msg.sample_rate if open_msg.sample_rate is not None else 24000
+                        session.client_metadata = open_msg.client_metadata or {}
+                        user_name = session.client_metadata.get("user_name") or "Jishnu"
+                        greet_requested = session.client_metadata.get("greet", False)
 
                         if greet_requested:
                             greeting_phrase = f"Hi {user_name}! How can I help you today?"
@@ -218,9 +225,9 @@ class VoiceGateway:
                         )
                         turn_ctx.tasks.append(active_turn_task)
 
-                    elif mtype == "command_cancel":
-                        cmd_cancel = CommandCancelMessage.model_validate(data)
-                        logger.info("Received command_cancel (%s) for session %s", cmd_cancel.scope, sid)
+                    elif mtype in ("command_cancel", "user_interrupt"):
+                        cmd_scope = data.get("scope", "turn")
+                        logger.info("Received cancellation (%s) for session %s", cmd_scope, sid)
                         self._trigger_barge_in(sid)
                         await self._send_json(
                             websocket,
@@ -231,6 +238,15 @@ class VoiceGateway:
                                 metrics=VoiceTimingMetrics(),
                             ).model_dump(),
                         )
+
+                    elif mtype == "playback_state":
+                        pstate = data.get("state")
+                        turn_id = data.get("turn_id")
+                        logger.info("Client playback_state=%s (turn=%s, session=%s)", pstate, turn_id, sid)
+                        if pstate == "started":
+                            session.assistant_audio_active = True
+                        elif pstate in ("completed", "interrupted"):
+                            session.assistant_audio_active = False
 
                     elif mtype == "audio_chunk":
                         achunk = AudioChunkMessage.model_validate(data)
@@ -249,7 +265,7 @@ class VoiceGateway:
                             )
                             turn_ctx.tasks.append(active_turn_task)
 
-                    elif mtype == "audio_end":
+                    elif mtype in ("audio_end", "end_of_utterance"):
                         if len(audio_in_buffer) > 0:
                             pcm_payload = bytes(audio_in_buffer)
                             audio_in_buffer.clear()
@@ -279,6 +295,7 @@ class VoiceGateway:
         session = self.sessions.get_session(session_id)
         if session:
             session.is_speaking = False
+            session.assistant_audio_active = False
         self.sessions.cancel_active_turn(session_id)
         self.tts.cancel_generation(session_id)
         elapsed_ms = (time.perf_counter() - start) * 1000.0
@@ -313,7 +330,7 @@ class VoiceGateway:
             ).model_dump(),
         )
 
-        transcript = await self.stt.transcribe_audio_buffer(audio_pcm, session.sample_rate)
+        transcript = await self.stt.transcribe_audio_buffer(audio_pcm, 16000)
         metrics.stt_duration_ms = round((time.perf_counter() * 1000.0) - metrics.stt_start_ms, 2)
 
         if not transcript.strip() or turn_ctx.is_cancelled():
@@ -622,7 +639,10 @@ class VoiceGateway:
                     break
                 if first_chunk:
                     now = time.perf_counter() * 1000.0
-                    metrics.first_audio_latency_ms = round(now - metrics.llm_start_ms, 2)
+                    start_baseline = metrics.llm_start_ms or tts_start
+                    metrics.first_audio_latency_ms = round(now - start_baseline, 2)
+                    metrics.first_audio_at_ms = now
+                    metrics.tts_start_ms = tts_start
                     first_chunk = False
 
                 # Send binary audio chunk

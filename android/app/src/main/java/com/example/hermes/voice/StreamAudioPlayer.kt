@@ -13,6 +13,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -54,10 +56,18 @@ class StreamAudioPlayer(
     private suspend fun playChunk(chunk: ByteArray) {
         val tempFile = try {
             val isWav = chunk.size >= 4 && chunk[0] == 'R'.code.toByte() && chunk[1] == 'I'.code.toByte()
-            val ext = if (isWav) ".wav" else ".mp3"
+            val isMp3 = (chunk.size >= 3 && chunk[0] == 'I'.code.toByte() && chunk[1] == 'D'.code.toByte() && chunk[2] == '3'.code.toByte()) ||
+                        (chunk.size >= 2 && (chunk[0].toInt() and 0xFF) == 0xFF && (chunk[1].toInt() and 0xE0) == 0xE0)
+
+            val (fileBytes, ext) = when {
+                isWav -> chunk to ".wav"
+                isMp3 -> chunk to ".mp3"
+                else -> wrapPcmInWav(chunk, 16000) to ".wav"
+            }
+
             File.createTempFile("hermes_tts_", ext, context.cacheDir).apply {
                 deleteOnExit()
-                FileOutputStream(this).use { it.write(chunk) }
+                FileOutputStream(this).use { it.write(fileBytes) }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to write temp audio chunk", e)
@@ -132,5 +142,32 @@ class StreamAudioPlayer(
         stopAndFlush()
         playbackJob?.cancel()
         playbackJob = null
+    }
+
+    private fun wrapPcmInWav(
+        pcmData: ByteArray,
+        sampleRate: Int = 16000,
+        channels: Short = 1,
+        bitsPerSample: Short = 16
+    ): ByteArray {
+        val totalDataLen = pcmData.size + 36
+        val byteRate = sampleRate * channels * bitsPerSample / 8
+        val blockAlign = (channels * bitsPerSample / 8).toShort()
+        val header = ByteBuffer.allocate(44).order(ByteOrder.LITTLE_ENDIAN).apply {
+            put("RIFF".toByteArray())
+            putInt(totalDataLen)
+            put("WAVE".toByteArray())
+            put("fmt ".toByteArray())
+            putInt(16) // Subchunk1Size for PCM
+            putShort(1) // AudioFormat 1 = PCM
+            putShort(channels)
+            putInt(sampleRate)
+            putInt(byteRate)
+            putShort(blockAlign)
+            putShort(bitsPerSample)
+            put("data".toByteArray())
+            putInt(pcmData.size)
+        }.array()
+        return header + pcmData
     }
 }

@@ -106,6 +106,18 @@ class ChatViewModel(
         repository.updateSessionTitle(sessionId, newTitle)
     }
 
+    fun renameSession(sessionId: String, title: String) {
+        repository.renameSession(sessionId, title)
+    }
+
+    fun togglePinSession(sessionId: String) {
+        repository.togglePinSession(sessionId)
+    }
+
+    fun assignSessionToProject(sessionId: String, projectId: String?) {
+        repository.assignSessionToProject(sessionId, projectId)
+    }
+
     fun fetchSessions() {
         repository.fetchSessions()
     }

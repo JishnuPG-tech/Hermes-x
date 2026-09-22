@@ -20,6 +20,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.hermes.data.ChatAttachment
 import com.example.hermes.theme.*
 import com.example.hermes.ui.components.*
+import com.example.hermes.ui.sound.HermesAudioFeedback
 
 @Composable
 fun HomeScreen(
@@ -75,11 +76,34 @@ fun HomeScreen(
         if (uri != null) {
             val fileName = uri.lastPathSegment?.substringAfterLast('/') ?: "photo.jpg"
             val mime = context.contentResolver.getType(uri) ?: "image/jpeg"
+            var base64: String? = null
+            var size: Long = 0L
+            try {
+                context.contentResolver.openInputStream(uri)?.use { stream ->
+                    val bytes = stream.readBytes()
+                    size = bytes.size.toLong()
+                    if (bytes.size > 2 * 1024 * 1024) {
+                        val bmp = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                        if (bmp != null) {
+                            val out = java.io.ByteArrayOutputStream()
+                            bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, out)
+                            base64 = android.util.Base64.encodeToString(out.toByteArray(), android.util.Base64.NO_WRAP)
+                        } else {
+                            base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                        }
+                    } else {
+                        base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                    }
+                }
+            } catch (_: Exception) {}
+
             val att = ChatAttachment(
                 id = "photo_" + java.util.UUID.randomUUID().toString().take(8),
                 name = fileName,
                 mimeType = mime,
                 localUri = uri.toString(),
+                sizeBytes = size,
+                base64Data = base64,
                 isImage = true
             )
             attachments = attachments + att
@@ -90,14 +114,47 @@ fun HomeScreen(
         contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) {
-            val fileName = uri.lastPathSegment?.substringAfterLast('/') ?: "document.pdf"
+            val fileName = uri.lastPathSegment?.substringAfterLast('/') ?: "document"
             val mime = context.contentResolver.getType(uri) ?: "application/octet-stream"
             val isImg = mime.startsWith("image/")
+            var base64: String? = null
+            var extracted: String? = null
+            var size: Long = 0L
+            try {
+                context.contentResolver.openInputStream(uri)?.use { stream ->
+                    val bytes = stream.readBytes()
+                    size = bytes.size.toLong()
+                    if (isImg) {
+                        if (bytes.size > 2 * 1024 * 1024) {
+                            val bmp = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                            if (bmp != null) {
+                                val out = java.io.ByteArrayOutputStream()
+                                bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, out)
+                                base64 = android.util.Base64.encodeToString(out.toByteArray(), android.util.Base64.NO_WRAP)
+                            } else {
+                                base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                            }
+                        } else {
+                            base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                        }
+                    } else {
+                        val isText = mime.startsWith("text/") || listOf(".txt", ".md", ".json", ".csv", ".py", ".kt", ".java", ".js", ".ts", ".html", ".css", ".xml", ".yaml", ".yml", ".sh").any { fileName.endsWith(it, ignoreCase = true) }
+                        if (isText && bytes.size < 500_000) {
+                            extracted = String(bytes, Charsets.UTF_8)
+                        }
+                        base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                    }
+                }
+            } catch (_: Exception) {}
+
             val att = ChatAttachment(
                 id = "file_" + java.util.UUID.randomUUID().toString().take(8),
                 name = fileName,
                 mimeType = mime,
                 localUri = uri.toString(),
+                sizeBytes = size,
+                base64Data = base64,
+                extractedText = extracted,
                 isImage = isImg
             )
             attachments = attachments + att
@@ -209,11 +266,21 @@ fun HomeScreen(
                 onRemoveAttachment = { id ->
                     attachments = attachments.filterNot { it.id == id }
                 },
-                onModelClick = { showModelSheet = true },
-                onAttachClick = { showAddSheet = true },
-                onVoiceClick = onNavigateVoice,
+                onModelClick = {
+                    HermesAudioFeedback.playActionClick(context)
+                    showModelSheet = true
+                },
+                onAttachClick = {
+                    HermesAudioFeedback.playActionClick(context)
+                    showAddSheet = true
+                },
+                onVoiceClick = {
+                    HermesAudioFeedback.playActionClick(context)
+                    onNavigateVoice()
+                },
                 onSend = {
                     if (composerText.isNotBlank() || attachments.isNotEmpty()) {
+                        HermesAudioFeedback.playMessageSent(context)
                         val query = composerText.ifBlank { "Attached files" }
                         chatViewModel.setPendingAttachments(attachments)
                         composerText = ""

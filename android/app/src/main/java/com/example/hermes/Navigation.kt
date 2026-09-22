@@ -7,6 +7,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -22,6 +29,28 @@ import com.example.hermes.theme.SurfaceDarkElevated
 import com.example.hermes.ui.components.ClaudeDrawerContent
 import com.example.hermes.ui.screens.*
 import kotlinx.coroutines.launch
+
+@Composable
+private fun ScreenTransitionWrapper(content: @Composable () -> Unit) {
+    val state = remember {
+        MutableTransitionState(false).apply {
+            targetState = true
+        }
+    }
+    AnimatedVisibility(
+        visibleState = state,
+        enter = fadeIn(
+            animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing)
+        ) + slideInHorizontally(
+            animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing)
+        ) { fullWidth -> fullWidth / 14 },
+        exit = fadeOut(
+            animationSpec = tween(durationMillis = 160)
+        )
+    ) {
+        content()
+    }
+}
 
 @Composable
 fun MainNavigation(
@@ -139,51 +168,57 @@ fun MainNavigation(
             },
             entryProvider = entryProvider {
                 entry<NavAuth> {
-                    AuthScreen(
-                        onContinueToApp = {
-                            backStack.clear()
-                            backStack.add(NavHome)
-                        }
-                    )
+                    ScreenTransitionWrapper {
+                        AuthScreen(
+                            onContinueToApp = {
+                                backStack.clear()
+                                backStack.add(NavHome)
+                            }
+                        )
+                    }
                 }
                 entry<NavHome> {
-                    val availableModels by chatViewModel.availableModels.collectAsStateWithLifecycle()
-                    HomeScreen(
-                        userName = currentUserName.substringBefore(' ').ifBlank { "User" },
-                        userEmail = currentUserEmail,
-                        availableModels = availableModels,
-                        onOpenDrawer = { scope.launch { drawerState.open() } },
-                        onNavigateChat = { prompt, model ->
-                            chatViewModel.clearMessages()
-                            backStack.add(NavChat(prompt = prompt, initialModel = model))
-                        },
-                        onNavigateVoice = { backStack.add(NavVoice) },
-                        onNavigateIncognito = {
-                            chatViewModel.clearMessages()
-                            backStack.add(NavChat(prompt = null, isIncognito = true))
-                        },
-                        onUpgradeClick = { backStack.add(NavBilling) },
-                        onNavigateConnectors = { backStack.add(NavConnectors) },
-                        chatViewModel = chatViewModel
-                    )
+                    ScreenTransitionWrapper {
+                        val availableModels by chatViewModel.availableModels.collectAsStateWithLifecycle()
+                        HomeScreen(
+                            userName = currentUserName.substringBefore(' ').ifBlank { "User" },
+                            userEmail = currentUserEmail,
+                            availableModels = availableModels,
+                            onOpenDrawer = { scope.launch { drawerState.open() } },
+                            onNavigateChat = { prompt, model ->
+                                chatViewModel.clearMessages()
+                                backStack.add(NavChat(prompt = prompt, initialModel = model))
+                            },
+                            onNavigateVoice = { backStack.add(NavVoice) },
+                            onNavigateIncognito = {
+                                chatViewModel.clearMessages()
+                                backStack.add(NavChat(prompt = null, isIncognito = true))
+                            },
+                            onUpgradeClick = { backStack.add(NavBilling) },
+                            onNavigateConnectors = { backStack.add(NavConnectors) },
+                            chatViewModel = chatViewModel
+                        )
+                    }
                 }
                 entry<NavChat> { key ->
-                    ChatScreen(
-                        initialPrompt = key.prompt,
-                        sessionId = key.sessionId,
-                        isIncognito = key.isIncognito,
-                        fromVoice = key.fromVoice,
-                        initialModel = key.initialModel,
-                        onOpenDrawer = { scope.launch { drawerState.open() } },
-                        onBack = { backStack.removeLastOrNull() },
-                        onNavigateVoice = { backStack.add(NavVoice) },
-                        onNavigateArtifacts = { backStack.add(NavArtifacts) },
-                        onNavigateArtifactViewer = { title, type, code, lang ->
-                            backStack.add(NavArtifactViewer(artifactTitle = title, artifactType = type, artifactCode = code, artifactLanguage = lang))
-                        },
-                        onNavigateConnectors = { backStack.add(NavConnectors) },
-                        chatViewModel = chatViewModel
-                    )
+                    ScreenTransitionWrapper {
+                        ChatScreen(
+                            initialPrompt = key.prompt,
+                            sessionId = key.sessionId,
+                            isIncognito = key.isIncognito,
+                            fromVoice = key.fromVoice,
+                            initialModel = key.initialModel,
+                            onOpenDrawer = { scope.launch { drawerState.open() } },
+                            onBack = { backStack.removeLastOrNull() },
+                            onNavigateVoice = { backStack.add(NavVoice) },
+                            onNavigateArtifacts = { backStack.add(NavArtifacts) },
+                            onNavigateArtifactViewer = { title, type, code, lang ->
+                                backStack.add(NavArtifactViewer(artifactTitle = title, artifactType = type, artifactCode = code, artifactLanguage = lang))
+                            },
+                            onNavigateConnectors = { backStack.add(NavConnectors) },
+                            chatViewModel = chatViewModel
+                        )
+                    }
                 }
                 entry<NavVoice> {
                     VoiceScreen(
@@ -196,143 +231,183 @@ fun MainNavigation(
                     )
                 }
                 entry<NavChats> {
-                    ChatsScreen(
-                        onOpenDrawer = { scope.launch { drawerState.open() } },
-                        onNavigateChat = { sessionId ->
-                            backStack.add(NavChat(sessionId = sessionId))
-                        },
-                        onNewChat = {
-                            chatViewModel.clearMessages()
-                            backStack.add(NavChat(prompt = null))
-                        }
-                    )
+                    ScreenTransitionWrapper {
+                        ChatsScreen(
+                            onOpenDrawer = { scope.launch { drawerState.open() } },
+                            onNavigateChat = { sessionId ->
+                                backStack.add(NavChat(sessionId = sessionId))
+                            },
+                            onNewChat = {
+                                chatViewModel.clearMessages()
+                                backStack.add(NavChat(prompt = null))
+                            }
+                        )
+                    }
                 }
                 entry<NavProjects> {
-                    ProjectsScreen(
-                        onOpenDrawer = { scope.launch { drawerState.open() } },
-                        onNavigateChat = {
-                            chatViewModel.clearMessages()
-                            backStack.add(NavChat(prompt = null))
-                        }
-                    )
+                    ScreenTransitionWrapper {
+                        ProjectsScreen(
+                            onOpenDrawer = { scope.launch { drawerState.open() } },
+                            onNavigateChat = {
+                                chatViewModel.clearMessages()
+                                backStack.add(NavChat(prompt = null))
+                            }
+                        )
+                    }
                 }
                 entry<NavCode> {
-                    CodeScreen(
-                        onOpenDrawer = { scope.launch { drawerState.open() } },
-                        onLaunchTerminal = { backStack.add(NavTerminal) }
-                    )
+                    ScreenTransitionWrapper {
+                        CodeScreen(
+                            onOpenDrawer = { scope.launch { drawerState.open() } },
+                            onLaunchTerminal = { backStack.add(NavTerminal) }
+                        )
+                    }
                 }
                 entry<NavArtifacts> {
-                    ArtifactsScreen(
-                        onOpenDrawer = { scope.launch { drawerState.open() } },
-                        onOpenArtifact = { title, type, code, lang ->
-                            backStack.add(NavArtifactViewer(artifactTitle = title, artifactType = type, artifactCode = code, artifactLanguage = lang))
-                        }
-                    )
+                    ScreenTransitionWrapper {
+                        ArtifactsScreen(
+                            onOpenDrawer = { scope.launch { drawerState.open() } },
+                            onOpenArtifact = { title, type, code, lang ->
+                                backStack.add(NavArtifactViewer(artifactTitle = title, artifactType = type, artifactCode = code, artifactLanguage = lang))
+                            }
+                        )
+                    }
                 }
                 entry<NavArtifactViewer> { key ->
-                    ArtifactViewerScreen(
-                        artifactTitle = key.artifactTitle,
-                        artifactType = key.artifactType,
-                        artifactCode = key.artifactCode,
-                        artifactLanguage = key.artifactLanguage,
-                        onBack = { backStack.removeLastOrNull() }
-                    )
+                    ScreenTransitionWrapper {
+                        ArtifactViewerScreen(
+                            artifactTitle = key.artifactTitle,
+                            artifactType = key.artifactType,
+                            artifactCode = key.artifactCode,
+                            artifactLanguage = key.artifactLanguage,
+                            onBack = { backStack.removeLastOrNull() }
+                        )
+                    }
                 }
                 entry<NavTasks> {
-                    TasksScreen(
-                        onOpenDrawer = { scope.launch { drawerState.open() } },
-                        onNavigateChat = { prompt -> backStack.add(NavChat(prompt = prompt)) },
-                        onNavigateConfig = { backStack.add(NavConnectors) }
-                    )
+                    ScreenTransitionWrapper {
+                        TasksScreen(
+                            onOpenDrawer = { scope.launch { drawerState.open() } },
+                            onNavigateChat = { prompt -> backStack.add(NavChat(prompt = prompt)) },
+                            onNavigateConfig = { backStack.add(NavConnectors) }
+                        )
+                    }
                 }
                 entry<NavSettings> {
-                    SettingsScreen(
-                        onOpenDrawer = { scope.launch { drawerState.open() } },
-                        onNavigateProfile = { backStack.add(NavProfile) },
-                        onNavigateBilling = { backStack.add(NavBilling) },
-                        onNavigateCapabilities = { backStack.add(NavCapabilities) },
-                        onNavigateConnectors = { backStack.add(NavConnectors) },
-                        onNavigatePermissions = { backStack.add(NavPermissions) },
-                        onNavigateVoiceSettings = { backStack.add(NavVoiceSettings) },
-                        onNavigateNotifications = { backStack.add(NavNotifications) },
-                        onNavigateTimeFocus = { backStack.add(NavTimeFocus) },
-                        onNavigatePrivacy = { backStack.add(NavPrivacy) },
-                        onNavigateSharing = { backStack.add(NavSharing) },
-                        onNavigateChannels = { backStack.add(NavChannels) },
-                        onNavigateOmniRoute = { backStack.add(NavOmniRoute) },
-                        onNavigateAuth = {
-                            backStack.clear()
-                            backStack.add(NavAuth)
-                        },
-                        onUpgradeClick = { backStack.add(NavBilling) }
-                    )
+                    ScreenTransitionWrapper {
+                        SettingsScreen(
+                            onOpenDrawer = { scope.launch { drawerState.open() } },
+                            onNavigateProfile = { backStack.add(NavProfile) },
+                            onNavigateBilling = { backStack.add(NavBilling) },
+                            onNavigateCapabilities = { backStack.add(NavCapabilities) },
+                            onNavigateConnectors = { backStack.add(NavConnectors) },
+                            onNavigatePermissions = { backStack.add(NavPermissions) },
+                            onNavigateVoiceSettings = { backStack.add(NavVoiceSettings) },
+                            onNavigateNotifications = { backStack.add(NavNotifications) },
+                            onNavigateTimeFocus = { backStack.add(NavTimeFocus) },
+                            onNavigatePrivacy = { backStack.add(NavPrivacy) },
+                            onNavigateSharing = { backStack.add(NavSharing) },
+                            onNavigateChannels = { backStack.add(NavChannels) },
+                            onNavigateOmniRoute = { backStack.add(NavOmniRoute) },
+                            onNavigateAuth = {
+                                backStack.clear()
+                                backStack.add(NavAuth)
+                            },
+                            onUpgradeClick = { backStack.add(NavBilling) }
+                        )
+                    }
                 }
                 entry<NavProfile> {
-                    ProfileScreen(
-                        onBack = { backStack.removeLastOrNull() }
-                    )
+                    ScreenTransitionWrapper {
+                        ProfileScreen(
+                            onBack = { backStack.removeLastOrNull() }
+                        )
+                    }
                 }
                 entry<NavBilling> {
-                    BillingScreen(
-                        userEmail = currentUserEmail,
-                        onBack = { backStack.removeLastOrNull() }
-                    )
+                    ScreenTransitionWrapper {
+                        BillingScreen(
+                            userEmail = currentUserEmail,
+                            onBack = { backStack.removeLastOrNull() }
+                        )
+                    }
                 }
                 entry<NavCapabilities> {
-                    CapabilitiesScreen(
-                        onBack = { backStack.removeLastOrNull() }
-                    )
+                    ScreenTransitionWrapper {
+                        CapabilitiesScreen(
+                            onBack = { backStack.removeLastOrNull() }
+                        )
+                    }
                 }
                 entry<NavConnectors> {
-                    ConnectorsScreen(
-                        onBack = { backStack.removeLastOrNull() }
-                    )
+                    ScreenTransitionWrapper {
+                        ConnectorsScreen(
+                            onBack = { backStack.removeLastOrNull() }
+                        )
+                    }
                 }
                 entry<NavChannels> {
-                    ChannelsScreen(
-                        onBack = { backStack.removeLastOrNull() }
-                    )
+                    ScreenTransitionWrapper {
+                        ChannelsScreen(
+                            onBack = { backStack.removeLastOrNull() }
+                        )
+                    }
                 }
                 entry<NavOmniRoute> {
-                    OmniRouteScreen(
-                        onBack = { backStack.removeLastOrNull() }
-                    )
+                    ScreenTransitionWrapper {
+                        OmniRouteScreen(
+                            onBack = { backStack.removeLastOrNull() }
+                        )
+                    }
                 }
                 entry<NavPermissions> {
-                    PermissionsScreen(
-                        onBack = { backStack.removeLastOrNull() }
-                    )
+                    ScreenTransitionWrapper {
+                        PermissionsScreen(
+                            onBack = { backStack.removeLastOrNull() }
+                        )
+                    }
                 }
                 entry<NavVoiceSettings> {
-                    VoiceSettingsScreen(
-                        onBack = { backStack.removeLastOrNull() }
-                    )
+                    ScreenTransitionWrapper {
+                        VoiceSettingsScreen(
+                            onBack = { backStack.removeLastOrNull() }
+                        )
+                    }
                 }
                 entry<NavNotifications> {
-                    NotificationsScreen(
-                        onBack = { backStack.removeLastOrNull() }
-                    )
+                    ScreenTransitionWrapper {
+                        NotificationsScreen(
+                            onBack = { backStack.removeLastOrNull() }
+                        )
+                    }
                 }
                 entry<NavTimeFocus> {
-                    TimeFocusScreen(
-                        onBack = { backStack.removeLastOrNull() }
-                    )
+                    ScreenTransitionWrapper {
+                        TimeFocusScreen(
+                            onBack = { backStack.removeLastOrNull() }
+                        )
+                    }
                 }
                 entry<NavPrivacy> {
-                    PrivacyScreen(
-                        onBack = { backStack.removeLastOrNull() }
-                    )
+                    ScreenTransitionWrapper {
+                        PrivacyScreen(
+                            onBack = { backStack.removeLastOrNull() }
+                        )
+                    }
                 }
                 entry<NavSharing> {
-                    SharingScreen(
-                        onBack = { backStack.removeLastOrNull() }
-                    )
+                    ScreenTransitionWrapper {
+                        SharingScreen(
+                            onBack = { backStack.removeLastOrNull() }
+                        )
+                    }
                 }
                 entry<NavTerminal> {
-                    TerminalScreen(
-                        onBack = { backStack.removeLastOrNull() }
-                    )
+                    ScreenTransitionWrapper {
+                        TerminalScreen(
+                            onBack = { backStack.removeLastOrNull() }
+                        )
+                    }
                 }
             }
         )

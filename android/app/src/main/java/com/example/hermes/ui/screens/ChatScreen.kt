@@ -27,6 +27,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,6 +39,7 @@ import com.example.hermes.data.*
 import com.example.hermes.theme.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.example.hermes.ui.components.*
+import com.example.hermes.ui.sound.HermesAudioFeedback
 import kotlinx.coroutines.launch
 
 @Composable
@@ -56,6 +60,9 @@ fun ChatScreen(
     var composerText by remember { mutableStateOf("") }
     var attachments by remember { mutableStateOf<List<ChatAttachment>>(emptyList()) }
     var showProjectDialog by remember { mutableStateOf(false) }
+    var showRenameDialog by remember { mutableStateOf(false) }
+    var renameChatTitle by remember { mutableStateOf("") }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var showSummarySheet by remember { mutableStateOf(false) }
     var selectedSummaryMessage by remember { mutableStateOf<ChatMessage?>(null) }
     var showModelSheet by remember { mutableStateOf(false) }
@@ -148,11 +155,34 @@ fun ChatScreen(
         if (uri != null) {
             val fileName = uri.lastPathSegment?.substringAfterLast('/') ?: "photo.jpg"
             val mime = context.contentResolver.getType(uri) ?: "image/jpeg"
+            var base64: String? = null
+            var size: Long = 0L
+            try {
+                context.contentResolver.openInputStream(uri)?.use { stream ->
+                    val bytes = stream.readBytes()
+                    size = bytes.size.toLong()
+                    if (bytes.size > 2 * 1024 * 1024) {
+                        val bmp = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                        if (bmp != null) {
+                            val out = java.io.ByteArrayOutputStream()
+                            bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, out)
+                            base64 = android.util.Base64.encodeToString(out.toByteArray(), android.util.Base64.NO_WRAP)
+                        } else {
+                            base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                        }
+                    } else {
+                        base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                    }
+                }
+            } catch (_: Exception) {}
+
             val att = ChatAttachment(
                 id = "photo_" + java.util.UUID.randomUUID().toString().take(8),
                 name = fileName,
                 mimeType = mime,
                 localUri = uri.toString(),
+                sizeBytes = size,
+                base64Data = base64,
                 isImage = true
             )
             attachments = attachments + att
@@ -163,14 +193,47 @@ fun ChatScreen(
         contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) {
-            val fileName = uri.lastPathSegment?.substringAfterLast('/') ?: "document.pdf"
+            val fileName = uri.lastPathSegment?.substringAfterLast('/') ?: "document"
             val mime = context.contentResolver.getType(uri) ?: "application/octet-stream"
             val isImg = mime.startsWith("image/")
+            var base64: String? = null
+            var extracted: String? = null
+            var size: Long = 0L
+            try {
+                context.contentResolver.openInputStream(uri)?.use { stream ->
+                    val bytes = stream.readBytes()
+                    size = bytes.size.toLong()
+                    if (isImg) {
+                        if (bytes.size > 2 * 1024 * 1024) {
+                            val bmp = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                            if (bmp != null) {
+                                val out = java.io.ByteArrayOutputStream()
+                                bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, out)
+                                base64 = android.util.Base64.encodeToString(out.toByteArray(), android.util.Base64.NO_WRAP)
+                            } else {
+                                base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                            }
+                        } else {
+                            base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                        }
+                    } else {
+                        val isText = mime.startsWith("text/") || listOf(".txt", ".md", ".json", ".csv", ".py", ".kt", ".java", ".js", ".ts", ".html", ".css", ".xml", ".yaml", ".yml", ".sh").any { fileName.endsWith(it, ignoreCase = true) }
+                        if (isText && bytes.size < 500_000) {
+                            extracted = String(bytes, Charsets.UTF_8)
+                        }
+                        base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                    }
+                }
+            } catch (_: Exception) {}
+
             val att = ChatAttachment(
                 id = "file_" + java.util.UUID.randomUUID().toString().take(8),
                 name = fileName,
                 mimeType = mime,
                 localUri = uri.toString(),
+                sizeBytes = size,
+                base64Data = base64,
+                extractedText = extracted,
                 isImage = isImg
             )
             attachments = attachments + att
@@ -206,6 +269,30 @@ fun ChatScreen(
             hasSentInitialPrompt = true
             val initialAtts = chatViewModel.consumePendingAttachments()
             chatViewModel.sendMessage(initialPrompt, model = selectedModel, attachments = initialAtts)
+        }
+    }
+
+    // Hermes Audio Feedback Hooks
+    var wasStreaming by remember { mutableStateOf(false) }
+    LaunchedEffect(isStreaming) {
+        if (wasStreaming && !isStreaming) {
+            HermesAudioFeedback.playMessageReceived(context)
+        }
+        wasStreaming = isStreaming
+    }
+
+    var lastPlayedPhase by remember { mutableStateOf<com.example.hermes.data.ThinkingPhase?>(null) }
+    var lastAudioPlayTime by remember { mutableLongStateOf(0L) }
+
+    LaunchedEffect(thinkingPhase) {
+        val now = System.currentTimeMillis()
+        if (thinkingPhase != com.example.hermes.data.ThinkingPhase.IDLE &&
+            thinkingPhase != lastPlayedPhase &&
+            (now - lastAudioPlayTime > 1200L)
+        ) {
+            lastPlayedPhase = thinkingPhase
+            lastAudioPlayTime = now
+            HermesAudioFeedback.playStepTransition(context)
         }
     }
 
@@ -252,7 +339,10 @@ fun ChatScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 // Left: Claude Hamburger Menu (3 lines: top long, middle long, bottom 60% short)
-                IconButton(onClick = onOpenDrawer) {
+                IconButton(onClick = {
+                    HermesAudioFeedback.playActionClick(context)
+                    onOpenDrawer()
+                }) {
                     ClaudeHamburgerIcon(color = PureWhite)
                 }
 
@@ -260,7 +350,10 @@ fun ChatScreen(
 
                 // Right: New Chat (+) and Overflow (⋮)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { chatViewModel.clearMessages() }) {
+                    IconButton(onClick = {
+                        HermesAudioFeedback.playActionClick(context)
+                        chatViewModel.clearMessages()
+                    }) {
                         Icon(
                             imageVector = Icons.Outlined.AddCircleOutline,
                             contentDescription = "New chat",
@@ -270,7 +363,10 @@ fun ChatScreen(
                     }
 
                     Box {
-                        IconButton(onClick = { showChatOverflowMenu = true }) {
+                        IconButton(onClick = {
+                            HermesAudioFeedback.playActionClick(context)
+                            showChatOverflowMenu = true
+                        }) {
                             Icon(
                                 imageVector = Icons.Default.MoreVert,
                                 contentDescription = "Options",
@@ -292,6 +388,7 @@ fun ChatScreen(
                             val dynamicChatTitle = sessions.firstOrNull { it.session_id == currentSessionId }?.title
                                 ?: messages.firstOrNull { it.role == "user" }?.content?.lines()?.firstOrNull { it.isNotBlank() }?.take(40)
                                 ?: "Hermes Chat"
+                            val isSessionPinned = sessions.firstOrNull { it.session_id == currentSessionId }?.pinned == true || isPinned
 
                             Text(
                                 text = dynamicChatTitle,
@@ -308,40 +405,82 @@ fun ChatScreen(
                             ChatMenuItem(
                                 title = "Share",
                                 icon = Icons.Outlined.Share,
-                                onClick = { showChatOverflowMenu = false }
+                                onClick = {
+                                    showChatOverflowMenu = false
+                                    val transcript = messages.filter { it.content.isNotBlank() }.joinToString("\n\n") { msg ->
+                                        val roleName = if (msg.role == "user") "User" else "Hermes"
+                                        "$roleName:\n${msg.content}"
+                                    }
+                                    if (transcript.isNotBlank()) {
+                                        val sendIntent = android.content.Intent().apply {
+                                            action = android.content.Intent.ACTION_SEND
+                                            putExtra(android.content.Intent.EXTRA_TEXT, transcript)
+                                            putExtra(android.content.Intent.EXTRA_SUBJECT, dynamicChatTitle)
+                                            type = "text/plain"
+                                        }
+                                        context.startActivity(android.content.Intent.createChooser(sendIntent, "Share chat"))
+                                    }
+                                }
                             )
                             ChatMenuItem(
                                 title = "Rename",
                                 icon = Icons.Outlined.Edit,
-                                onClick = { showChatOverflowMenu = false }
+                                onClick = {
+                                    showChatOverflowMenu = false
+                                    renameChatTitle = dynamicChatTitle
+                                    showRenameDialog = true
+                                }
                             )
                             ChatMenuItem(
-                                title = if (isPinned) "Unpin" else "Pin",
+                                title = if (isSessionPinned) "Unpin" else "Pin",
                                 icon = Icons.Outlined.PushPin,
                                 onClick = {
-                                    isPinned = !isPinned
                                     showChatOverflowMenu = false
+                                    currentSessionId?.let { sid ->
+                                        chatViewModel.togglePinSession(sid)
+                                        isPinned = !isPinned
+                                    }
                                 }
                             )
                             ChatMenuItem(
                                 title = "Add to project",
                                 customIcon = { CanisterIcon(size = 20.dp, tint = TextPrimaryWarm) },
-                                onClick = { showChatOverflowMenu = false }
+                                onClick = {
+                                    showChatOverflowMenu = false
+                                    showProjectDialog = true
+                                }
                             )
                             ChatMenuItem(
                                 title = "Add to home",
                                 icon = Icons.Outlined.Home,
-                                onClick = { showChatOverflowMenu = false }
+                                onClick = {
+                                    showChatOverflowMenu = false
+                                    currentSessionId?.let { sid ->
+                                        if (androidx.core.content.pm.ShortcutManagerCompat.isRequestPinShortcutSupported(context)) {
+                                            val shortcutIntent = android.content.Intent(context, com.example.hermes.MainActivity::class.java).apply {
+                                                action = android.content.Intent.ACTION_VIEW
+                                                putExtra("session_id", sid)
+                                                flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                            }
+                                            val pinShortcutInfo = androidx.core.content.pm.ShortcutInfoCompat.Builder(context, "chat_$sid")
+                                                .setShortLabel(dynamicChatTitle.take(15))
+                                                .setLongLabel(dynamicChatTitle.take(30))
+                                                .setIcon(androidx.core.graphics.drawable.IconCompat.createWithResource(context, com.example.hermes.R.mipmap.ic_launcher))
+                                                .setIntent(shortcutIntent)
+                                                .build()
+                                            androidx.core.content.pm.ShortcutManagerCompat.requestPinShortcut(context, pinShortcutInfo, null)
+                                            android.widget.Toast.makeText(context, "Shortcut added to home screen", android.widget.Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                }
                             )
                             ChatMenuItem(
                                 title = "Delete",
                                 icon = Icons.Outlined.DeleteOutline,
                                 titleColor = DestructiveRed,
                                 onClick = {
-                                    currentSessionId?.let { chatViewModel.deleteSession(it) }
-                                    chatViewModel.clearMessages()
                                     showChatOverflowMenu = false
-                                    onBack()
+                                    showDeleteConfirmDialog = true
                                 }
                             )
                         }
@@ -364,91 +503,43 @@ fun ChatScreen(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
-                        .padding(horizontal = 8.dp),
+                        .padding(horizontal = 24.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.offset(y = if (isKeyboardVisible) 0.dp else (-16).dp)
-                    ) {
-                        ClaudeStarburst(
-                            size = if (isKeyboardVisible) 36.dp else 52.dp,
-                            color = BrandCoral
-                        )
-                        Spacer(modifier = Modifier.height(if (isKeyboardVisible) 8.dp else 18.dp))
-
-                        Text(
-                            text = timeGreeting,
-                            style = HermesTypography.displayLarge.copy(
-                                fontSize = if (isKeyboardVisible) 24.sp else 32.sp,
-                                lineHeight = if (isKeyboardVisible) 28.sp else 38.sp,
-                                color = TextPrimaryWarm,
-                                fontWeight = FontWeight.Normal
-                            )
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        Text(
-                            text = "How can Hermes help you today?",
-                            style = HermesTypography.bodyLarge.copy(
-                                fontSize = 15.sp,
-                                color = TextMuted
-                            )
-                        )
-
-                        if (!isKeyboardVisible) {
-                            Spacer(modifier = Modifier.height(28.dp))
-
-                            val prompts = listOf(
-                                "Write a script or function",
-                                "Analyze and debug code",
-                                "Plan an autonomous task",
-                                "Explain a technical concept"
-                            )
-
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(10.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                prompts.forEach { prompt ->
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth(0.92f)
-                                            .clip(RoundedCornerShape(16.dp))
-                                            .background(Color(0xFF1E1D1B))
-                                            .border(1.dp, BorderSubtle, RoundedCornerShape(16.dp))
-                                            .clickable {
-                                                chatViewModel.sendMessage(prompt)
-                                            }
-                                            .padding(horizontal = 18.dp, vertical = 13.dp)
-                                    ) {
-                                        Text(
-                                            text = prompt,
-                                            style = HermesTypography.bodyMedium.copy(
-                                                fontSize = 14.5.sp,
-                                                color = TextPrimaryWarm,
-                                                fontWeight = FontWeight.Normal
-                                            )
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    Text(
+                        text = timeGreeting,
+                        style = HermesTypography.displayLarge.copy(
+                            fontSize = if (isKeyboardVisible) 26.sp else 32.sp,
+                            lineHeight = if (isKeyboardVisible) 32.sp else 38.sp,
+                            color = TextPrimaryWarm,
+                            fontFamily = AnthropicSerif,
+                            fontWeight = FontWeight.Normal
+                        ),
+                        modifier = Modifier.offset(y = if (isKeyboardVisible) 0.dp else (-24).dp)
+                    )
                 }
             } else {
                 // Scrollable Conversation Stream
                 LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                itemsIndexed(messages) { index, message ->
-                    if (message.role == "user") {
+                    state = listState,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    itemsIndexed(
+                        items = messages,
+                        key = { _, message -> message.id }
+                    ) { index, message ->
+                        AnimatedVisibility(
+                            visible = true,
+                            enter = fadeIn(animationSpec = tween(220)) + slideInVertically(
+                                animationSpec = tween(220, easing = FastOutSlowInEasing),
+                                initialOffsetY = { it / 6 }
+                            )
+                        ) {
+                            if (message.role == "user") {
                         // User message bubble (Matches Screenshots 2 & 3)
                         Column(
                             modifier = Modifier
@@ -456,23 +547,94 @@ fun ChatScreen(
                                 .padding(start = 32.dp),
                             horizontalAlignment = Alignment.End
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .background(Color(0xFF262523))
-                                    .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp))
-                                    .padding(horizontal = 18.dp, vertical = 14.dp)
-                            ) {
-                                Text(
-                                    text = message.content,
-                                    style = HermesTypography.bodyLarge.copy(
-                                        fontFamily = AnthropicSans,
-                                        fontSize = 17.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = PureWhite,
-                                        lineHeight = 25.sp
+                            // 1. Render image attachments visually
+                            message.attachments.filter { it.isImage }.forEach { att ->
+                                val bitmap = remember(att.base64Data, att.localUri) {
+                                    if (!att.base64Data.isNullOrBlank()) {
+                                        try {
+                                            val bytes = android.util.Base64.decode(att.base64Data, android.util.Base64.DEFAULT)
+                                            android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+                                        } catch (_: Exception) { null }
+                                    } else if (!att.localUri.isNullOrBlank()) {
+                                        try {
+                                            val uri = android.net.Uri.parse(att.localUri)
+                                            context.contentResolver.openInputStream(uri)?.use { stream ->
+                                                android.graphics.BitmapFactory.decodeStream(stream)?.asImageBitmap()
+                                            }
+                                        } catch (_: Exception) { null }
+                                    } else null
+                                }
+
+                                if (bitmap != null) {
+                                    androidx.compose.foundation.Image(
+                                        bitmap = bitmap,
+                                        contentDescription = att.name,
+                                        modifier = Modifier
+                                            .padding(bottom = 8.dp)
+                                            .sizeIn(maxWidth = 260.dp, maxHeight = 260.dp)
+                                            .clip(RoundedCornerShape(16.dp))
+                                            .border(1.dp, BorderSubtle, RoundedCornerShape(16.dp)),
+                                        contentScale = androidx.compose.ui.layout.ContentScale.Fit
                                     )
-                                )
+                                }
+                            }
+
+                            // 2. Render file attachments
+                            message.attachments.filter { !it.isImage }.forEach { att ->
+                                Row(
+                                    modifier = Modifier
+                                        .padding(bottom = 8.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(Color(0xFF262523))
+                                        .border(1.dp, BorderSubtle, RoundedCornerShape(12.dp))
+                                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Description,
+                                        contentDescription = null,
+                                        tint = AccentBlue,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = att.name,
+                                        style = HermesTypography.bodyMedium.copy(
+                                            color = PureWhite,
+                                            fontSize = 13.5.sp,
+                                            fontWeight = FontWeight.Medium
+                                        ),
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+
+                            // 3. User prompt text (clean display without [Attached Image: ...] or [Attached File: ...] prefixes)
+                            val cleanDisplayContent = message.content
+                                .replace(Regex("""^\[Attached Image:[^\]]*\]\s*"""), "")
+                                .replace(Regex("""^\[Attached File:[^\]]*\]\s*"""), "")
+                                .trim()
+
+                            if (cleanDisplayContent.isNotBlank()) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(20.dp))
+                                        .background(Color(0xFF262523))
+                                        .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp))
+                                        .padding(horizontal = 18.dp, vertical = 14.dp)
+                                ) {
+                                    Text(
+                                        text = cleanDisplayContent,
+                                        style = HermesTypography.bodyLarge.copy(
+                                            fontFamily = AnthropicSans,
+                                            fontSize = 17.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = PureWhite,
+                                            lineHeight = 25.sp
+                                        )
+                                    )
+                                }
                             }
                         }
                     } else {
@@ -502,8 +664,15 @@ fun ChatScreen(
                             //    Show dynamic animated rough short text (e.g. "Running the ls command...", "Reading the ls output...", "Ready to serve to the user...") + pulsing indicator!
                             // 2. Once response starts, discreet single-line stepper + clean response!
                             if (isMessageStreaming && !hasContent) {
-                                val currentDynamicThought = remember(activeThinking, message.thinking) {
-                                    formatDynamicThinkingText(activeThinking?.takeIf { it.isNotBlank() } ?: message.thinking)
+                                val currentDynamicThought = remember(thinkingPhase, activeThinking, message.thinking) {
+                                    when (thinkingPhase) {
+                                        com.example.hermes.data.ThinkingPhase.THOUGHT_PROCESS -> "Analysing the request..."
+                                        com.example.hermes.data.ThinkingPhase.BUILDING -> "Executing command & tools..."
+                                        com.example.hermes.data.ThinkingPhase.CREATING_FILE -> "Inspecting output & results..."
+                                        com.example.hermes.data.ThinkingPhase.FINALIZING -> "Organising for user..."
+                                        com.example.hermes.data.ThinkingPhase.COMPLETED -> "Ready to serve..."
+                                        else -> formatDynamicThinkingText(activeThinking?.takeIf { it.isNotBlank() } ?: message.thinking)
+                                    }
                                 }
 
                                 Column(
@@ -751,7 +920,7 @@ fun ChatScreen(
 
                                 Spacer(modifier = Modifier.height(6.dp))
 
-                                // Bottom Disclaimer Row (Image 3: Terracotta Starburst on left + two lines of text on right - only under last assistant response)
+                                // Bottom Disclaimer Row
                                 if (message == messages.lastOrNull { it.role == "assistant" }) {
                                     Row(
                                         modifier = Modifier
@@ -760,11 +929,6 @@ fun ChatScreen(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.Start
                                     ) {
-                                        ClaudeStarburst(
-                                            size = 18.dp,
-                                            color = BrandCoral
-                                        )
-                                        Spacer(modifier = Modifier.width(10.dp))
                                         Text(
                                             text = "Hermes is AI and can make mistakes.\nPlease double-check responses.",
                                             style = HermesTypography.labelSmall.copy(
@@ -782,6 +946,7 @@ fun ChatScreen(
                 }
             }
         }
+    }
 
             // Post-Voice Banner
             if (showVoiceEndedBanner) {
@@ -875,11 +1040,21 @@ fun ChatScreen(
                 isIncognito = isIncognito,
                 isStreaming = isStreaming,
                 onStopGeneration = { chatViewModel.stopGeneration() },
-                onModelClick = { showModelSheet = true },
-                onAttachClick = { showAddSheet = true },
-                onVoiceClick = onNavigateVoice,
+                onModelClick = {
+                    HermesAudioFeedback.playActionClick(context)
+                    showModelSheet = true
+                },
+                onAttachClick = {
+                    HermesAudioFeedback.playActionClick(context)
+                    showAddSheet = true
+                },
+                onVoiceClick = {
+                    HermesAudioFeedback.playActionClick(context)
+                    onNavigateVoice()
+                },
                 onSend = {
                     if (composerText.isNotBlank() || attachments.isNotEmpty()) {
+                        HermesAudioFeedback.playMessageSent(context)
                         val textToSend = composerText
                         val currentAtts = attachments
                         composerText = ""
@@ -1014,6 +1189,9 @@ fun ChatScreen(
                                     .clip(RoundedCornerShape(10.dp))
                                     .clickable {
                                         chatViewModel.setSelectedProject(prj)
+                                        currentSessionId?.let { sid ->
+                                            chatViewModel.assignSessionToProject(sid, prj.id)
+                                        }
                                         showProjectDialog = false
                                     }
                                     .padding(vertical = 8.dp, horizontal = 4.dp),
@@ -1023,6 +1201,9 @@ fun ChatScreen(
                                     selected = selectedProject?.id == prj.id,
                                     onClick = {
                                         chatViewModel.setSelectedProject(prj)
+                                        currentSessionId?.let { sid ->
+                                            chatViewModel.assignSessionToProject(sid, prj.id)
+                                        }
                                         showProjectDialog = false
                                     }
                                 )
@@ -1035,6 +1216,92 @@ fun ChatScreen(
                 confirmButton = {
                     TextButton(onClick = { showProjectDialog = false }) {
                         Text("Done", color = AccentBlue)
+                    }
+                }
+            )
+        }
+
+        // Rename Session Dialog
+        if (showRenameDialog) {
+            AlertDialog(
+                onDismissRequest = { showRenameDialog = false },
+                containerColor = Color(0xFF1F1E1C),
+                shape = RoundedCornerShape(20.dp),
+                title = { Text("Rename Chat", color = TextPrimaryWarm, fontFamily = AnthropicSerif, fontSize = 20.sp) },
+                text = {
+                    Column {
+                        OutlinedTextField(
+                            value = renameChatTitle,
+                            onValueChange = { renameChatTitle = it },
+                            placeholder = { Text("Enter chat title", color = TextMuted) },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = TextPrimaryWarm,
+                                unfocusedTextColor = TextPrimaryWarm,
+                                focusedBorderColor = BrandCoral,
+                                unfocusedBorderColor = BorderSubtle,
+                                cursorColor = BrandCoral
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            val newTitle = renameChatTitle.trim()
+                            if (newTitle.isNotBlank()) {
+                                currentSessionId?.let { sid ->
+                                    chatViewModel.renameSession(sid, newTitle)
+                                }
+                            }
+                            showRenameDialog = false
+                        }
+                    ) {
+                        Text("Save", color = BrandCoral, fontWeight = FontWeight.SemiBold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showRenameDialog = false }) {
+                        Text("Cancel", color = TextMuted)
+                    }
+                }
+            )
+        }
+
+        // Delete Confirmation Dialog
+        if (showDeleteConfirmDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteConfirmDialog = false },
+                containerColor = Color(0xFF1F1E1C),
+                shape = RoundedCornerShape(20.dp),
+                title = { Text("Delete Chat?", color = TextPrimaryWarm, fontFamily = AnthropicSerif, fontSize = 20.sp) },
+                text = {
+                    Text(
+                        "Are you sure you want to delete this chat session? This action cannot be undone.",
+                        color = TextMuted,
+                        fontSize = 14.5.sp,
+                        lineHeight = 20.sp
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            currentSessionId?.let { sid ->
+                                chatViewModel.deleteSession(sid)
+                            }
+                            chatViewModel.clearMessages()
+                            showDeleteConfirmDialog = false
+                            onBack()
+                        }
+                    ) {
+                        Text("Delete", color = DestructiveRed, fontWeight = FontWeight.SemiBold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                        Text("Cancel", color = TextMuted)
                     }
                 }
             )
@@ -1053,6 +1320,7 @@ fun ChatScreen(
                 },
                 isThinkingActive = isStreaming && (targetMsg == null || targetMsg.id == messages.lastOrNull()?.id),
                 promptTopic = promptTopic,
+                thinkingContent = targetMsg?.thinking,
                 artifactName = targetMsg?.artifactTitle,
                 artifactType = targetMsg?.artifactType,
                 thinkingPhase = thinkingPhase,
@@ -1296,12 +1564,19 @@ fun formatDynamicThinkingText(raw: String?): String {
     val line = lines.lastOrNull() ?: "Thinking..."
     val cleaned = line
         .replace(Regex("""^[-*#\s]+"""), "")
-        .replace(Regex("""^[🛠️🌐⚡💻🖥️📂🟣🧠🔍🔷✅⚠️]+\s*"""), "")
+        .replace(Regex("""[\uD83C-\uDBFF\uDC00-\uDFFF\u2600-\u27BF]"""), "") // Strip all generic emojis!
         .replace(Regex("""^Thinking Process:\s*""", RegexOption.IGNORE_CASE), "")
         .replace(Regex("""^Round\s+\d+:\s*""", RegexOption.IGNORE_CASE), "")
         .trim()
     if (cleaned.isBlank()) return "Thinking..."
-    return if (cleaned.endsWith("...") || cleaned.endsWith(".")) cleaned else "$cleaned..."
+
+    // Clamp long CoT outputs to concise professional status label (max 35 chars)
+    val clamped = if (cleaned.length > 35) {
+        cleaned.take(32).trimEnd('.', ' ', ',') + "..."
+    } else {
+        cleaned.removeSuffix(".").removeSuffix("...") + "..."
+    }
+    return clamped
 }
 
 /**

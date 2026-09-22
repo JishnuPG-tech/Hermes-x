@@ -434,8 +434,8 @@ class HermesApiClient(
             val reqBody = ChatCompletionRequest(
                 model = modelName,
                 messages = listOf(
-                    ApiMessage(role = "system", content = "You are a succinct title generator. Output only the title, max 5 words, no punctuation, no quotes."),
-                    ApiMessage(role = "user", content = prompt)
+                    ApiMessage(role = "system", textContent = "You are a succinct title generator. Output only the title, max 5 words, no punctuation, no quotes."),
+                    ApiMessage(role = "user", textContent = prompt)
                 ),
                 stream = false,
                 max_tokens = 20
@@ -491,9 +491,9 @@ class HermesApiClient(
             messages = listOf(
                 ApiMessage(
                     role = "system",
-                    content = "You are Hermes, a helpful, brilliant AI companion. Provide a concise, clear, natural spoken answer in 1-3 sentences without markdown formatting, code blocks, or bullet points."
+                    textContent = "You are Hermes, a helpful, brilliant AI companion. Provide a concise, clear, natural spoken answer in 1-3 sentences without markdown formatting, code blocks, or bullet points."
                 ),
-                ApiMessage(role = "user", content = prompt)
+                ApiMessage(role = "user", textContent = prompt)
             ),
             stream = false,
             max_tokens = 250
@@ -1082,8 +1082,46 @@ class HermesApiClient(
         model: String = "hermes-agent",
         sessionId: String? = null
     ): Flow<StreamEvent> = callbackFlow {
-        val apiMessages = messages.map {
-            ApiMessage(role = it.role, content = it.content)
+        val apiMessages = messages.map { msg ->
+            val hasImages = msg.attachments.any { it.isImage && !it.base64Data.isNullOrBlank() }
+            val hasFiles = msg.attachments.any { !it.isImage && !it.extractedText.isNullOrBlank() }
+
+            if (hasImages) {
+                val contentArray = kotlinx.serialization.json.buildJsonArray {
+                    val textBuilder = StringBuilder()
+                    if (hasFiles) {
+                        msg.attachments.filter { !it.isImage && !it.extractedText.isNullOrBlank() }.forEach { att ->
+                            textBuilder.append("[Attached File: ${att.name}]\n${att.extractedText}\n\n")
+                        }
+                    }
+                    val userText = msg.content.ifBlank { "Please inspect and analyze this attached image." }
+                    textBuilder.append(userText)
+
+                    add(kotlinx.serialization.json.buildJsonObject {
+                        put("type", kotlinx.serialization.json.JsonPrimitive("text"))
+                        put("text", kotlinx.serialization.json.JsonPrimitive(textBuilder.toString().trim()))
+                    })
+
+                    msg.attachments.filter { it.isImage && !it.base64Data.isNullOrBlank() }.forEach { att ->
+                        add(kotlinx.serialization.json.buildJsonObject {
+                            put("type", kotlinx.serialization.json.JsonPrimitive("image_url"))
+                            put("image_url", kotlinx.serialization.json.buildJsonObject {
+                                put("url", kotlinx.serialization.json.JsonPrimitive("data:${att.mimeType};base64,${att.base64Data}"))
+                            })
+                        })
+                    }
+                }
+                ApiMessage(role = msg.role, content = contentArray)
+            } else if (hasFiles) {
+                val textBuilder = StringBuilder()
+                msg.attachments.filter { !it.isImage && !it.extractedText.isNullOrBlank() }.forEach { att ->
+                    textBuilder.append("[Attached File: ${att.name}]\n${att.extractedText}\n\n")
+                }
+                textBuilder.append(msg.content)
+                ApiMessage(role = msg.role, textContent = textBuilder.toString().trim())
+            } else {
+                ApiMessage(role = msg.role, textContent = msg.content)
+            }
         }
         val requestBody = ChatCompletionRequest(
             model = model,

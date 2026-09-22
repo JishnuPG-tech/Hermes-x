@@ -53,6 +53,9 @@ interface DataRepository {
     fun syncActiveSession()
     fun deleteSession(sessionId: String)
     fun updateSessionTitle(sessionId: String, newTitle: String)
+    fun renameSession(sessionId: String, title: String)
+    fun togglePinSession(sessionId: String)
+    fun assignSessionToProject(sessionId: String, projectId: String?)
     fun fetchProjects()
     fun createNewProject(name: String, description: String = "")
     fun fetchModels()
@@ -480,13 +483,10 @@ class HermesDataRepository(
             else -> if (model.isBlank()) "hermes-agent" else model
         }
 
-        val effectiveContent = if (attachments.isNotEmpty()) {
-            val attInfo = attachments.joinToString("\n") { att ->
-                if (att.isImage) "[Attached Image: ${att.name}]" else "[Attached File: ${att.name}]"
-            }
-            if (content.isNotBlank()) "$attInfo\n\n$content" else attInfo
-        } else {
-            content
+        val cleanUserPrompt = content.trim().ifBlank {
+            if (attachments.any { it.isImage }) "Please inspect and tell me what is in this image."
+            else if (attachments.isNotEmpty()) "Please analyze this attached file."
+            else ""
         }
 
         // Ensure session exists or create a new session
@@ -554,7 +554,7 @@ class HermesDataRepository(
         val userMsg = ChatMessage(
             id = UUID.randomUUID().toString(),
             role = "user",
-            content = effectiveContent,
+            content = cleanUserPrompt,
             attachments = attachments
         )
 
@@ -1218,6 +1218,26 @@ class HermesDataRepository(
         // 3. Sync with backend server
         repositoryScope.launch(Dispatchers.IO) {
             apiClient.renameSession(sessionId, clean)
+        }
+    }
+
+    override fun renameSession(sessionId: String, title: String) {
+        updateSessionTitle(sessionId, title)
+    }
+
+    override fun togglePinSession(sessionId: String) {
+        val current = _sessions.value
+        val target = current.firstOrNull { it.session_id == sessionId } ?: return
+        val newPinned = !target.pinned
+        _sessions.value = current.map {
+            if (it.session_id == sessionId) it.copy(pinned = newPinned) else it
+        }
+    }
+
+    override fun assignSessionToProject(sessionId: String, projectId: String?) {
+        val current = _sessions.value
+        _sessions.value = current.map {
+            if (it.session_id == sessionId) it.copy(project_id = projectId) else it
         }
     }
 

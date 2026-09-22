@@ -42,25 +42,33 @@ class InferenceTelemetry:
 # Semantic routing profiles mapping task needs to priority model cascades
 ROUTING_PROFILES: Dict[str, List[str]] = {
     "fast": [
+        "nvidia/google/gemma-4-31b-it",
+        "nvidia/nvidia/nemotron-3-super-120b-a12b",
+        "nvidia/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
         "antigravity/gemini-2.5-flash",
+        "antigravity/gemini-3.7-flash-medium",
         "auto/fast",
-        "auto/best-chat",
     ],
     "coding": [
-        "antigravity/gemini-2.5-flash",
-        "auto/best-coding",
         "nvidia/nvidia/nemotron-3-super-120b-a12b",
-        "groq/llama-3.3-70b-versatile",
+        "nvidia/google/gemma-4-31b-it",
+        "antigravity/gemini-2.5-flash",
+        "antigravity/gemini-3.7-flash-medium",
+        "antigravity/claude-sonnet-4-6",
+        "auto/best-coding",
     ],
     "reasoning": [
+        "nvidia/nvidia/nemotron-3-super-120b-a12b",
+        "nvidia/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+        "nvidia/google/gemma-4-31b-it",
         "antigravity/gemini-2.5-flash",
         "auto/best-reasoning",
-        "nvidia/nvidia/nemotron-3-super-120b-a12b",
     ],
     "default": [
+        "nvidia/nvidia/nemotron-3-super-120b-a12b",
+        "nvidia/google/gemma-4-31b-it",
         "antigravity/gemini-2.5-flash",
         "auto/best-coding",
-        "auto/best-chat",
     ],
 }
 

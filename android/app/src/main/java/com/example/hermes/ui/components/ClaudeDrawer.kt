@@ -126,7 +126,7 @@ fun ClaudeDrawerContent(
                     )
                 }
 
-                // Code (</> brackets icon)
+                // Hermes Agent (Autonomous Code & Agent Workspace)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -134,10 +134,10 @@ fun ClaudeDrawerContent(
                         .padding(vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    CodeBracketsIcon(size = 23.dp, tint = PureWhite)
+                    HermesAgentMenuIcon(size = 23.dp, tint = PureWhite)
                     Spacer(modifier = Modifier.width(20.dp))
                     Text(
-                        text = "Code",
+                        text = "Hermes Agent",
                         style = HermesTypography.bodyLarge.copy(
                             fontSize = 19.sp,
                             color = PureWhite,
@@ -360,6 +360,47 @@ fun CanisterIcon(
             bodyPath,
             color = tint,
             style = Stroke(width = stroke, cap = StrokeCap.Round, join = StrokeJoin.Round)
+        )
+    }
+}
+
+// Custom 1:1 Hermes Agent Terminal Console icon
+@Composable
+fun HermesAgentMenuIcon(
+    modifier: Modifier = Modifier,
+    size: androidx.compose.ui.unit.Dp = 22.dp,
+    tint: Color = TextPrimaryWarm
+) {
+    Canvas(modifier = modifier.size(size)) {
+        val w = this.size.width
+        val h = this.size.height
+        val stroke = w * 0.085f
+
+        // Console screen rounded outline
+        val corner = 3.5.dp.toPx()
+        drawRoundRect(
+            color = tint,
+            topLeft = Offset(w * 0.08f, h * 0.14f),
+            size = Size(w * 0.84f, h * 0.72f),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(corner, corner),
+            style = Stroke(width = stroke)
+        )
+
+        // > prompt arrow
+        val promptPath = Path().apply {
+            moveTo(w * 0.25f, h * 0.38f)
+            lineTo(w * 0.42f, h * 0.50f)
+            lineTo(w * 0.25f, h * 0.62f)
+        }
+        drawPath(promptPath, color = tint, style = Stroke(width = stroke, cap = StrokeCap.Round, join = StrokeJoin.Round))
+
+        // _ blinking cursor bar
+        drawLine(
+            color = tint,
+            start = Offset(w * 0.50f, h * 0.62f),
+            end = Offset(w * 0.72f, h * 0.62f),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round
         )
     }
 }

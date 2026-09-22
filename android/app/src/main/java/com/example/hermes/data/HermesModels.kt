@@ -23,8 +23,13 @@ data class ChatMessage(
 @Serializable
 data class ApiMessage(
     val role: String,
-    val content: String
-)
+    val content: kotlinx.serialization.json.JsonElement
+) {
+    constructor(role: String, textContent: String) : this(
+        role = role,
+        content = kotlinx.serialization.json.JsonPrimitive(textContent)
+    )
+}
 
 @Serializable
 data class ChatCompletionRequest(
@@ -320,7 +325,8 @@ data class SessionDto(
     val created_at: Double = 0.0,
     val updated_at: Double = 0.0,
     val pinned: Boolean = false,
-    val archived: Boolean = false
+    val archived: Boolean = false,
+    val project_id: String? = null
 )
 
 @Serializable

@@ -58,16 +58,30 @@ class PcmAudioRecorder(
                 val minBufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
                 val bufferSize = maxOf(minBufferSize, chunkSize * 4)
 
-                val recorder = AudioRecord(
+                val sources = listOf(
                     MediaRecorder.AudioSource.VOICE_COMMUNICATION,
-                    sampleRate,
-                    channelConfig,
-                    audioFormat,
-                    bufferSize
+                    MediaRecorder.AudioSource.VOICE_RECOGNITION,
+                    MediaRecorder.AudioSource.MIC
                 )
 
-                if (recorder.state != AudioRecord.STATE_INITIALIZED) {
-                    Log.e(TAG, "Failed to initialize AudioRecord with VOICE_COMMUNICATION")
+                var recorder: AudioRecord? = null
+                for (source in sources) {
+                    try {
+                        val candidate = AudioRecord(source, sampleRate, channelConfig, audioFormat, bufferSize)
+                        if (candidate.state == AudioRecord.STATE_INITIALIZED) {
+                            recorder = candidate
+                            Log.i(TAG, "AudioRecord initialized successfully with audio source $source")
+                            break
+                        } else {
+                            candidate.release()
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Audio source $source unavailable: ${e.message}")
+                    }
+                }
+
+                if (recorder == null) {
+                    Log.e(TAG, "Failed to initialize AudioRecord with any audio source (permission or hardware).")
                     isRecording.set(false)
                     return@launch
                 }

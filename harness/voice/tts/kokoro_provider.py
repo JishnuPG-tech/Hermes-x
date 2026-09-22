@@ -111,7 +111,8 @@ class KokoroProvider(TTSProvider):
 
             def _run():
                 if hasattr(self._pipeline, "__call__"):
-                    generator = self._pipeline(request.text, voice=voice, speed=request.speed, split_pattern=r"\n+")
+                    req_speed = request.speed if request.speed is not None else 1.0
+                    generator = self._pipeline(request.text, voice=voice, speed=req_speed, split_pattern=r"\n+")
                     for _, _, audio in generator:
                         return audio
                 return None

@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hermes.theme.*
@@ -72,7 +73,7 @@ fun SettingsScreen(
         @Suppress("DEPRECATION")
         packageInfo?.versionCode?.toLong() ?: 1L
     }
-    val appVersionText = "Hermes v$versionName ($versionCode)"
+    val appVersionText = "Hermes v$versionName"
 
     var showColorModeDialog by remember { mutableStateOf(false) }
     var showFontStyleDialog by remember { mutableStateOf(false) }
@@ -341,17 +342,28 @@ fun SettingsScreen(
 
                 // App Version Footer
                 item {
-                    Box(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 12.dp),
-                        contentAlignment = Alignment.Center
+                            .padding(vertical = 14.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
                             text = appVersionText,
                             style = HermesTypography.labelSmall.copy(
                                 fontSize = 12.sp,
-                                color = TextSubtle
+                                color = TextSubtle,
+                                fontFamily = AnthropicSans
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Created by Jishnu P G",
+                            style = HermesTypography.labelSmall.copy(
+                                fontSize = 11.sp,
+                                color = Color(0xFF7A7770),
+                                fontFamily = AnthropicSans,
+                                fontWeight = FontWeight.Normal
                             )
                         )
                     }

@@ -392,106 +392,52 @@ fun AuthScreen(
                             }
                         }
 
-                        // Continue as Guest Option
-                        TextButton(
-                            onClick = {
-                                authViewModel.loginAsGuest { onContinueToApp() }
-                            },
-                            modifier = Modifier.padding(top = 2.dp)
-                        ) {
-                            Text(
-                                text = "Continue as Guest",
-                                style = HermesTypography.bodyMedium.copy(
-                                    color = TextMuted,
-                                    fontSize = 14.sp,
-                                    fontFamily = AnthropicSans
+                        // Legal Terms Footer (Image 2)
+                        val annotatedDisclaimer = androidx.compose.ui.text.buildAnnotatedString {
+                            append("By continuing, you agree to Anthropic's ")
+                            pushStyle(
+                                androidx.compose.ui.text.SpanStyle(
+                                    color = TextPrimaryWarm,
+                                    textDecoration = TextDecoration.Underline
                                 )
                             )
+                            append("Consumer Terms")
+                            pop()
+                            append(" and ")
+                            pushStyle(
+                                androidx.compose.ui.text.SpanStyle(
+                                    color = TextPrimaryWarm,
+                                    textDecoration = TextDecoration.Underline
+                                )
+                            )
+                            append("Usage Policy")
+                            pop()
+                            append(", and acknowledge their ")
+                            pushStyle(
+                                androidx.compose.ui.text.SpanStyle(
+                                    color = TextPrimaryWarm,
+                                    textDecoration = TextDecoration.Underline
+                                )
+                            )
+                            append("Privacy Policy")
+                            pop()
+                            append(".")
                         }
 
-                        // Legal Terms Footer (Image 2)
-                        Row(
+                        Text(
+                            text = annotatedDisclaimer,
+                            style = HermesTypography.labelSmall.copy(
+                                fontSize = 12.sp,
+                                color = TextSubtle,
+                                lineHeight = 18.sp,
+                                fontFamily = AnthropicSans,
+                                textAlign = TextAlign.Center
+                            ),
+                            textAlign = TextAlign.Center,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 8.dp, vertical = 2.dp),
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Row {
-                                    Text(
-                                        text = "By continuing, you agree to Anthropic's ",
-                                        style = HermesTypography.labelSmall.copy(
-                                            fontSize = 12.sp,
-                                            color = TextSubtle,
-                                            lineHeight = 17.sp,
-                                            fontFamily = AnthropicSans
-                                        )
-                                    )
-                                    Text(
-                                        text = "Consumer Terms",
-                                        style = HermesTypography.labelSmall.copy(
-                                            fontSize = 12.sp,
-                                            color = TextPrimaryWarm,
-                                            textDecoration = TextDecoration.Underline,
-                                            lineHeight = 17.sp,
-                                            fontFamily = AnthropicSans
-                                        ),
-                                        modifier = Modifier.clickable { }
-                                    )
-                                    Text(
-                                        text = " and",
-                                        style = HermesTypography.labelSmall.copy(
-                                            fontSize = 12.sp,
-                                            color = TextSubtle,
-                                            lineHeight = 17.sp,
-                                            fontFamily = AnthropicSans
-                                        )
-                                    )
-                                }
-                                Row {
-                                    Text(
-                                        text = "Usage Policy",
-                                        style = HermesTypography.labelSmall.copy(
-                                            fontSize = 12.sp,
-                                            color = TextPrimaryWarm,
-                                            textDecoration = TextDecoration.Underline,
-                                            lineHeight = 17.sp,
-                                            fontFamily = AnthropicSans
-                                        ),
-                                        modifier = Modifier.clickable { }
-                                    )
-                                    Text(
-                                        text = ", and acknowledge their ",
-                                        style = HermesTypography.labelSmall.copy(
-                                            fontSize = 12.sp,
-                                            color = TextSubtle,
-                                            lineHeight = 17.sp,
-                                            fontFamily = AnthropicSans
-                                        )
-                                    )
-                                    Text(
-                                        text = "Privacy Policy",
-                                        style = HermesTypography.labelSmall.copy(
-                                            fontSize = 12.sp,
-                                            color = TextPrimaryWarm,
-                                            textDecoration = TextDecoration.Underline,
-                                            lineHeight = 17.sp,
-                                            fontFamily = AnthropicSans
-                                        ),
-                                        modifier = Modifier.clickable { }
-                                    )
-                                    Text(
-                                        text = ".",
-                                        style = HermesTypography.labelSmall.copy(
-                                            fontSize = 12.sp,
-                                            color = TextSubtle,
-                                            lineHeight = 17.sp,
-                                            fontFamily = AnthropicSans
-                                        )
-                                    )
-                                }
-                            }
-                        }
+                                .padding(horizontal = 16.dp, vertical = 12.dp)
+                        )
                     }
                 }
             }

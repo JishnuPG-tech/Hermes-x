@@ -12,13 +12,13 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
- * 30 FPS Stream Smoothing Engine.
- * Buffers bursty incoming SSE token chunks and emits them at 33ms intervals
- * to prevent UI layout thrashing during high-velocity LLM completions.
+ * 60 FPS Ultra-Smooth Stream Smoothing Engine.
+ * Buffers bursty incoming SSE token chunks and emits them at 16ms intervals (60-120 FPS)
+ * with adaptive burst acceleration to ensure buttery smooth text flow without layout thrashing or lag.
  */
 class StreamSmoothingEngine(
     private val scope: CoroutineScope,
-    private val tickIntervalMs: Long = 33L, // 30 FPS
+    private val tickIntervalMs: Long = 16L, // 60 FPS
     private val charsPerTick: Int = 3
 ) {
     private val tokenQueue = ConcurrentLinkedQueue<String>()
@@ -37,9 +37,20 @@ class StreamSmoothingEngine(
         tickerJob = scope.launch(Dispatchers.Default) {
             while (isActive) {
                 if (!tokenQueue.isEmpty()) {
-                    val nextToken = tokenQueue.poll()
-                    if (nextToken != null) {
+                    // Adaptive burst drain: if queue is growing, drain more tokens per tick
+                    val drainCount = when {
+                        tokenQueue.size > 30 -> 8
+                        tokenQueue.size > 15 -> 4
+                        tokenQueue.size > 6 -> 2
+                        else -> 1
+                    }
+                    var appendedAny = false
+                    for (i in 0 until drainCount) {
+                        val nextToken = tokenQueue.poll() ?: break
                         accumulatedBuilder.append(nextToken)
+                        appendedAny = true
+                    }
+                    if (appendedAny) {
                         _renderedText.value = accumulatedBuilder.toString()
                     }
                 } else if (isCompleted) {

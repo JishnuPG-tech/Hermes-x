@@ -68,6 +68,8 @@ class VoiceTimingMetrics(BaseModel):
     stt_start_ms: Optional[float] = None
     stt_duration_ms: Optional[float] = None
     llm_start_ms: Optional[float] = None
+    tts_start_ms: Optional[float] = None
+    first_audio_at_ms: Optional[float] = None
     first_audio_latency_ms: Optional[float] = None
     e2e_turn_ms: Optional[float] = None
     interrupt_at: Optional[float] = None
@@ -118,6 +120,7 @@ class VoiceSession(BaseModel):
     active_task_id: Optional[str] = None
     state: VoiceState = VoiceState.IDLE
     is_speaking: bool = False
+    assistant_audio_active: bool = False
     created_at: float = Field(default_factory=time.time)
     last_active: float = Field(default_factory=time.time)
     client_metadata: Dict[str, Any] = Field(default_factory=dict)
@@ -169,6 +172,13 @@ class CommandCancelMessage(BaseModel):
     session_id: Optional[str] = None
     scope: str = "speech_only"
     task_id: Optional[str] = None
+
+
+class PlaybackStateMessage(BaseModel):
+    type: str = "playback_state"
+    state: str = "started"  # started, completed, interrupted
+    turn_id: Optional[str] = None
+    session_id: Optional[str] = None
 
 
 # ---------------- Server to Client WebSocket Messages ----------------
