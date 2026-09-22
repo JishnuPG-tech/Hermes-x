@@ -8,11 +8,29 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 from harness.voice.models import SessionOpenMessage, VoiceSession, VoiceTurn
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class TurnContext:
+    turn_id: str
+    cancel_event: asyncio.Event = field(default_factory=asyncio.Event)
+    tasks: List[asyncio.Task] = field(default_factory=list)
+    created_at: float = field(default_factory=time.time)
+
+    def cancel(self) -> None:
+        self.cancel_event.set()
+        for t in self.tasks:
+            if not t.done():
+                t.cancel()
+
+    def is_cancelled(self) -> bool:
+        return self.cancel_event.is_set()
 
 
 class VoiceSessionManager:
@@ -22,6 +40,7 @@ class VoiceSessionManager:
         self.session_ttl = session_ttl_seconds
         self._sessions: Dict[str, VoiceSession] = {}
         self._locks: Dict[str, asyncio.Lock] = {}
+        self._active_turns: Dict[str, TurnContext] = {}
 
     def get_or_create_session(
         self,
@@ -68,7 +87,27 @@ class VoiceSessionManager:
             self._locks[session_id] = asyncio.Lock()
         return self._locks[session_id]
 
+    def create_turn(self, session_id: str, turn_id: str) -> TurnContext:
+        """Cancel any prior active turn on this session, and register a fresh TurnContext."""
+        prev = self._active_turns.get(session_id)
+        if prev and not prev.is_cancelled():
+            prev.cancel()
+        ctx = TurnContext(turn_id=turn_id)
+        self._active_turns[session_id] = ctx
+        return ctx
+
+    def get_active_turn(self, session_id: str) -> Optional[TurnContext]:
+        return self._active_turns.get(session_id)
+
+    def cancel_active_turn(self, session_id: str) -> Optional[TurnContext]:
+        ctx = self._active_turns.get(session_id)
+        if ctx:
+            ctx.cancel()
+        return ctx
+
     def close_session(self, session_id: str) -> Optional[VoiceSession]:
+        self.cancel_active_turn(session_id)
+        self._active_turns.pop(session_id, None)
         self._locks.pop(session_id, None)
         sess = self._sessions.pop(session_id, None)
         if sess:

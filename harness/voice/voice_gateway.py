@@ -83,7 +83,6 @@ class VoiceGateway:
         await websocket.accept()
         sid = session_id or f"voice_{uuid.uuid4().hex[:12]}"
         session = self.sessions.get_or_create_session(sid)
-        cancel_event = self.tts.register_session(sid)
         turn_detector = SilenceTurnDetector()
         from harness.voice.wake_word import WakeWordDetector
         wake_detector = WakeWordDetector(stt_adapter=self.stt)
@@ -114,36 +113,21 @@ class VoiceGateway:
 
                 if "bytes" in message and message["bytes"]:
                     raw_bytes = message["bytes"]
-                    # Binary PCM/Audio frame
-                    # Wake-word detection: Phonetic Candidate -> Stage 2 STT Verification
-                    if wake_detector.process_pcm16_chunk(raw_bytes):
-                        cand_buf = wake_detector.get_candidate_buffer() or raw_bytes
-                        is_verified = await wake_detector.verify_keyword_async(cand_buf)
-                        if is_verified:
-                            logger.info("Wake-word 'Hermes' confirmed via phonetic & STT verification in session %s", sid)
-                            await self._send_json(
-                                websocket,
-                                AssistantStateMessage(
-                                    session_id=sid,
-                                    state="listening",
-                                    current_task_id=None,
-                                    metrics=VoiceTimingMetrics(wake_detected_at=time.time()),
-                                ).model_dump(),
-                            )
-                        else:
-                            logger.debug("Wake candidate rejected by Stage 2 STT keyword verification in session %s", sid)
                     audio_in_buffer.extend(raw_bytes)
                     is_turn_end = turn_detector.process_pcm16_chunk(raw_bytes)
                     if is_turn_end and len(audio_in_buffer) > 0:
                         pcm_payload = bytes(audio_in_buffer)
                         audio_in_buffer.clear()
                         turn_detector.reset()
-                        # Process speech turn
+                        # Process speech turn with fresh TurnContext
+                        turn_id = f"turn_{uuid.uuid4().hex[:8]}"
+                        turn_ctx = self.sessions.create_turn(sid, turn_id)
                         if active_turn_task and not active_turn_task.done():
                             active_turn_task.cancel()
                         active_turn_task = asyncio.create_task(
-                            self._process_audio_turn(websocket, session, pcm_payload, cancel_event)
+                            self._process_audio_turn(websocket, session, pcm_payload, turn_ctx)
                         )
+                        turn_ctx.tasks.append(active_turn_task)
 
                 elif "text" in message and message["text"]:
                     try:
@@ -165,6 +149,7 @@ class VoiceGateway:
                         if greet_requested:
                             greeting_phrase = f"Hi {user_name}! How can I help you today?"
                             turn_id = f"turn_{uuid.uuid4().hex[:8]}"
+                            turn_ctx = self.sessions.create_turn(sid, turn_id)
                             metrics = VoiceTimingMetrics()
                             await self._send_json(
                                 websocket,
@@ -184,10 +169,11 @@ class VoiceGateway:
                                     greeting_phrase,
                                     turn_id,
                                     0,
-                                    cancel_event,
+                                    turn_ctx.cancel_event,
                                     metrics,
                                 )
                             )
+                            turn_ctx.tasks.append(active_turn_task)
                         else:
                             await self._send_json(
                                 websocket,
@@ -202,36 +188,33 @@ class VoiceGateway:
                     elif mtype == "text_input":
                         inp_msg = TextInputMessage.model_validate(data)
                         if inp_msg.barge_in:
-                            self._trigger_barge_in(sid, cancel_event, active_turn_task)
-                        cancel_event.clear()
+                            self._trigger_barge_in(sid)
 
-                        # Process text input directly as a turn
+                        turn_id = f"turn_{uuid.uuid4().hex[:8]}"
+                        turn_ctx = self.sessions.create_turn(sid, turn_id)
                         if active_turn_task and not active_turn_task.done():
                             active_turn_task.cancel()
                         requested_model = data.get("model") or "hermes-agent"
                         active_turn_task = asyncio.create_task(
-                            self._process_text_turn(websocket, session, inp_msg.text, cancel_event, model=requested_model)
+                            self._process_text_turn(websocket, session, inp_msg.text, turn_ctx, model=requested_model)
                         )
+                        turn_ctx.tasks.append(active_turn_task)
 
                     elif mtype == "command_cancel":
                         cmd_cancel = CommandCancelMessage.model_validate(data)
                         logger.info("Received command_cancel (%s) for session %s", cmd_cancel.scope, sid)
-                        self._trigger_barge_in(sid, cancel_event, active_turn_task)
-                        if cmd_cancel.scope == "all":
-                            # Optionally cancel current running harness background task
-                            pass
+                        self._trigger_barge_in(sid)
                         await self._send_json(
                             websocket,
                             AssistantStateMessage(
                                 session_id=sid,
-                                state="idle",
+                                state="listening",
                                 current_task_id=None,
                                 metrics=VoiceTimingMetrics(),
                             ).model_dump(),
                         )
 
                     elif mtype == "audio_chunk":
-                        # JSON-wrapped audio chunk (base64)
                         achunk = AudioChunkMessage.model_validate(data)
                         chunk_bytes = base64.b64decode(achunk.data)
                         audio_in_buffer.extend(chunk_bytes)
@@ -239,43 +222,44 @@ class VoiceGateway:
                             pcm_payload = bytes(audio_in_buffer)
                             audio_in_buffer.clear()
                             turn_detector.reset()
+                            turn_id = f"turn_{uuid.uuid4().hex[:8]}"
+                            turn_ctx = self.sessions.create_turn(sid, turn_id)
                             if active_turn_task and not active_turn_task.done():
                                 active_turn_task.cancel()
                             active_turn_task = asyncio.create_task(
-                                self._process_audio_turn(websocket, session, pcm_payload, cancel_event)
+                                self._process_audio_turn(websocket, session, pcm_payload, turn_ctx)
                             )
+                            turn_ctx.tasks.append(active_turn_task)
 
                     elif mtype == "audio_end":
                         if len(audio_in_buffer) > 0:
                             pcm_payload = bytes(audio_in_buffer)
                             audio_in_buffer.clear()
                             turn_detector.reset()
+                            turn_id = f"turn_{uuid.uuid4().hex[:8]}"
+                            turn_ctx = self.sessions.create_turn(sid, turn_id)
                             if active_turn_task and not active_turn_task.done():
                                 active_turn_task.cancel()
                             active_turn_task = asyncio.create_task(
-                                self._process_audio_turn(websocket, session, pcm_payload, cancel_event)
+                                self._process_audio_turn(websocket, session, pcm_payload, turn_ctx)
                             )
+                            turn_ctx.tasks.append(active_turn_task)
 
         except WebSocketDisconnect:
             logger.info("Voice WebSocket disconnected: %s", sid)
         except Exception as exc:
             logger.error("Error in Voice WebSocket %s: %s", sid, exc)
         finally:
-            self.tts.unregister_session(sid)
             self.sessions.close_session(sid)
 
     def _trigger_barge_in(
         self,
         session_id: str,
-        cancel_event: asyncio.Event,
-        active_turn_task: Optional[asyncio.Task],
     ) -> None:
-        """Trigger barge-in cancellation within sub-300ms SLA."""
+        """Trigger barge-in cancellation within sub-200ms SLA."""
         start = time.perf_counter()
-        cancel_event.set()
+        self.sessions.cancel_active_turn(session_id)
         self.tts.cancel_generation(session_id)
-        if active_turn_task and not active_turn_task.done():
-            active_turn_task.cancel()
         elapsed_ms = (time.perf_counter() - start) * 1000.0
         logger.info("Barge-in cancellation executed in %0.2fms for session %s", elapsed_ms, session_id)
 
@@ -290,10 +274,11 @@ class VoiceGateway:
         websocket: WebSocket,
         session: VoiceSession,
         audio_pcm: bytes,
-        cancel_event: asyncio.Event,
+        turn_ctx: Any,
     ) -> None:
         """Transcribe audio turn and run pipeline."""
-        cancel_event.clear()
+        if turn_ctx.is_cancelled():
+            return
         metrics = VoiceTimingMetrics()
         metrics.stt_start_ms = time.perf_counter() * 1000.0
 
@@ -310,34 +295,36 @@ class VoiceGateway:
         transcript = await self.stt.transcribe_audio_buffer(audio_pcm, session.sample_rate)
         metrics.stt_duration_ms = round((time.perf_counter() * 1000.0) - metrics.stt_start_ms, 2)
 
-        if not transcript.strip():
-            logger.debug("No transcription obtained for audio turn in %s", session.session_id)
+        if not transcript.strip() or turn_ctx.is_cancelled():
+            logger.debug("No transcription obtained or turn cancelled for audio turn in %s", session.session_id)
             await self._send_json(
                 websocket,
                 AssistantStateMessage(
                     session_id=session.session_id,
-                    state="idle",
+                    state="listening",
                     current_task_id=None,
                     metrics=metrics,
                 ).model_dump(),
             )
             return
 
-        await self._process_text_turn(websocket, session, transcript, cancel_event, metrics=metrics)
+        await self._process_text_turn(websocket, session, transcript, turn_ctx, metrics=metrics)
 
     async def _process_text_turn(
         self,
         websocket: WebSocket,
         session: VoiceSession,
         user_text: str,
-        cancel_event: asyncio.Event,
+        turn_ctx: Any,
         metrics: Optional[VoiceTimingMetrics] = None,
         model: str = "hermes-agent",
     ) -> None:
         """Drive full LLM generation, sentence chunking, TTS arbitration, and background task offloading."""
-        cancel_event.clear()
+        if turn_ctx.is_cancelled():
+            return
         metrics = metrics or VoiceTimingMetrics()
-        turn_id = f"turn_{uuid.uuid4().hex[:8]}"
+        turn_id = turn_ctx.turn_id
+        cancel_event = turn_ctx.cancel_event
         turn = VoiceTurn(
             turn_id=turn_id,
             user_text=user_text,
@@ -400,38 +387,26 @@ class VoiceGateway:
                 websocket,
                 AssistantStateMessage(
                     session_id=session.session_id,
-                    state="idle",
+                    state="listening",
                     current_task_id=task.task_id,
                     metrics=metrics,
                 ).model_dump(),
             )
             return
 
-        # Regular conversational turn: Stream via agent_executor
+        # Regular conversational turn: Stream directly via agent_executor
         try:
             from gateway import agent_executor as ae
-            import random
-
-            # ── Thinking placeholder phrase (spoken INSTANTLY, before LLM) ──────
-            _THINKING_PHRASES = [
-                "Give me a moment.",
-                "On it.",
-                "Just a sec.",
-                "Let me check on that.",
-                "Sure, hold on.",
-                "Right away.",
-            ]
-            if not cancel_event.is_set():
-                placeholder = random.choice(_THINKING_PHRASES)
-                await self._synthesize_and_send_phrase(
-                    websocket, session, placeholder, turn_id, 0, cancel_event, metrics
-                )
-                turn_tts_index = 1  # next phrase index starts at 1
 
             # Use conversational history from session
             messages = [
                 {"role": "system", "content": VOICE_SYSTEM_DIRECTIVE},
             ]
+            for prev_turn in session.turns[-5:]:
+                if prev_turn.user_text:
+                    messages.append({"role": "user", "content": prev_turn.user_text})
+                if prev_turn.assistant_text:
+                    messages.append({"role": "assistant", "content": prev_turn.assistant_text})
             for prev_turn in session.turns[-5:]:
                 if prev_turn.user_text:
                     messages.append({"role": "user", "content": prev_turn.user_text})
@@ -453,6 +428,8 @@ class VoiceGateway:
                     queue,
                 )
             )
+            turn_ctx.tasks.append(agent_task)
+
 
             full_assistant_text = []
 

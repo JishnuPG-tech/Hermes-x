@@ -27,6 +27,9 @@ class HermesVoiceInteractionSessionService : VoiceInteractionSessionService() {
             Log.i(TAG, "Assistant invoked via system trigger (showFlags=$showFlags). Launching Hermes voice interface...")
 
             try {
+                // Pre-warm realtime voice engine
+                com.example.hermes.voice.VoiceEngine.getInstance(context).start()
+
                 val intent = Intent(context, MainActivity::class.java).apply {
                     action = "com.example.hermes.ACTION_VOICE_ASSIST"
                     putExtra("open_voice", true)
