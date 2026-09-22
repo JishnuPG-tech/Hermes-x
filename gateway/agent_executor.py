@@ -765,6 +765,17 @@ async def run_autonomous_agent(
     full_text = ""
     text_active = False
 
+    # Dedup: avoid sending exact same text twice in a session
+    _seen_phrases: set = set()
+
+    def _dedup_text(t: str) -> str:
+        """Return t if not seen before, else a varied acknowledgment."""
+        h = hash(t.strip().lower()[:120])
+        if h in _seen_phrases:
+            return ""
+        _seen_phrases.add(h)
+        return t
+
     skill_match = re.search(r'(?:^/skill\s+|activate\s+(?:the\s+)?skill\s+|use\s+(?:the\s+)?skill\s+)([a-zA-Z0-9_\-]+)', prompt, re.IGNORECASE)
     if skill_match:
         sname = skill_match.group(1).strip().lower()
@@ -798,7 +809,7 @@ async def run_autonomous_agent(
     for turn in range(max_turns):
         include_tools = turn < (max_turns - 1)
         payload = {
-            "model": model or "auto/smart",
+            "model": model or "antigravity/gemini-2.5-flash",
             "messages": openai_messages,
             "stream": True
         }
@@ -894,7 +905,7 @@ async def run_autonomous_agent(
                     "content": "All tools have finished executing. Now synthesize everything into a complete, direct, and well-structured final answer for the user."
                 })
                 synth_payload = {
-                    "model": model or "auto/smart",
+                    "model": model or "antigravity/gemini-2.5-flash",
                     "messages": synth_messages,
                     "stream": True
                 }
@@ -913,9 +924,17 @@ async def run_autonomous_agent(
                         await queue.put(ab.create_content_block_delta(td, 0))
                         full_text += td
             else:
-                clean_final = turn_text.strip()
+                clean_final = _dedup_text(turn_text.strip())
                 if not clean_final:
-                    clean_final = "I've completed your request. Let me know if you need any further assistance!"
+                    # Truly empty — pick a varied closure phrase
+                    _CLOSURES = [
+                        "Done! Anything else I can help with?",
+                        "All finished. What else can I do for you?",
+                        "That's sorted. Let me know if you need anything else.",
+                        "Got it done. Is there anything else?",
+                    ]
+                    import random as _r
+                    clean_final = _r.choice(_CLOSURES)
 
                 await queue.put(ab.create_content_block_delta(clean_final, 0))
                 full_text += clean_final
@@ -927,7 +946,14 @@ async def run_autonomous_agent(
         await queue.put(ab.create_content_block_stop(0))
         text_active = False
     elif not full_text:
-        reply = "I've completed your request."
+        import random as _r
+        _CLOSURES = [
+            "Done! Anything else?",
+            "All set.",
+            "That's complete.",
+            "Finished.",
+        ]
+        reply = _r.choice(_CLOSURES)
         await queue.put(ab.create_content_block_start(0))
         await queue.put(ab.create_content_block_delta(reply, 0))
         await queue.put(ab.create_content_block_stop(0))

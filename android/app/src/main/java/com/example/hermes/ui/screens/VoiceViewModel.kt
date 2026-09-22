@@ -360,9 +360,13 @@ class VoiceViewModel(
                         }
                         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                             wsConnected = false
-                            Log.i(TAG, "Voice WebSocket closed: $reason")
-                            _voiceState.value = VoiceState.DISCONNECTED
-                            _statusText.value = "Disconnected"
+                            Log.i(TAG, "Voice WebSocket closed: $reason — reconnecting in 1s")
+                            // Auto-reconnect: keep voice session alive
+                            mainHandler.postDelayed({
+                                if (!_isMuted.value) {
+                                    connect()
+                                }
+                            }, 1000L)
                         }
                     },
                     persona = currentPersona,
@@ -380,6 +384,7 @@ class VoiceViewModel(
             }
         }
     }
+
 
     private fun handleTextMessage(text: String) {
         try {
@@ -540,8 +545,15 @@ class VoiceViewModel(
         }
 
         _voiceState.value = VoiceState.THINKING
-        _statusText.value = "Thinking…"
+        _statusText.value = listOf(
+            "Processing…",
+            "Thinking…",
+            "On it…",
+            "Let me check…",
+            "Working on it…",
+        ).random()
         stopListening()
+
         hasReceivedAudioForTurn = false
         lastAssistantPhrase = null
 

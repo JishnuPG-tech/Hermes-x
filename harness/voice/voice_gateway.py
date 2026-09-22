@@ -410,6 +410,23 @@ class VoiceGateway:
         # Regular conversational turn: Stream via agent_executor
         try:
             from gateway import agent_executor as ae
+            import random
+
+            # ── Thinking placeholder phrase (spoken INSTANTLY, before LLM) ──────
+            _THINKING_PHRASES = [
+                "Give me a moment.",
+                "On it.",
+                "Just a sec.",
+                "Let me check on that.",
+                "Sure, hold on.",
+                "Right away.",
+            ]
+            if not cancel_event.is_set():
+                placeholder = random.choice(_THINKING_PHRASES)
+                await self._synthesize_and_send_phrase(
+                    websocket, session, placeholder, turn_id, 0, cancel_event, metrics
+                )
+                turn_tts_index = 1  # next phrase index starts at 1
 
             # Use conversational history from session
             messages = [
@@ -532,6 +549,7 @@ class VoiceGateway:
                 ).model_dump(),
             )
         finally:
+            # Transition to idle, then immediately to listening so Android re-arms mic
             await self._send_json(
                 websocket,
                 AssistantStateMessage(
@@ -541,6 +559,16 @@ class VoiceGateway:
                     metrics=metrics,
                 ).model_dump(),
             )
+            await self._send_json(
+                websocket,
+                AssistantStateMessage(
+                    session_id=session.session_id,
+                    state="listening",
+                    current_task_id=None,
+                    metrics=VoiceTimingMetrics(),
+                ).model_dump(),
+            )
+
 
     async def _synthesize_and_send_phrase(
         self,

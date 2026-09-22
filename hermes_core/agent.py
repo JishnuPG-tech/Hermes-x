@@ -196,40 +196,22 @@ class HermesAgent:
         if is_greeting_or_fast:
             tier_cascade = [
                 "antigravity/gemini-2.5-flash",
-                "nvidia/nvidia/nemotron-3-super-120b-a12b",
-                "auto/best-coding",
-                "auto/best-chat",
-                "auto/fast"
+                "groq/llama-3.3-70b-versatile",
             ]
         elif tier == "coding":
             tier_cascade = [
                 "antigravity/gemini-2.5-flash",
                 "groq/llama-3.3-70b-versatile",
-                "auto/best-coding",
-                "nvidia/nvidia/nemotron-3-super-120b-a12b",
-                "auto/best-reasoning",
-                "auto/best-chat",
-                "auto/fast"
             ]
         elif tier == "reasoning":
             tier_cascade = [
                 "antigravity/gemini-2.5-flash",
                 "groq/llama-3.3-70b-versatile",
-                "auto/best-reasoning",
-                "auto/best-coding",
-                "nvidia/nvidia/nemotron-3-super-120b-a12b",
-                "auto/best-chat",
-                "auto/fast"
             ]
         else:
             tier_cascade = [
                 "antigravity/gemini-2.5-flash",
                 "groq/llama-3.3-70b-versatile",
-                "auto/best-coding",
-                "nvidia/nvidia/nemotron-3-super-120b-a12b",
-                "auto/best-reasoning",
-                "auto/best-chat",
-                "auto/fast"
             ]
 
         for model_id in tier_cascade:
