@@ -61,6 +61,46 @@ fun ClaudeStarburst(
     }
 }
 
+/**
+ * Authentic Claude 3-bar hamburger icon:
+ * - Top bar: full width (20dp)
+ * - Middle bar: full width (20dp)
+ * - Bottom bar: 60% short width (12dp), aligned to the left
+ */
+@Composable
+fun ClaudeHamburgerIcon(
+    modifier: Modifier = Modifier,
+    color: Color = PureWhite
+) {
+    Column(
+        modifier = modifier.size(width = 20.dp, height = 15.dp),
+        verticalArrangement = Arrangement.SpaceBetween,
+        horizontalAlignment = Alignment.Start
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(2.dp)
+                .clip(RoundedCornerShape(1.dp))
+                .background(color)
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(2.dp)
+                .clip(RoundedCornerShape(1.dp))
+                .background(color)
+        )
+        Box(
+            modifier = Modifier
+                .width(12.dp)
+                .height(2.dp)
+                .clip(RoundedCornerShape(1.dp))
+                .background(color)
+        )
+    }
+}
+
 @Composable
 fun ClaudeWaveformIcon(
     modifier: Modifier = Modifier,

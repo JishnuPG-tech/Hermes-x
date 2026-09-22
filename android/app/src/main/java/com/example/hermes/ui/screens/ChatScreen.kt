@@ -222,14 +222,9 @@ fun ChatScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Left: Hamburger Menu
+                // Left: Claude Hamburger Menu (3 lines: top long, middle long, bottom 60% short)
                 IconButton(onClick = onOpenDrawer) {
-                    Icon(
-                        imageVector = Icons.Default.Menu,
-                        contentDescription = "Menu",
-                        tint = TextPrimaryWarm,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    ClaudeHamburgerIcon(color = PureWhite)
                 }
 
                 // Center: Dynamic Floating Pill (Screenshot 7: "1 Artifact")
@@ -467,7 +462,8 @@ fun ChatScreen(
                                     text = message.content,
                                     style = HermesTypography.bodyLarge.copy(
                                         fontSize = 16.sp,
-                                        color = TextPrimaryWarm,
+                                        fontWeight = FontWeight.Bold,
+                                        color = PureWhite,
                                         lineHeight = 23.sp
                                     )
                                 )
@@ -528,14 +524,15 @@ fun ChatScreen(
                                             text = thinkingPhase.toDisplayString(),
                                             style = HermesTypography.bodyMedium.copy(
                                                 fontSize = 14.5.sp,
-                                                color = Color(0xFF8E8B82)
+                                                fontWeight = FontWeight.Bold,
+                                                color = PureWhite
                                             )
                                         )
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Icon(
                                             imageVector = Icons.Default.ChevronRight,
                                             contentDescription = null,
-                                            tint = Color(0xFF8E8B82),
+                                            tint = PureWhite,
                                             modifier = Modifier.size(16.dp)
                                         )
                                     }
@@ -559,7 +556,7 @@ fun ChatScreen(
                                         Icon(
                                             imageVector = Icons.Outlined.Schedule,
                                             contentDescription = null,
-                                            tint = Color(0xFF8E8B82),
+                                            tint = PureWhite,
                                             modifier = Modifier.size(18.dp)
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
@@ -567,14 +564,15 @@ fun ChatScreen(
                                             text = message.stepTitle ?: "Thought process",
                                             style = HermesTypography.bodyMedium.copy(
                                                 fontSize = 14.5.sp,
-                                                color = Color(0xFF8E8B82)
+                                                fontWeight = FontWeight.Bold,
+                                                color = PureWhite
                                             )
                                         )
                                         Spacer(modifier = Modifier.width(6.dp))
                                         Icon(
                                             imageVector = Icons.Default.ChevronRight,
                                             contentDescription = null,
-                                            tint = Color(0xFF8E8B82),
+                                            tint = PureWhite,
                                             modifier = Modifier.size(16.dp)
                                         )
                                     }
@@ -739,30 +737,27 @@ fun ChatScreen(
 
                                 Spacer(modifier = Modifier.height(6.dp))
 
-                                // Bottom Disclaimer Row
+                                // Bottom Disclaimer Row (Authentic Claude layout: Starburst on left + pure white bold text)
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(vertical = 10.dp),
+                                        .padding(top = 10.dp, bottom = 12.dp, start = 2.dp, end = 2.dp),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center
+                                    horizontalArrangement = Arrangement.Start
                                 ) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(
-                                            text = "Hermes is AI and can make mistakes.",
-                                            style = HermesTypography.labelSmall.copy(
-                                                fontSize = 11.5.sp,
-                                                color = Color(0xFF8E8B82)
-                                            )
+                                    ClaudeStarburst(
+                                        size = 14.dp,
+                                        color = BrandCoral
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Hermes is AI and can make mistakes. Please double-check responses.",
+                                        style = HermesTypography.labelSmall.copy(
+                                            fontSize = 11.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = PureWhite
                                         )
-                                        Text(
-                                            text = "Please double-check responses.",
-                                            style = HermesTypography.labelSmall.copy(
-                                                fontSize = 11.5.sp,
-                                                color = Color(0xFF8E8B82)
-                                            )
-                                        )
-                                    }
+                                    )
                                 }
                             }
                         }

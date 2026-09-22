@@ -101,7 +101,7 @@ fun ClaudeDrawerContent(
                         style = HermesTypography.bodyLarge.copy(
                             fontSize = 19.sp,
                             color = PureWhite,
-                            fontWeight = FontWeight.Normal
+                            fontWeight = FontWeight.Bold
                         )
                     )
                 }
@@ -121,7 +121,7 @@ fun ClaudeDrawerContent(
                         style = HermesTypography.bodyLarge.copy(
                             fontSize = 19.sp,
                             color = PureWhite,
-                            fontWeight = FontWeight.Normal
+                            fontWeight = FontWeight.Bold
                         )
                     )
                 }
@@ -141,7 +141,7 @@ fun ClaudeDrawerContent(
                         style = HermesTypography.bodyLarge.copy(
                             fontSize = 19.sp,
                             color = PureWhite,
-                            fontWeight = FontWeight.Normal
+                            fontWeight = FontWeight.Bold
                         )
                     )
                 }
@@ -161,7 +161,7 @@ fun ClaudeDrawerContent(
                         style = HermesTypography.bodyLarge.copy(
                             fontSize = 19.sp,
                             color = PureWhite,
-                            fontWeight = FontWeight.Normal
+                            fontWeight = FontWeight.Bold
                         )
                     )
                 }
@@ -174,7 +174,7 @@ fun ClaudeDrawerContent(
             val pinnedSessions = sessions.filter { it.pinned }
             val recentSessions = sessions.filter { !it.pinned }.take(8)
 
-            // Scrollable Pinned & Recents (Exact Claude Reference: Title Case headers, 16sp regular white items)
+            // Scrollable Pinned & Recents (Exact Claude Reference: Title Case headers, bold pure white items)
             LazyColumn(
                 modifier = Modifier
                     .weight(1f)
@@ -186,9 +186,9 @@ fun ClaudeDrawerContent(
                         Text(
                             text = "Pinned",
                             style = HermesTypography.bodyMedium.copy(
-                                color = TextSubtle,
+                                color = PureWhite,
                                 fontSize = 15.sp,
-                                fontWeight = FontWeight.Normal
+                                fontWeight = FontWeight.Bold
                             ),
                             modifier = Modifier.padding(start = 2.dp, bottom = 12.dp)
                         )
@@ -209,7 +209,7 @@ fun ClaudeDrawerContent(
                                 style = HermesTypography.bodyLarge.copy(
                                     fontSize = 16.sp,
                                     color = PureWhite,
-                                    fontWeight = FontWeight.Normal
+                                    fontWeight = FontWeight.Bold
                                 ),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -229,9 +229,9 @@ fun ClaudeDrawerContent(
                         Text(
                             text = "Recents",
                             style = HermesTypography.bodyMedium.copy(
-                                color = TextSubtle,
+                                color = PureWhite,
                                 fontSize = 15.sp,
-                                fontWeight = FontWeight.Normal
+                                fontWeight = FontWeight.Bold
                             ),
                             modifier = Modifier.padding(start = 2.dp, bottom = 12.dp)
                         )
@@ -252,7 +252,7 @@ fun ClaudeDrawerContent(
                                 style = HermesTypography.bodyLarge.copy(
                                     fontSize = 16.sp,
                                     color = PureWhite,
-                                    fontWeight = FontWeight.Normal
+                                    fontWeight = FontWeight.Bold
                                 ),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -319,7 +319,7 @@ fun ClaudeDrawerContent(
                     style = HermesTypography.titleMedium.copy(
                         color = PureBlack,
                         fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Bold
                     )
                 )
             }

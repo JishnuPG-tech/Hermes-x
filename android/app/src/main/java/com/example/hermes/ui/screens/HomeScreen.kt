@@ -125,12 +125,7 @@ fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onOpenDrawer) {
-                    Icon(
-                        imageVector = Icons.Default.Menu,
-                        contentDescription = "Menu",
-                        tint = TextPrimaryWarm,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    ClaudeHamburgerIcon(color = PureWhite)
                 }
 
                 IconButton(onClick = onNavigateIncognito) {

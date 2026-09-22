@@ -31,6 +31,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.InsertDriveFile
+import androidx.compose.ui.text.font.FontWeight
 import com.example.hermes.data.ChatAttachment
 import com.example.hermes.theme.*
 
@@ -122,7 +123,8 @@ fun ClaudeHomeComposer(
                             text = att.name.take(20),
                             style = HermesTypography.bodySmall.copy(
                                 fontSize = 12.sp,
-                                color = TextPrimaryWarm
+                                fontWeight = FontWeight.Bold,
+                                color = PureWhite
                             ),
                             maxLines = 1
                         )
@@ -153,8 +155,11 @@ fun ClaudeHomeComposer(
             if (text.isEmpty()) {
                 Text(
                     text = effectivePlaceholder,
-                    color = Color(0xFF7E7B74),
-                    style = HermesTypography.bodyLarge.copy(fontSize = 16.5.sp)
+                    color = Color(0xFF8E8B82),
+                    style = HermesTypography.bodyLarge.copy(
+                        fontSize = 16.5.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 )
             }
             BasicTextField(
@@ -162,12 +167,16 @@ fun ClaudeHomeComposer(
                 onValueChange = onTextChange,
                 enabled = !isStreaming,
                 textStyle = HermesTypography.bodyLarge.copy(
-                    color = TextPrimaryWarm,
+                    color = PureWhite,
+                    fontWeight = FontWeight.Bold,
                     fontSize = 16.5.sp,
                     lineHeight = 22.sp
                 ),
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                    capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences
+                    capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences,
+                    autoCorrect = true,
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Text,
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Default
                 ),
                 cursorBrush = SolidColor(BrandCoral),
                 maxLines = 5,
@@ -229,8 +238,8 @@ fun ClaudeHomeComposer(
                     Text(
                         text = "Hermes $cleanModelName",
                         style = HermesTypography.bodyMedium.copy(
-                            color = TextPrimaryWarm,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                            color = PureWhite,
+                            fontWeight = FontWeight.Bold,
                             fontSize = 13.5.sp
                         ),
                         maxLines = 1,

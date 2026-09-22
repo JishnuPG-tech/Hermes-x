@@ -115,7 +115,7 @@ fun parseInlineMarkdown(text: String): AnnotatedString {
                 val end = text.indexOf("**", i + 2)
                 if (end != -1) {
                     val boldContent = text.substring(i + 2, end)
-                    pushStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = TextPrimaryWarm))
+                    pushStyle(SpanStyle(fontWeight = FontWeight.Bold, color = PureWhite))
                     append(boldContent)
                     pop()
                     i = end + 2
@@ -128,7 +128,7 @@ fun parseInlineMarkdown(text: String): AnnotatedString {
                 val end = text.indexOf("__", i + 2)
                 if (end != -1) {
                     val boldContent = text.substring(i + 2, end)
-                    pushStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = TextPrimaryWarm))
+                    pushStyle(SpanStyle(fontWeight = FontWeight.Bold, color = PureWhite))
                     append(boldContent)
                     pop()
                     i = end + 2
@@ -325,8 +325,8 @@ fun ClaudeMarkdownView(
                         style = HermesTypography.headlineMedium.copy(
                             fontFamily = AnthropicSerif,
                             fontSize = fontSize,
-                            fontWeight = FontWeight.Normal,
-                            color = TextPrimaryWarm
+                            fontWeight = FontWeight.Bold,
+                            color = PureWhite
                         ),
                         modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
                     )
@@ -362,7 +362,8 @@ fun ClaudeMarkdownView(
                             style = HermesTypography.bodyLarge.copy(
                                 fontStyle = FontStyle.Italic,
                                 fontSize = 15.sp,
-                                color = TextMuted,
+                                fontWeight = FontWeight.Bold,
+                                color = PureWhite,
                                 lineHeight = 22.sp
                             )
                         )
@@ -390,7 +391,8 @@ fun ClaudeMarkdownView(
                             style = HermesTypography.bodyLarge.copy(
                                 fontFamily = AnthropicSerif,
                                 fontSize = 16.sp,
-                                color = TextPrimaryWarm,
+                                fontWeight = FontWeight.Bold,
+                                color = PureWhite,
                                 lineHeight = 24.sp
                             ),
                             modifier = Modifier.weight(1f)
@@ -408,9 +410,9 @@ fun ClaudeMarkdownView(
                         Text(
                             text = "${block.number}.",
                             style = HermesTypography.bodyMedium.copy(
-                                color = TextSubtle,
+                                color = PureWhite,
                                 fontSize = 14.5.sp,
-                                fontWeight = FontWeight.Medium
+                                fontWeight = FontWeight.Bold
                             ),
                             modifier = Modifier.padding(end = 8.dp)
                         )
@@ -419,7 +421,8 @@ fun ClaudeMarkdownView(
                             style = HermesTypography.bodyLarge.copy(
                                 fontFamily = AnthropicSerif,
                                 fontSize = 16.sp,
-                                color = TextPrimaryWarm,
+                                fontWeight = FontWeight.Bold,
+                                color = PureWhite,
                                 lineHeight = 24.sp
                             ),
                             modifier = Modifier.weight(1f)
@@ -433,7 +436,8 @@ fun ClaudeMarkdownView(
                         style = HermesTypography.bodyLarge.copy(
                             fontFamily = AnthropicSerif,
                             fontSize = 16.5.sp,
-                            color = TextPrimaryWarm,
+                            fontWeight = FontWeight.Bold,
+                            color = PureWhite,
                             lineHeight = 25.sp
                         ),
                         modifier = Modifier.fillMaxWidth()
@@ -486,8 +490,8 @@ private fun TableCard(rows: List<List<String>>) {
                         text = parseInlineMarkdown(col),
                         style = HermesTypography.bodyMedium.copy(
                             fontSize = 14.sp,
-                            fontWeight = if (isHeader) FontWeight.SemiBold else FontWeight.Normal,
-                            color = if (isHeader) TextPrimaryWarm else TextMuted
+                            fontWeight = FontWeight.Bold,
+                            color = PureWhite
                         ),
                         modifier = Modifier.widthIn(min = 90.dp)
                     )
