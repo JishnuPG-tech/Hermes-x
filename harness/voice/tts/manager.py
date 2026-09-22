@@ -245,21 +245,14 @@ class TTSManager:
         # 1. Try Kokoro stream if ready and circuit permits
         if kokoro and getattr(kokoro, "_is_ready", False) and kokoro_circuit and kokoro_circuit.can_attempt():
             try:
-                async def _get_first():
-                    async for chunk in kokoro.synthesize_stream(request):
-                        return chunk
-                    return None
-
-                first_chunk = await asyncio.wait_for(_get_first(), timeout=self.fallback_deadline)
-                if first_chunk:
-                    kokoro_circuit.record_success()
-                    yield first_chunk
-                    async for chunk in kokoro.synthesize_stream(request):
-                        yield chunk
-                    return
-                else:
-                    kokoro_circuit.record_failure()
-            except (asyncio.TimeoutError, Exception) as exc:
+                stream = kokoro.synthesize_stream(request)
+                first_chunk = await asyncio.wait_for(stream.__anext__(), timeout=self.fallback_deadline)
+                kokoro_circuit.record_success()
+                yield first_chunk
+                async for chunk in stream:
+                    yield chunk
+                return
+            except (asyncio.TimeoutError, StopAsyncIteration, Exception) as exc:
                 kokoro_circuit.record_failure()
                 logger.warning("Kokoro streaming failed (%s), shifting to EdgeTTS stream", exc)
 

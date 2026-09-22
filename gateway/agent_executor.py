@@ -926,15 +926,10 @@ async def run_autonomous_agent(
             else:
                 clean_final = _dedup_text(turn_text.strip())
                 if not clean_final:
-                    # Truly empty — pick a varied closure phrase
-                    _CLOSURES = [
-                        "Done! Anything else I can help with?",
-                        "All finished. What else can I do for you?",
-                        "That's sorted. Let me know if you need anything else.",
-                        "Got it done. Is there anything else?",
-                    ]
-                    import random as _r
-                    clean_final = _r.choice(_CLOSURES)
+                    if had_tool_execution:
+                        clean_final = "I've completed the requested actions."
+                    else:
+                        clean_final = "I'm sorry, I wasn't able to process that request. Please try again."
 
                 await queue.put(ab.create_content_block_delta(clean_final, 0))
                 full_text += clean_final
@@ -946,14 +941,7 @@ async def run_autonomous_agent(
         await queue.put(ab.create_content_block_stop(0))
         text_active = False
     elif not full_text:
-        import random as _r
-        _CLOSURES = [
-            "Done! Anything else?",
-            "All set.",
-            "That's complete.",
-            "Finished.",
-        ]
-        reply = _r.choice(_CLOSURES)
+        reply = "I'm sorry, I wasn't able to process that request. Please try again."
         await queue.put(ab.create_content_block_start(0))
         await queue.put(ab.create_content_block_delta(reply, 0))
         await queue.put(ab.create_content_block_stop(0))

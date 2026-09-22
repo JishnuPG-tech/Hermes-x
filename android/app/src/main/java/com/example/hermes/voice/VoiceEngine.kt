@@ -109,6 +109,9 @@ class VoiceEngine private constructor(private val appContext: Context) {
     private val connectionGeneration = AtomicInteger(0)
     private var activeWebSocket: WebSocket? = null
     private var isEngineStarted = false
+    private var reconnectJob: kotlinx.coroutines.Job? = null
+    private var hasSessionGreeted = false
+    private var activeTurnId: String? = null
 
     // Downstream audio framing buffer
     private val audioAccumulator = ByteArrayOutputStream()
@@ -174,6 +177,7 @@ class VoiceEngine private constructor(private val appContext: Context) {
 
     fun interruptAndBargeIn() {
         Log.i(TAG, "Barge-in triggered: flushing audio player and canceling server turn")
+        activeTurnId = null
         player.stopAndFlush()
         audioAccumulator.reset()
 
@@ -217,16 +221,21 @@ class VoiceEngine private constructor(private val appContext: Context) {
 
         _liveRms.value = rms
 
-        // Hardware AEC Barge-in Spotter:
-        // If assistant is actively speaking, but real acoustic energy exceeds threshold, user is talking
-        if (player.isCurrentlyPlaying() && rms > 0.18f) {
-            Log.i(TAG, "Acoustic speech detected during playback (RMS=$rms). Triggering barge-in.")
-            interruptAndBargeIn()
-            _voiceState.value = EngineVoiceState.USER_SPEAKING
-            _statusText.value = "Listening…"
+        // Self-listening loop elimination:
+        // While assistant is actively playing through the loudspeaker, suppress mic streaming.
+        // Only if user voice energy crosses the elevated barge-in threshold (RMS > 0.22f) do we interrupt.
+        if (player.isCurrentlyPlaying()) {
+            if (rms > 0.22f) {
+                Log.i(TAG, "User speech detected over loudspeaker (RMS=$rms). Triggering barge-in.")
+                interruptAndBargeIn()
+                _voiceState.value = EngineVoiceState.USER_SPEAKING
+                _statusText.value = "Listening…"
+                activeWebSocket?.send(chunk.toByteString())
+            }
+            return
         }
 
-        // Stream binary chunk over WebSocket
+        // Normal listening state: stream binary PCM chunk to WebSocket
         activeWebSocket?.send(chunk.toByteString())
     }
 
@@ -261,6 +270,10 @@ class VoiceEngine private constructor(private val appContext: Context) {
 
                     override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
                         if (gen != connectionGeneration.get()) return
+                        if (activeTurnId == null) {
+                            // Turn was cancelled or barge-in occurred; discard obsolete audio bytes
+                            return
+                        }
                         audioAccumulator.write(bytes.toByteArray())
                     }
 
@@ -291,7 +304,8 @@ class VoiceEngine private constructor(private val appContext: Context) {
     }
 
     private fun scheduleReconnect(delayMs: Long) {
-        scope.launch {
+        reconnectJob?.cancel()
+        reconnectJob = scope.launch {
             kotlinx.coroutines.delay(delayMs)
             if (isEngineStarted && !_isMuted.value) {
                 connectWebSocket()
@@ -305,6 +319,10 @@ class VoiceEngine private constructor(private val appContext: Context) {
             "Fast" -> 1.25
             else   -> 1.0
         }
+        // One-time greeting rule: only greet on the very first connection of this voice session
+        val shouldGreet = !hasSessionGreeted
+        hasSessionGreeted = true
+
         val payload = JSONObject().apply {
             put("type", "session_open")
             put("voice", _selectedVoice.value)
@@ -315,7 +333,7 @@ class VoiceEngine private constructor(private val appContext: Context) {
                 put("language", currentLanguage)
                 put("pace", currentPace)
                 put("user_name", currentUserName)
-                put("greet", true) // Request real spoken greeting from server on initial connect
+                put("greet", shouldGreet)
             })
         }
         ws?.send(payload.toString())
@@ -356,11 +374,19 @@ class VoiceEngine private constructor(private val appContext: Context) {
                     }
                 }
                 "audio_start" -> {
+                    val turnId = json.optString("turn_id").ifBlank { null }
+                    activeTurnId = turnId
                     audioAccumulator.reset()
                 }
                 "audio_end" -> {
+                    val turnId = json.optString("turn_id").ifBlank { null }
+                    if (turnId != null && activeTurnId != null && turnId != activeTurnId) {
+                        Log.d(TAG, "Discarding audio_end for obsolete turn $turnId (active: $activeTurnId)")
+                        audioAccumulator.reset()
+                        return
+                    }
                     val audioBytes = audioAccumulator.toByteArray()
-                    if (audioBytes.isNotEmpty()) {
+                    if (audioBytes.isNotEmpty() && activeTurnId != null) {
                         player.enqueue(audioBytes)
                     }
                     audioAccumulator.reset()

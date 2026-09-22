@@ -113,6 +113,24 @@ class VoiceGateway:
 
                 if "bytes" in message and message["bytes"]:
                     raw_bytes = message["bytes"]
+
+                    # ── Self-listening loop guard ──────────────────────────────────
+                    # While assistant is actively speaking, do NOT accumulate loudspeaker
+                    # audio into turns. Check only for high-energy user acoustic barge-in.
+                    if session.is_speaking:
+                        count = len(raw_bytes) // 2
+                        if count > 0:
+                            shorts = struct.unpack(f"<{count}h", raw_bytes[: count * 2])
+                            sum_sq = sum(s * s for s in shorts)
+                            rms = math.sqrt(sum_sq / count)
+                            if rms > 1200.0:  # Real human speech over loudspeaker
+                                logger.info("Acoustic barge-in detected during speech (RMS=%.1f) in session %s", rms, sid)
+                                self._trigger_barge_in(sid)
+                                session.is_speaking = False
+                                audio_in_buffer.clear()
+                                turn_detector.reset()
+                        continue
+
                     audio_in_buffer.extend(raw_bytes)
                     is_turn_end = turn_detector.process_pcm16_chunk(raw_bytes)
                     if is_turn_end and len(audio_in_buffer) > 0:
@@ -258,6 +276,9 @@ class VoiceGateway:
     ) -> None:
         """Trigger barge-in cancellation within sub-200ms SLA."""
         start = time.perf_counter()
+        session = self.sessions.get_session(session_id)
+        if session:
+            session.is_speaking = False
         self.sessions.cancel_active_turn(session_id)
         self.tts.cancel_generation(session_id)
         elapsed_ms = (time.perf_counter() - start) * 1000.0
@@ -574,10 +595,12 @@ class VoiceGateway:
             ).model_dump(),
         )
 
-        # Notify audio start
+        session.is_speaking = True
+        # Notify audio start with turn_id
         await self._send_json(
             websocket,
             AudioStartMessage(
+                turn_id=turn_id,
                 format=AudioFormat.MP3,
                 sample_rate=session.sample_rate,
             ).model_dump(),
@@ -605,8 +628,10 @@ class VoiceGateway:
                 # Send binary audio chunk
                 await websocket.send_bytes(chunk)
 
-            # Mark audio end
-            await self._send_json(websocket, AudioEndMessage().model_dump())
+            # Mark audio end with turn_id
+            await self._send_json(websocket, AudioEndMessage(turn_id=turn_id).model_dump())
 
         except Exception as exc:
             logger.error("Error synthesizing audio chunk for phrase '%s': %s", phrase, exc)
+        finally:
+            session.is_speaking = False

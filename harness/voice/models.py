@@ -117,6 +117,7 @@ class VoiceSession(BaseModel):
     device_id: str = "default_device"
     active_task_id: Optional[str] = None
     state: VoiceState = VoiceState.IDLE
+    is_speaking: bool = False
     created_at: float = Field(default_factory=time.time)
     last_active: float = Field(default_factory=time.time)
     client_metadata: Dict[str, Any] = Field(default_factory=dict)
@@ -137,6 +138,7 @@ class SessionOpenMessage(BaseModel):
 class AudioStartMessage(BaseModel):
     type: str = "audio_start"
     session_id: Optional[str] = None
+    turn_id: Optional[str] = None
     format: AudioFormat = AudioFormat.MP3
     sample_rate: int = 24000
 
@@ -144,6 +146,7 @@ class AudioStartMessage(BaseModel):
 class AudioChunkMessage(BaseModel):
     type: str = "audio_chunk"
     session_id: Optional[str] = None
+    turn_id: Optional[str] = None
     sequence: int = 0
     data: str = ""
 
@@ -151,6 +154,7 @@ class AudioChunkMessage(BaseModel):
 class AudioEndMessage(BaseModel):
     type: str = "audio_end"
     session_id: Optional[str] = None
+    turn_id: Optional[str] = None
 
 
 class TextInputMessage(BaseModel):
