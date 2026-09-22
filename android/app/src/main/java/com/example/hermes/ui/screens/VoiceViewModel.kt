@@ -27,7 +27,10 @@ import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import okio.ByteString
+import okio.ByteString.Companion.toByteString
 import org.json.JSONObject
+import com.example.hermes.voice.LocalWakeWordDetector
+import com.example.hermes.voice.PcmAudioRecorder
 import java.io.File
 import java.io.FileOutputStream
 import java.util.LinkedList
@@ -92,8 +95,15 @@ class VoiceViewModel(
     private var speechRecognizer: SpeechRecognizer? = null
     private val mainHandler = Handler(Looper.getMainLooper())
 
+    // Duplex PCM streaming pipeline & on-device wake detection
+    private var pcmRecorder: PcmAudioRecorder? = null
+    private var localWakeDetector: LocalWakeWordDetector? = null
+    private val _liveRms = MutableStateFlow(0f)
+    val liveRms: StateFlow<Float> = _liveRms.asStateFlow()
+
     // ---------- Init ----------
     init {
+        initPcmStreaming()
         viewModelScope.launch {
             try {
                 currentPersona = prefs.voicePersona.first()
@@ -111,6 +121,41 @@ class VoiceViewModel(
             initSpeechRecognizer()
             connect()
         }
+    }
+
+    private fun initPcmStreaming() {
+        localWakeDetector = LocalWakeWordDetector(
+            sampleRate = 16000,
+            onWakeWordDetected = {
+                viewModelScope.launch(Dispatchers.Main) {
+                    if (_voiceState.value != VoiceState.THINKING && _voiceState.value != VoiceState.SPEAKING) {
+                        _voiceState.value = VoiceState.LISTENING
+                        _statusText.value = "Hey Hermes detected! Listening…"
+                        if (isPlayingAudio) interruptAndBargeIn()
+                    }
+                }
+            },
+            onSpeechActivityChanged = { isSpeaking ->
+                if (isSpeaking && isPlayingAudio) {
+                    viewModelScope.launch(Dispatchers.Main) {
+                        interruptAndBargeIn()
+                    }
+                }
+            }
+        )
+
+        pcmRecorder = PcmAudioRecorder(
+            sampleRate = 16000,
+            chunkDurationMs = 50,
+            onChunkRecorded = { chunk, rms ->
+                _liveRms.value = rms
+                localWakeDetector?.processChunk(chunk, rms)
+
+                if (wsConnected && _voiceState.value == VoiceState.LISTENING && !_isMuted.value && !isPlayingAudio) {
+                    webSocket?.send(chunk.toByteString(0, chunk.size))
+                }
+            }
+        )
     }
 
     // ---------- TextToSpeech (native fallback) ----------
@@ -237,6 +282,7 @@ class VoiceViewModel(
         if (_isMuted.value || isPlayingAudio || _voiceState.value == VoiceState.THINKING || _voiceState.value == VoiceState.SPEAKING) return
         _voiceState.value = VoiceState.LISTENING
         _statusText.value = "Listening…"
+        pcmRecorder?.start(viewModelScope)
         mainHandler.post {
             try {
                 val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
@@ -251,6 +297,7 @@ class VoiceViewModel(
     }
 
     fun stopListening() {
+        pcmRecorder?.stop()
         mainHandler.post {
             try {
                 speechRecognizer?.stopListening()
@@ -561,7 +608,9 @@ class VoiceViewModel(
         try { mediaPlayer?.stop(); mediaPlayer?.release() } catch (_: Exception) {}
         mediaPlayer = null
         tts?.shutdown()
-        tts = null
+        try { pcmRecorder?.stop() } catch (_: Exception) {}
+        pcmRecorder = null
+        localWakeDetector = null
         mainHandler.post {
             try { speechRecognizer?.destroy() } catch (_: Exception) {}
             speechRecognizer = null

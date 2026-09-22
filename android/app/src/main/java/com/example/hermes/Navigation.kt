@@ -26,7 +26,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun MainNavigation(
     chatViewModel: ChatViewModel = viewModel(),
-    authViewModel: AuthViewModel = viewModel()
+    authViewModel: AuthViewModel = viewModel(),
+    startVoice: Boolean = false
 ) {
     val isLoggedIn by authViewModel.isLoggedIn.collectAsStateWithLifecycle()
     val currentUserName by authViewModel.userName.collectAsStateWithLifecycle()
@@ -48,6 +49,14 @@ fun MainNavigation(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val sessions by chatViewModel.sessions.collectAsStateWithLifecycle()
+
+    LaunchedEffect(startVoice) {
+        if (startVoice && isLoggedIn == true) {
+            if (backStack.lastOrNull() != NavVoice) {
+                backStack.add(NavVoice)
+            }
+        }
+    }
 
     LaunchedEffect(isLoggedIn) {
         if (isLoggedIn == false) {
