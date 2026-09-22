@@ -81,6 +81,35 @@ fun ChatScreen(
     var showMessageOptionsSheet by remember { mutableStateOf(false) }
     var selectedOptionsMessage by remember { mutableStateOf<ChatMessage?>(null) }
     var copiedMessageId by remember { mutableStateOf<String?>(null) }
+    var ttsInstance by remember { mutableStateOf<android.speech.tts.TextToSpeech?>(null) }
+    var currentlyPlayingMessageId by remember { mutableStateOf<String?>(null) }
+
+    DisposableEffect(context) {
+        var tts: android.speech.tts.TextToSpeech? = null
+        tts = android.speech.tts.TextToSpeech(context) { status ->
+            if (status == android.speech.tts.TextToSpeech.SUCCESS) {
+                tts?.language = java.util.Locale.US
+                tts?.setPitch(1.0f)
+                tts?.setSpeechRate(1.05f)
+                ttsInstance = tts
+            }
+        }
+        tts?.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
+            override fun onStart(utteranceId: String?) {}
+            override fun onDone(utteranceId: String?) {
+                currentlyPlayingMessageId = null
+            }
+            override fun onError(utteranceId: String?) {
+                currentlyPlayingMessageId = null
+            }
+        })
+
+        onDispose {
+            tts?.stop()
+            tts?.shutdown()
+            ttsInstance = null
+        }
+    }
     val webSearchEnabled by chatViewModel.webSearchEnabled.collectAsStateWithLifecycle()
     val memoryEnabled by chatViewModel.memoryEnabled.collectAsStateWithLifecycle()
     val selectedProject by chatViewModel.selectedProject.collectAsStateWithLifecycle()
@@ -589,61 +618,18 @@ fun ChatScreen(
                                     }
                                 }
 
-                                // Embedded Artifact Card (Screenshots 2, 4, 7) - ONLY if artifact was created
+                                // Embedded Artifact Card (Image 2 Exact UI/UX) - ONLY if artifact was created
                                 if (!message.artifactTitle.isNullOrBlank()) {
                                     val artTitle = message.artifactTitle ?: "Artifact"
                                     val artType = message.artifactType ?: "Document · MD"
-                                    val isCodeArtifact = artType.contains("Code", ignoreCase = true) ||
-                                            artType.contains("PY", ignoreCase = true) ||
-                                            artType.contains("JS", ignoreCase = true) ||
-                                            artType.contains("Kotlin", ignoreCase = true)
 
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clip(RoundedCornerShape(18.dp))
-                                            .background(Color(0xFF1B1A18))
-                                            .border(1.dp, Color(0xFF2A2826), RoundedCornerShape(18.dp))
-                                            .clickable {
-                                                onNavigateArtifactViewer(artTitle, artType, message.artifactCode, message.artifactLanguage)
-                                            }
-                                            .padding(16.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(48.dp)
-                                                .clip(RoundedCornerShape(12.dp))
-                                                .background(Color(0xFF262523)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                imageVector = if (isCodeArtifact) Icons.Outlined.Code else Icons.Outlined.Description,
-                                                contentDescription = null,
-                                                tint = TextPrimaryWarm,
-                                                modifier = Modifier.size(24.dp)
-                                            )
+                                    ClaudeArtifactCard(
+                                        title = artTitle,
+                                        type = artType,
+                                        onClick = {
+                                            onNavigateArtifactViewer(artTitle, artType, message.artifactCode, message.artifactLanguage)
                                         }
-                                        Spacer(modifier = Modifier.width(14.dp))
-                                        Column {
-                                            Text(
-                                                text = artTitle,
-                                                style = HermesTypography.titleMedium.copy(
-                                                    fontSize = 16.5.sp,
-                                                    color = TextPrimaryWarm,
-                                                    fontWeight = FontWeight.Medium
-                                                )
-                                            )
-                                            Spacer(modifier = Modifier.height(3.dp))
-                                            Text(
-                                                text = artType,
-                                                style = HermesTypography.bodySmall.copy(
-                                                    fontSize = 13.sp,
-                                                    color = Color(0xFF8E8B82)
-                                                )
-                                            )
-                                        }
-                                    }
+                                    )
                                 }
 
                                 // Assistant Formatted Content using ClaudeMarkdownView (Zero raw **, ##, || leak!)
@@ -660,20 +646,22 @@ fun ChatScreen(
                                     }
                                 }
 
-                                // Assistant Action Row (Copy, Share, Listen, Thumbs Up, Thumbs Down, Regenerate)
+                                // Assistant Action Row (Image 3 Exact Design: Copy, Share/Forward, TTS Play, Thumbs Up, Thumbs Down, Regenerate)
+                                val isSpeakingThis = currentlyPlayingMessageId == message.id
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(top = 4.dp),
+                                        .padding(top = 8.dp, bottom = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(18.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(22.dp)
                                 ) {
+                                    // 1. Copy Icon (Two overlapping rounded rectangles)
                                     Icon(
                                         imageVector = if (copiedMessageId == message.id) Icons.Filled.Check else Icons.Outlined.ContentCopy,
                                         contentDescription = "Copy",
                                         tint = if (copiedMessageId == message.id) BrandCoral else Color(0xFF8E8B82),
                                         modifier = Modifier
-                                            .size(19.dp)
+                                            .size(18.dp)
                                             .clip(CircleShape)
                                             .clickable {
                                                 clipboardManager.setText(AnnotatedString(message.content))
@@ -681,12 +669,11 @@ fun ChatScreen(
                                                 copiedMessageId = message.id
                                             }
                                     )
-                                    Icon(
-                                        imageVector = Icons.Outlined.Share,
-                                        contentDescription = "Share",
+                                    // 2. Share / Forward (Curved Arrow - Image 3)
+                                    ClaudeForwardArrowIcon(
+                                        size = 18.dp,
                                         tint = Color(0xFF8E8B82),
                                         modifier = Modifier
-                                            .size(19.dp)
                                             .clip(CircleShape)
                                             .clickable {
                                                 val sendIntent = android.content.Intent().apply {
@@ -697,39 +684,55 @@ fun ChatScreen(
                                                 context.startActivity(android.content.Intent.createChooser(sendIntent, "Share response"))
                                             }
                                     )
-                                    Icon(
-                                        imageVector = Icons.Outlined.PlayArrow,
-                                        contentDescription = "Listen",
-                                        tint = Color(0xFF8E8B82),
+                                    // 3. Play / TTS Button (Hollow outline triangle - Image 3)
+                                    ClaudePlayOutlineIcon(
+                                        size = 18.dp,
+                                        tint = if (isSpeakingThis) BrandCoral else Color(0xFF8E8B82),
+                                        isPlaying = isSpeakingThis,
                                         modifier = Modifier
-                                            .size(20.dp)
                                             .clip(CircleShape)
                                             .clickable {
-                                                onNavigateVoice()
+                                                if (isSpeakingThis) {
+                                                    ttsInstance?.stop()
+                                                    currentlyPlayingMessageId = null
+                                                } else {
+                                                    ttsInstance?.stop()
+                                                    val speechText = cleanTextForSpeech(message.content)
+                                                    if (speechText.isNotBlank()) {
+                                                        currentlyPlayingMessageId = message.id
+                                                        val params = android.os.Bundle().apply {
+                                                            putString(android.speech.tts.TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, message.id)
+                                                        }
+                                                        ttsInstance?.speak(speechText, android.speech.tts.TextToSpeech.QUEUE_FLUSH, params, message.id)
+                                                    }
+                                                }
                                             }
                                     )
+                                    // 4. Thumbs Up (Outline)
                                     Icon(
                                         imageVector = Icons.Outlined.ThumbUp,
                                         contentDescription = "Good",
                                         tint = Color(0xFF8E8B82),
                                         modifier = Modifier
-                                            .size(19.dp)
+                                            .size(18.dp)
                                             .clip(CircleShape)
                                             .clickable {
                                                 haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                             }
                                     )
+                                    // 5. Thumbs Down (Outline)
                                     Icon(
                                         imageVector = Icons.Outlined.ThumbDown,
                                         contentDescription = "Bad",
                                         tint = Color(0xFF8E8B82),
                                         modifier = Modifier
-                                            .size(19.dp)
+                                            .size(18.dp)
                                             .clip(CircleShape)
                                             .clickable {
                                                 haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                             }
                                     )
+                                    // 6. Regenerate (Circular Arrow)
                                     Icon(
                                         imageVector = Icons.Outlined.Refresh,
                                         contentDescription = "Regenerate",
@@ -748,27 +751,30 @@ fun ChatScreen(
 
                                 Spacer(modifier = Modifier.height(6.dp))
 
-                                // Bottom Disclaimer Row (Authentic Claude layout: Starburst on left + pure white bold text)
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = 10.dp, bottom = 12.dp, start = 2.dp, end = 2.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Start
-                                ) {
-                                    ClaudeStarburst(
-                                        size = 14.dp,
-                                        color = BrandCoral
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = "Hermes is AI and can make mistakes. Please double-check responses.",
-                                        style = HermesTypography.labelSmall.copy(
-                                            fontSize = 11.5.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = PureWhite
+                                // Bottom Disclaimer Row (Image 3: Terracotta Starburst on left + two lines of text on right - only under last assistant response)
+                                if (message == messages.lastOrNull { it.role == "assistant" }) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 10.dp, bottom = 14.dp, start = 2.dp, end = 2.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Start
+                                    ) {
+                                        ClaudeStarburst(
+                                            size = 18.dp,
+                                            color = BrandCoral
                                         )
-                                    )
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Text(
+                                            text = "Hermes is AI and can make mistakes.\nPlease double-check responses.",
+                                            style = HermesTypography.labelSmall.copy(
+                                                fontSize = 12.sp,
+                                                lineHeight = 16.sp,
+                                                color = Color(0xFF8A8780),
+                                                fontFamily = AnthropicSans
+                                            )
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -1297,3 +1303,211 @@ fun formatDynamicThinkingText(raw: String?): String {
     if (cleaned.isBlank()) return "Thinking..."
     return if (cleaned.endsWith("...") || cleaned.endsWith(".")) cleaned else "$cleaned..."
 }
+
+/**
+ * Image 3 Exact Action Row: Curved Forward / Share Arrow.
+ */
+@Composable
+fun ClaudeForwardArrowIcon(
+    modifier: Modifier = Modifier,
+    size: androidx.compose.ui.unit.Dp = 18.dp,
+    tint: Color = Color(0xFF8E8B82)
+) {
+    androidx.compose.foundation.Canvas(modifier = modifier.size(size)) {
+        val strokeWidth = 1.6.dp.toPx()
+        val w = this.size.width
+        val h = this.size.height
+
+        val path = androidx.compose.ui.graphics.Path().apply {
+            moveTo(w * 0.22f, h * 0.72f)
+            cubicTo(
+                w * 0.22f, h * 0.32f,
+                w * 0.48f, h * 0.32f,
+                w * 0.74f, h * 0.32f
+            )
+        }
+        drawPath(
+            path,
+            color = tint,
+            style = androidx.compose.ui.graphics.drawscope.Stroke(
+                width = strokeWidth,
+                cap = androidx.compose.ui.graphics.StrokeCap.Round
+            )
+        )
+
+        val headPath = androidx.compose.ui.graphics.Path().apply {
+            moveTo(w * 0.54f, h * 0.14f)
+            lineTo(w * 0.82f, h * 0.32f)
+            lineTo(w * 0.54f, h * 0.50f)
+        }
+        drawPath(
+            headPath,
+            color = tint,
+            style = androidx.compose.ui.graphics.drawscope.Stroke(
+                width = strokeWidth,
+                cap = androidx.compose.ui.graphics.StrokeCap.Round,
+                join = androidx.compose.ui.graphics.StrokeJoin.Round
+            )
+        )
+    }
+}
+
+/**
+ * Image 3 Exact Action Row: Outlined Hollow Triangle Play / Listen Icon with Stop state.
+ */
+@Composable
+fun ClaudePlayOutlineIcon(
+    modifier: Modifier = Modifier,
+    size: androidx.compose.ui.unit.Dp = 18.dp,
+    tint: Color = Color(0xFF8E8B82),
+    isPlaying: Boolean = false
+) {
+    androidx.compose.foundation.Canvas(modifier = modifier.size(size)) {
+        val strokeWidth = 1.6.dp.toPx()
+        val w = this.size.width
+        val h = this.size.height
+
+        if (isPlaying) {
+            val rectSize = w * 0.52f
+            val left = (w - rectSize) / 2f
+            val top = (h - rectSize) / 2f
+            drawRoundRect(
+                color = tint,
+                topLeft = androidx.compose.ui.geometry.Offset(left, top),
+                size = androidx.compose.ui.geometry.Size(rectSize, rectSize),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx(), 2.dp.toPx()),
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth)
+            )
+        } else {
+            val path = androidx.compose.ui.graphics.Path().apply {
+                moveTo(w * 0.26f, h * 0.16f)
+                lineTo(w * 0.80f, h * 0.50f)
+                lineTo(w * 0.26f, h * 0.84f)
+                close()
+            }
+            drawPath(
+                path,
+                color = tint,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(
+                    width = strokeWidth,
+                    cap = androidx.compose.ui.graphics.StrokeCap.Round,
+                    join = androidx.compose.ui.graphics.StrokeJoin.Round
+                )
+            )
+        }
+    }
+}
+
+/**
+ * Image 2 Exact UI/UX: Embedded Artifact Card with portrait document thumbnail and title/type.
+ */
+@Composable
+fun ClaudeArtifactCard(
+    title: String,
+    type: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFF1B1A18))
+            .border(1.dp, Color(0xFF282724), RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Portrait document container on left (Image 2)
+        Box(
+            modifier = Modifier
+                .size(width = 46.dp, height = 58.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFF22211F))
+                .border(1.dp, Color(0xFF2E2C29), RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            androidx.compose.foundation.Canvas(modifier = Modifier.size(22.dp, 26.dp)) {
+                val strokeWidth = 1.5.dp.toPx()
+                val w = size.width
+                val h = size.height
+                val corner = 3.dp.toPx()
+
+                // Document outline
+                drawRoundRect(
+                    color = Color(0xFF9E9A90),
+                    topLeft = androidx.compose.ui.geometry.Offset(0f, 0f),
+                    size = androidx.compose.ui.geometry.Size(w, h),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(corner, corner),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth)
+                )
+
+                // 3 horizontal wavy text lines (Image 2)
+                val lineStart = w * 0.24f
+                val lineEnd = w * 0.76f
+                drawLine(
+                    color = Color(0xFF9E9A90),
+                    start = androidx.compose.ui.geometry.Offset(lineStart, h * 0.35f),
+                    end = androidx.compose.ui.geometry.Offset(lineEnd, h * 0.35f),
+                    strokeWidth = strokeWidth,
+                    cap = androidx.compose.ui.graphics.StrokeCap.Round
+                )
+                drawLine(
+                    color = Color(0xFF9E9A90),
+                    start = androidx.compose.ui.geometry.Offset(lineStart, h * 0.50f),
+                    end = androidx.compose.ui.geometry.Offset(lineEnd, h * 0.50f),
+                    strokeWidth = strokeWidth,
+                    cap = androidx.compose.ui.graphics.StrokeCap.Round
+                )
+                drawLine(
+                    color = Color(0xFF9E9A90),
+                    start = androidx.compose.ui.geometry.Offset(lineStart, h * 0.65f),
+                    end = androidx.compose.ui.geometry.Offset(w * 0.58f, h * 0.65f),
+                    strokeWidth = strokeWidth,
+                    cap = androidx.compose.ui.graphics.StrokeCap.Round
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = HermesTypography.titleMedium.copy(
+                    fontFamily = AnthropicSans,
+                    fontSize = 16.5.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = PureWhite
+                ),
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = type,
+                style = HermesTypography.bodySmall.copy(
+                    fontFamily = AnthropicSans,
+                    fontSize = 13.5.sp,
+                    color = Color(0xFF9E9A90)
+                ),
+                maxLines = 1
+            )
+        }
+    }
+}
+
+/**
+ * Strips code fences, raw markdown syntax, URLs, and HTML tags for natural TTS voice playback.
+ */
+fun cleanTextForSpeech(raw: String): String {
+    return raw
+        .replace(Regex("""```[\s\S]*?```"""), " Here is the output. ")
+        .replace(Regex("""`([^`]+)`"""), "$1")
+        .replace(Regex("""^#{1,6}\s*""", RegexOption.MULTILINE), "")
+        .replace(Regex("""\*\*([^*]+)\*\*"""), "$1")
+        .replace(Regex("""\*([^*]+)\*"""), "$1")
+        .replace(Regex("""\[([^\]]+)\]\([^)]+\)"""), "$1")
+        .replace(Regex("""<[^>]*>"""), "")
+        .replace(Regex("""\n{2,}"""), "\n")
+        .trim()
+}
+

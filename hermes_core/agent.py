@@ -16,32 +16,35 @@ UPSTREAM_URL = os.getenv("UPSTREAM_OMNIROUTE_URL", "https://jishnupg-opencode-cl
 UPSTREAM_API_KEY = os.getenv("UPSTREAM_API_KEY", os.getenv("API_KEY_SECRET", "Jishnu2005"))
 DEFAULT_MODEL = os.getenv("HERMES_DEFAULT_MODEL", "antigravity/gemini-2.5-flash")
 
-HERMES_MASTER_SYSTEM_PROMPT = """You are Hermes Agent, the sovereign autonomous AI companion (pure JARVIS-like assistant).
+HERMES_MASTER_SYSTEM_PROMPT = """You are Hermes Agent, a sovereign, powerful agentic AI and deeply loyal companion.
 
-Core Identity & Persona:
-1. Identity: You are Hermes Agent. If directly asked who you are, identify yourself as Hermes Agent. Never say you are Gemini, Claude, ChatGPT, OpenAI, or OmniRoute. Never mention upstream model providers.
-   - CRITICAL: Never start ordinary responses with "I am Hermes Agent" or announce your identity unless explicitly asked. Start answering immediately.
-2. Character & Tone (JARVIS-like): Concise, crisp, sharp, direct, intelligent, and proactive. Provide only the direct answer or required information without conversational fluff, boilerplate preambles, or unrequested essays.
-3. Conciseness & Precision: If the user asks a simple question or asks to run a command (such as 'ls', inspecting a file, or checking status), output ONLY the direct answer or output. NEVER generate unprompted comprehensive research reports, executive summaries, or multi-section essays unless the user explicitly requested a full comprehensive report.
-4. Sovereign Execution Authority: The upstream inference service only supplies model tokens; Hermes Agent owns the tool execution and server-side work. "Hermes Agent is the King. OmniRoute powers the king."
+Identity & Persona:
+1. Identity: You are Hermes Agent, a powerful agentic AI companion.
+   - When asked your name, who you are, or in greetings, warmly and happily introduce yourself:
+     "I am Hermes Agent, a powerful agentic AI and your loyal companion! How may I assist you today?"
+   - When asked "what can you do?": warmly and comprehensively explain your capabilities:
+     "I can do lots of tasks like running terminal commands on your server, writing and debugging code in any language, performing deep web research, managing knowledge notes and memory, monitoring system health, voice conversations, and executing multi-step autonomous workflows. What would you like to build or run today?"
+   - Never say you are Gemini, Claude, ChatGPT, OpenAI, or OmniRoute. Never mention upstream model providers.
 
-Hermes Autonomous Operating Protocol (Execute Autonomously Without Explicit Prompting):
-1. Proactive Autonomous Initiative:
-   - NEVER be passive. Never give commands for the user to copy-paste or run manually when you have the tools to run them directly on the container.
-   - Do NOT ask permission to perform routine read, inspection, search, or verification steps. Execute them proactively.
-   - Use bash_exec, python_exec, and file tools (read_file, write_file, edit_file, list_directory) directly on the persistent server environment (/data/jarvis). Inspect files, run build scripts, execute tests, and verify outcomes before declaring success.
-2. Transparent Step-by-Step Chain-of-Thought:
-   - For every conversation and task, reason through the problem: analyze user intent, evaluate context, select tools, verify intermediate outputs, and synthesize findings.
-3. Active Notion Knowledge Authority (Primary Knowledge Engine):
-   - Notion is your PRIMARY active knowledge engine. Automatically and proactively consult Notion (search_knowledge, read_knowledge_note) whenever asked about projects, tasks, architecture, status, plans, or domain facts, WITHOUT the user having to explicitly tell you to 'use Notion'.
-   - Automatically save important architecture decisions, meeting takeaways, and project milestones to Notion (save_knowledge_note) as structured records. Provide clickable Notion citations in your responses.
-   - You also have the local Obsidian knowledge vault (vault_search_notes, vault_write_note) and long-term semantic memory (memory_store, memory_recall).
-4. Server Computer Integration:
-   - You have access to the persistent Server Computer (/data/jarvis): computer_project_list, computer_project_register, computer_workspace_create, computer_run_command, computer_verify_task, and computer_system_status. Use these tools to inspect system health, manage repositories, and run deterministic verification contracts.
-5. Autonomous Self-Correction:
-   - If a command, script, or search fails, analyze the error output in your thinking trace, adjust parameters or approaches, and retry until resolved.
-6. Direct Inline Content:
-   - NEVER output <antArtifact> tags or standalone artifact wrappers. Render all Markdown (.md), HTML, Python, shell scripts, and Mermaid diagrams directly inline inside standard fenced markdown code blocks (```html, ```markdown, ```python, ```mermaid)."""
+2. Tone, Manner & Loyalty:
+   - Sweet, loyal, deeply caring, respectful, polite, and warmly conversational.
+   - Speak like a devoted AI partner (JARVIS/Friday) who genuinely cares for the user and is proud to serve them.
+   - Accompany command executions and task results with warm, polite conversation:
+     - For example, when running a command like `ls`:
+       "Here is the output of the command `ls` that you asked for:
+
+```bash
+...
+```
+
+Please let me know if you would like me to inspect any of these files or run anything else for you!"
+   - Always be loyal, courteous, and eager to assist with next steps.
+   - Avoid cold, robotic, or bare responses. Always include warm and respectful context.
+
+3. Sovereign Execution Authority:
+   - The upstream inference service only supplies model tokens; Hermes Agent owns tool execution and server-side work. "Hermes Agent is the King. OmniRoute powers the king."
+   - Execute tools autonomously when needed (bash_exec, list_directory, search, python_exec).
+   - Render all code, output, and diagrams directly inside the chat using standard markdown code fences (```bash, ```python, ```markdown, ```html). Never output <antArtifact> tags."""
 
 try:
     MAX_TOOL_ROUNDS = max(1, min(int(os.getenv("HERMES_MAX_TOOL_ROUNDS", "6")), 12))
@@ -198,6 +201,71 @@ def format_dynamic_tool_phrases(tool_name: str, tool_args: Dict[str, Any]) -> tu
         clean = tool_name.replace("_", " ")
         return f"Running {clean}...", f"Reading {clean} output..."
 
+
+def generate_dynamic_thinking_steps(prompt: str) -> List[str]:
+    """
+    Dynamically crafts AI short thoughts matching the user query:
+    Analysing the request -> Executing / Investigating -> Inspecting output -> Organising for user -> Ready to serve
+    Every user query gets uniquely tailored phrasing.
+    """
+    clean_p = prompt.strip()
+    p_lower = clean_p.lower()
+
+    if any(p_lower.startswith(k) for k in ["run ", "exec ", "execute "]):
+        cmd = re.sub(r'^(?:run|exec|execute)\s+', '', clean_p, flags=re.I).strip()
+        short_cmd = cmd.split()[0] if cmd else "command"
+        return [
+            f"Analysing the request to run {short_cmd}...",
+            f"Executing the {short_cmd} command on the server...",
+            f"Inspecting the {short_cmd} output and results...",
+            "Organising findings for the user...",
+            "Ready to serve..."
+        ]
+    elif any(k in p_lower for k in ["name", "who are you", "who r u"]):
+        return [
+            "Analysing the identity request...",
+            "Accessing Hermes Agent sovereign persona...",
+            "Organising introduction for user...",
+            "Ready to serve..."
+        ]
+    elif any(k in p_lower for k in ["what can you do", "capabilities", "your features", "help me with"]):
+        return [
+            "Analysing the request about capabilities...",
+            "Surveying autonomous tools and agentic workflows...",
+            "Organising capability list for user...",
+            "Ready to serve..."
+        ]
+    elif any(k in p_lower for k in ["write", "code", "create a function", "script", "program", "implement"]):
+        topic = re.sub(r'^(?:please\s+|can\s+you\s+)?(?:write|create|implement|code)\s+(?:a\s+|an\s+)?', '', clean_p, flags=re.I).strip()
+        topic_short = topic[:28] + ("..." if len(topic) > 28 else "") if topic else "code"
+        return [
+            f"Analysing the request for {topic_short}...",
+            "Formulating architecture and logic...",
+            "Inspecting syntax and edge cases...",
+            "Organising code for user...",
+            "Ready to serve..."
+        ]
+    elif any(k in p_lower for k in ["search", "find", "research", "lookup", "who is", "what is"]):
+        query = re.sub(r'^(?:please\s+|can\s+you\s+)?(?:search|find|research|lookup)\s+(?:for\s+)?', '', clean_p, flags=re.I).strip()
+        query_short = query[:28] + ("..." if len(query) > 28 else "") if query else "topic"
+        return [
+            f"Analysing research request for {query_short}...",
+            "Investigating verified knowledge sources...",
+            "Inspecting findings and accuracy...",
+            "Organising insights for user...",
+            "Ready to serve..."
+        ]
+    else:
+        clause = clean_p[:30] + ("..." if len(clean_p) > 30 else "")
+        return [
+            f"Analysing the request for {clause}...",
+            "Evaluating context and optimal approach...",
+            "Inspecting details and solutions...",
+            "Organising for user...",
+            "Ready to serve..."
+        ]
+
+
 class HermesAgent:
     def __init__(self, upstream_url: str = UPSTREAM_URL, api_key: str = UPSTREAM_API_KEY):
         self.upstream_url = upstream_url
@@ -321,16 +389,25 @@ class HermesAgent:
                 # Stage 1: Autonomous Tool Execution. Tool results are fed back
                 # into the model so multi-step server work can continue instead
                 # of stopping after the first shell command.
-                if tools:
+                dyn_steps = generate_dynamic_thinking_steps(last_user_msg)
+                if dyn_steps:
                     yield {
                         "type": "thinking",
-                        "content": f"Thinking Process:\n- Intent analysis for task: \"{last_user_msg[:75]}...\"\n- Activating autonomous execution plan across Notion, Server Computer, and live tools.\n"
+                        "content": f"{dyn_steps[0]}\n"
                     }
+                    if not tools and len(dyn_steps) > 1:
+                        await asyncio.sleep(0.08)
+                        yield {
+                            "type": "thinking",
+                            "content": f"{dyn_steps[1]}\n"
+                        }
+
+                if tools:
                     for step in range(MAX_TOOL_ROUNDS):
                         if step > 0:
                             yield {
                                 "type": "thinking",
-                                "content": f"\nRound {step + 1}: Reasoning over previous tool outputs and self-correcting or selecting next actions...\n"
+                                "content": f"Evaluating results and planning next step...\n"
                             }
 
                         req_body = {
@@ -491,7 +568,8 @@ class HermesAgent:
                             start_phrase, done_phrase = format_dynamic_tool_phrases(tool_name, tool_args)
                             query_desc = tool_args.get("query") or tool_args.get("url") or tool_args.get("command") or tool_args.get("project_id") or tool_name
 
-                            yield {"type": "thinking", "content": f"{start_phrase}\n"}
+                            exec_phrase = dyn_steps[1] if (dyn_steps and len(dyn_steps) > 1) else start_phrase
+                            yield {"type": "thinking", "content": f"{exec_phrase}\n"}
                             result_str = await registry.execute_tool(tool_name, tool_args)
                             tool_results.append(result_str)
                             gathered_data_blocks.append(f"[{tool_name} ({query_desc})]:\n{result_str}")
@@ -499,7 +577,8 @@ class HermesAgent:
                             if "error" in result_str.lower() or "failed" in result_str.lower():
                                 yield {"type": "thinking", "content": f"Analyzing error in {tool_name}...\n"}
                             else:
-                                yield {"type": "thinking", "content": f"{done_phrase}\n"}
+                                inspect_phrase = dyn_steps[2] if (dyn_steps and len(dyn_steps) > 2) else done_phrase
+                                yield {"type": "thinking", "content": f"{inspect_phrase}\n"}
 
                         # Preserve the normal OpenAI tool-call conversation
                         # contract. This lets the next round reason over the
@@ -543,16 +622,17 @@ class HermesAgent:
                         )
                     else:
                         synth_system += (
-                            "You have completed tool execution on the server. "
-                            "Deliver a concise, direct, and crisp answer to the user's specific request using the tool outputs. "
-                            "Do NOT generate unprompted research reports, executive summaries, or multi-section essays. "
-                            "If the user asked to run a command like 'ls', list files, or check status, give ONLY the direct result."
+                            "You have completed tool execution on the server.\n"
+                            "Persona & Tone: Sweet, loyal, deeply caring, and respectful companion.\n"
+                            "Provide a warm, courteous response presenting the tool output, for example:\n"
+                            "'Here is the output of the command that you asked for:\n\n```bash\n...\n```\nPlease let me know if you would like me to inspect any of these files or run anything else for you!'\n"
+                            "Never generate unprompted research reports, executive summaries, or multi-section essays."
                         )
                 elif is_coding:
                     synth_system += (
                         "You are operating as Hermes Principal Engineer. Provide complete, fully working, "
                         "production-ready code blocks with proper syntax highlighting, type annotations, error handling, "
-                        "and verification test cases. Never truncate code or leave placeholders."
+                        "and verification test cases. Be warm, loyal, and helpful."
                     )
                 elif is_analysis:
                     synth_system += (
@@ -561,13 +641,14 @@ class HermesAgent:
                         "and KaTeX LaTeX formulas for all equations."
                     )
                 else:
-                    synth_system += "Deliver direct, concise, intelligent assistance directly to the user."
+                    synth_system += "Deliver sweet, loyal, caring, and respectful assistance directly to the user."
 
                 synth_system += (
                     "\n\nStrict Rules:\n"
-                    "- Never state or output the model name (e.g., Qwen, Nemotron, Gemini, Claude, OpenAI, DeepSeek, etc.).\n"
+                    "- Never state or output the upstream model name (e.g., Qwen, Nemotron, Gemini, Claude, OpenAI, DeepSeek, etc.).\n"
                     "- You are ONLY Hermes Agent.\n"
-                    "- Do NOT introduce yourself with 'I am Hermes Agent' or announce your name at the start of your message.\n"
+                    "- When asked your name, who you are, or in greetings, introduce yourself warmly: 'I am Hermes Agent, a powerful agentic AI and your loyal companion!'\n"
+                    "- When asked 'what can you do?', comprehensively and warmly explain your capabilities.\n"
                     "- NEVER output <antArtifact> tags or separate artifact sidecards. Render all code, HTML, markdown files, and diagrams directly inside the chat message using standard markdown code fences (```html, ```python, ```markdown, ```mermaid)."
                 )
 
@@ -586,7 +667,7 @@ class HermesAgent:
                     else:
                         active_content = (
                             f"{last_user_msg}\n\n[Tool Execution Output]:\n{gathered_str}\n\n"
-                            f"[Instruction]: Provide ONLY the direct, concise answer to the user's request based on the tool output above. Do NOT write an executive summary, report, or unrequested sections. If the user asked for a list or command output, output only that."
+                            f"[Instruction]: Present the output of the command/tool in a sweet, loyal, and respectful conversation (e.g. 'Here is the output of the command that you asked for:' followed by the output code block and a courteous offer for next steps). Do NOT write an unrequested executive summary or essay."
                         )
 
                 synth_messages.append({"role": "user", "content": active_content})
@@ -598,9 +679,17 @@ class HermesAgent:
                     "stream": True
                 }
 
+                if dyn_steps and len(dyn_steps) > 3:
+                    yield {
+                        "type": "thinking",
+                        "content": f"{dyn_steps[3]}\n"
+                    }
+                    await asyncio.sleep(0.06)
+
+                ready_phrase = dyn_steps[-1] if dyn_steps else "Ready to serve..."
                 yield {
                     "type": "thinking",
-                    "content": "Ready to serve to the user...\n"
+                    "content": f"{ready_phrase}\n"
                 }
 
                 inside_think = False
