@@ -90,7 +90,10 @@ async def handle_omniroute_proxy(request: Request, path: str, html_fixup=None):
         or req_path in ("/v1", "/api/v1", "/v1beta")
     )
 
-    if is_api_call and OMNIROUTE_BASE_URL:
+    # Hermes Agent is the King: chat/completions MUST go to Hermes Agent Core on port 8642
+    if req_path in ("/v1/chat/completions", "/api/v1/chat/completions", "/hermes/v1/chat/completions"):
+        target = f"http://127.0.0.1:{OMNIROUTE_PORT}/v1/chat/completions"
+    elif is_api_call and OMNIROUTE_BASE_URL:
         subpath = req_path
         if subpath.startswith("/api/v1"):
             subpath = subpath[len("/api"):]

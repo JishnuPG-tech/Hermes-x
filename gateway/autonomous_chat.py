@@ -122,12 +122,15 @@ class AutonomousRun:
     async def _run(self):
         self.status = "running"
         try:
-            # Determine upstream target
+            # Hermes Agent Core is the Sovereign King running on port 8642
+            hermes_core_target = f"http://127.0.0.1:{OMNIROUTE_PORT}/v1/chat/completions"
             if OMNIROUTE_BASE_URL:
                 base_clean = OMNIROUTE_BASE_URL[:-3] if OMNIROUTE_BASE_URL.endswith("/v1") else OMNIROUTE_BASE_URL
-                target = f"{base_clean}/v1/chat/completions"
+                fallback_target = f"{base_clean}/v1/chat/completions"
             else:
-                target = f"http://127.0.0.1:{OMNIROUTE_PORT}/v1/chat/completions"
+                fallback_target = hermes_core_target
+
+            target = hermes_core_target
 
             headers = {
                 "Content-Type": "application/json",
@@ -157,9 +160,24 @@ class AutonomousRun:
 
             has_tool_calls = False
             first_tool_call_id = None
-            timeout = httpx.Timeout(connect=15.0, read=300.0, write=60.0, pool=30.0)
+            timeout = httpx.Timeout(connect=10.0, read=300.0, write=60.0, pool=30.0)
             async with httpx.AsyncClient(timeout=timeout) as client:
-                async with client.stream("POST", target, json=payload, headers=headers) as upstream:
+                try:
+                    stream_ctx = client.stream("POST", target, json=payload, headers=headers)
+                except Exception as conn_err:
+                    if target != fallback_target:
+                        logger.warning(f"Failed to connect to Hermes Agent Core ({conn_err}), using fallback target {fallback_target}")
+                        target = fallback_target
+                        stream_ctx = client.stream("POST", target, json=payload, headers=headers)
+                    else:
+                        raise
+
+                async with stream_ctx as upstream:
+                    if upstream.status_code >= 400 and target != fallback_target:
+                        logger.warning(f"Hermes Core returned {upstream.status_code}, falling back to {fallback_target}")
+                        target = fallback_target
+                        async with client.stream("POST", target, json=payload, headers=headers) as upstream_fb:
+                            upstream = upstream_fb
                     if upstream.status_code >= 400:
                         # If model was rejected, attempt fallback to auto/best-chat
                         if self.model != "auto/best-chat":
