@@ -49,11 +49,23 @@ class TaskDB:
         conn.execute("PRAGMA synchronous = NORMAL;")
         conn.execute("PRAGMA foreign_keys = ON;")
         conn.execute("PRAGMA busy_timeout = 5000;")
+        try:
+            row = conn.execute("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='tasks';").fetchone()
+            if not row or row[0] == 0:
+                self._create_schema(conn)
+        except Exception:
+            pass
         return conn
 
     def _init_schema(self):
-        with self._get_conn() as conn:
-            conn.executescript("""
+        conn = sqlite3.connect(self.db_path, timeout=10.0)
+        try:
+            self._create_schema(conn)
+        finally:
+            conn.close()
+
+    def _create_schema(self, conn: sqlite3.Connection):
+        conn.executescript("""
             CREATE TABLE IF NOT EXISTS tasks (
                 task_id TEXT PRIMARY KEY,
                 project_id TEXT NOT NULL,

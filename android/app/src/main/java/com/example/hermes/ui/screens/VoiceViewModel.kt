@@ -187,7 +187,7 @@ class VoiceViewModel(
                                     if (errorCount > 2) {
                                         // Stop retrying and require manual tap
                                         errorCount = 0
-                                        _voiceState.value = VoiceState.IDLE
+                                        _voiceState.value = VoiceState.LISTENING
                                         _statusText.value = "Tap to speak"
                                     } else {
                                         if (!_isMuted.value && !isPlayingAudio) {
@@ -434,7 +434,10 @@ class VoiceViewModel(
     // ---------- sendTextInput — routes to WS or native HTTP ----------
     fun sendTextInput(text: String) {
         if (text.isBlank()) return
-        interruptAndBargeIn()
+        val wasPlaying = isPlayingAudio || _voiceState.value == VoiceState.SPEAKING
+        if (wasPlaying) {
+            interruptAndBargeIn()
+        }
 
         val trimmed = text.trim()
         val wakeWordPattern = Regex("""^(?:hey\s+)?hermes[,\s]*(.*)""", RegexOption.IGNORE_CASE)
@@ -459,7 +462,7 @@ class VoiceViewModel(
                 put("type", "text_input")
                 put("text", query)
                 put("model", _selectedModel.value)
-                put("barge_in", true)
+                put("barge_in", wasPlaying)
             }
             webSocket?.send(payload.toString())
         } else {
@@ -489,6 +492,7 @@ class VoiceViewModel(
     }
 
     fun interruptAndBargeIn() {
+        val wasPlaying = isPlayingAudio || _voiceState.value == VoiceState.SPEAKING
         viewModelScope.launch(Dispatchers.Main) {
             try {
                 mediaPlayer?.stop()
@@ -500,7 +504,7 @@ class VoiceViewModel(
             isPlayingAudio = false
             tts?.stop()
 
-            if (wsConnected) {
+            if (wsConnected && wasPlaying) {
                 val cancelPayload = JSONObject().apply {
                     put("type", "command_cancel")
                     put("scope", "current")

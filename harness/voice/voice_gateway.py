@@ -172,6 +172,7 @@ class VoiceGateway:
                         inp_msg = TextInputMessage.model_validate(data)
                         if inp_msg.barge_in:
                             self._trigger_barge_in(sid, cancel_event, active_turn_task)
+                        cancel_event.clear()
 
                         # Process text input directly as a turn
                         if active_turn_task and not active_turn_task.done():
