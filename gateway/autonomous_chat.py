@@ -40,21 +40,21 @@ MASTER_KEY = (
 
 
 MODEL_MAPPINGS = {
-    "Hermes Smart": "auto/best-chat",
-    "hermes-agent": "auto/best-chat",
-    "Hermes Coding": "auto/best-coding",
-    "Hermes Reasoning": "auto/best-reasoning",
-    "Hermes Turbo": "auto/best-coding-fast",
-    "auto/smart": "auto/best-chat",
-    "auto/fast": "auto/best-coding-fast",
-    "default": "auto/best-chat",
+    "Hermes Smart": "hermes-agent",
+    "hermes-agent": "hermes-agent",
+    "Hermes Coding": "hermes-agent",
+    "Hermes Reasoning": "hermes-agent",
+    "Hermes Turbo": "hermes-agent",
+    "auto/smart": "hermes-agent",
+    "auto/fast": "hermes-agent",
+    "default": "hermes-agent",
 }
 
 def resolve_model_name(name: Optional[str]) -> str:
     if not name or not str(name).strip():
-        return "auto/best-chat"
+        return "hermes-agent"
     trimmed = str(name).strip()
-    return MODEL_MAPPINGS.get(trimmed, trimmed)
+    return MODEL_MAPPINGS.get(trimmed, "hermes-agent")
 
 def get_server_diagnostics() -> dict:
     import platform
@@ -123,14 +123,7 @@ class AutonomousRun:
         self.status = "running"
         try:
             # Hermes Agent Core is the Sovereign King running on port 8642
-            hermes_core_target = f"http://127.0.0.1:{OMNIROUTE_PORT}/v1/chat/completions"
-            if OMNIROUTE_BASE_URL:
-                base_clean = OMNIROUTE_BASE_URL[:-3] if OMNIROUTE_BASE_URL.endswith("/v1") else OMNIROUTE_BASE_URL
-                fallback_target = f"{base_clean}/v1/chat/completions"
-            else:
-                fallback_target = hermes_core_target
-
-            target = hermes_core_target
+            target = f"http://127.0.0.1:{OMNIROUTE_PORT}/v1/chat/completions"
 
             headers = {
                 "Content-Type": "application/json",
@@ -153,7 +146,7 @@ class AutonomousRun:
                 })
 
             payload = {
-                "model": self.model,
+                "model": "hermes-agent",
                 "messages": prepared_messages,
                 "stream": True
             }
@@ -162,37 +155,20 @@ class AutonomousRun:
             first_tool_call_id = None
             timeout = httpx.Timeout(connect=10.0, read=300.0, write=60.0, pool=30.0)
             async with httpx.AsyncClient(timeout=timeout) as client:
-                try:
-                    stream_ctx = client.stream("POST", target, json=payload, headers=headers)
-                except Exception as conn_err:
-                    if target != fallback_target:
-                        logger.warning(f"Failed to connect to Hermes Agent Core ({conn_err}), using fallback target {fallback_target}")
-                        target = fallback_target
-                        stream_ctx = client.stream("POST", target, json=payload, headers=headers)
-                    else:
-                        raise
+                stream_ctx = client.stream("POST", target, json=payload, headers=headers)
+
 
                 async with stream_ctx as upstream:
-                    if upstream.status_code >= 400 and target != fallback_target:
-                        logger.warning(f"Hermes Core returned {upstream.status_code}, falling back to {fallback_target}")
-                        target = fallback_target
-                        async with client.stream("POST", target, json=payload, headers=headers) as upstream_fb:
-                            upstream = upstream_fb
                     if upstream.status_code >= 400:
-                        # If model was rejected, attempt fallback to auto/best-chat
-                        if self.model != "auto/best-chat":
-                            logger.warning(f"Model {self.model} returned {upstream.status_code}, falling back to auto/best-chat")
-                            self.model = "auto/best-chat"
-                            payload["model"] = "auto/best-chat"
-                        else:
-                            err_bytes = await upstream.aread()
-                            err_text = err_bytes.decode("utf-8", errors="replace")
-                            logger.error(f"Upstream returned HTTP {upstream.status_code} for {self.session_id}: {err_text}")
-                            self.accumulated_text = f"Unable to generate response (HTTP {upstream.status_code})."
-                            self.status = "error"
-                            await self.broadcast(f"data: {json.dumps({'choices': [{'delta': {'content': self.accumulated_text}}]})}\n\n")
-                            await self.broadcast("data: [DONE]\n\n")
-                            return
+                        err_bytes = await upstream.aread()
+                        err_text = err_bytes.decode("utf-8", errors="replace")
+                        logger.error(f"Hermes Agent Core returned HTTP {upstream.status_code} for {self.session_id}: {err_text}")
+                        self.accumulated_text = f"Hermes Agent Core encountered an issue (HTTP {upstream.status_code})."
+                        self.status = "error"
+                        await self.broadcast(f"data: {json.dumps({'choices': [{'delta': {'content': self.accumulated_text}}]})}\n\n")
+                        await self.broadcast("data: [DONE]\n\n")
+                        return
+
 
                     async for line in upstream.aiter_lines():
                         line = line.strip()

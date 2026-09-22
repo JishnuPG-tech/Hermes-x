@@ -176,17 +176,10 @@ class HermesAgent:
         candidates = []
         if requested_model:
             req_lower = requested_model.lower().strip()
-            if req_lower.startswith("omniroute/"):
-                req_lower = req_lower.replace("omniroute/", "auto/").replace("auto-best-", "best-")
-            
-            if req_lower in ["best-coding-fast", "auto/best-coding-fast", "coding-fast", "auto/auto-best-coding", "auto/best-coding"]:
-                candidates.append("auto/best-coding")
-            elif req_lower in ["auto/best-reasoning", "auto/best-chat", "auto/fast", "auto/best-fast"]:
-                candidates.append(req_lower)
-            elif requested_model not in ["default", "hermes-agent", "hermes"]:
+            if requested_model not in ["default", "hermes-agent", "hermes"] and not req_lower.startswith("auto/"):
                 if "/" in requested_model and not requested_model.startswith("omniroute/"):
                     candidates.append(requested_model)
-                elif not any(k in req_lower for k in ["claude", "sonnet", "opus", "haiku", "gpt", "omniroute"]):
+                elif not any(k in req_lower for k in ["claude", "sonnet", "opus", "haiku", "gpt", "omniroute", "auto"]):
                     candidates.append(requested_model)
 
         tier = registry.classify_task_tier(prompt) if prompt else "fast"

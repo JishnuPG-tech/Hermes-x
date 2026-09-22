@@ -809,7 +809,7 @@ async def run_autonomous_agent(
     for turn in range(max_turns):
         include_tools = turn < (max_turns - 1)
         payload = {
-            "model": model or "antigravity/gemini-2.5-flash",
+            "model": model or "hermes-agent",
             "messages": openai_messages,
             "stream": True
         }
@@ -905,7 +905,7 @@ async def run_autonomous_agent(
                     "content": "All tools have finished executing. Now synthesize everything into a complete, direct, and well-structured final answer for the user."
                 })
                 synth_payload = {
-                    "model": model or "antigravity/gemini-2.5-flash",
+                    "model": model or "hermes-agent",
                     "messages": synth_messages,
                     "stream": True
                 }

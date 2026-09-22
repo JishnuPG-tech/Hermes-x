@@ -78,7 +78,7 @@ class VoiceEngine private constructor(private val appContext: Context) {
     private val _selectedVoice = MutableStateFlow("en-US-ChristopherNeural")
     val selectedVoice: StateFlow<String> = _selectedVoice.asStateFlow()
 
-    private val _selectedModel = MutableStateFlow("antigravity/gemini-2.5-flash")
+    private val _selectedModel = MutableStateFlow("hermes-agent")
     val selectedModel: StateFlow<String> = _selectedModel.asStateFlow()
 
     // Subsystems
