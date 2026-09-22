@@ -227,31 +227,7 @@ fun ChatScreen(
                     ClaudeHamburgerIcon(color = PureWhite)
                 }
 
-                // Center: Dynamic Floating Pill (Screenshot 7: "1 Artifact")
-                val artifactsInChat = messages.count { !it.artifactTitle.isNullOrBlank() }
-                if (artifactsInChat > 0) {
-                    val artifactCountText = "$artifactsInChat Artifact${if (artifactsInChat > 1) "s" else ""}"
-                    Box(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(Color(0xFF242320))
-                            .border(1.dp, Color(0xFF383632), CircleShape)
-                            .clickable(onClick = onNavigateArtifacts)
-                            .padding(horizontal = 14.dp, vertical = 6.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = artifactCountText,
-                            style = HermesTypography.labelMedium.copy(
-                                fontSize = 13.5.sp,
-                                color = TextPrimaryWarm,
-                                fontWeight = FontWeight.Medium
-                            )
-                        )
-                    }
-                } else {
-                    Spacer(modifier = Modifier.width(1.dp))
-                }
+                // Center: (Artifacts pill button permanently removed per user request)
 
                 // Right: New Chat (+) and Overflow (⋮)
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -461,10 +437,11 @@ fun ChatScreen(
                                 Text(
                                     text = message.content,
                                     style = HermesTypography.bodyLarge.copy(
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = AnthropicSans,
+                                        fontSize = 17.sp,
+                                        fontWeight = FontWeight.SemiBold,
                                         color = PureWhite,
-                                        lineHeight = 23.sp
+                                        lineHeight = 25.sp
                                     )
                                 )
                             }
@@ -493,16 +470,20 @@ fun ChatScreen(
 
                             // Thinking state lifecycle (Screenshots 3, 4, 5, 6, 7):
                             // 1. When loading and waiting for first tokens:
-                            //    Show the discreet status line + 8-frame sequential coral starburst thinking animation!
-                            // 2. Once response starts, hide the thinking animation and show artifact card + clean response!
+                            //    Show dynamic animated rough short text (e.g. "Running the ls command...", "Reading the ls output...", "Ready to serve to the user...") + pulsing indicator!
+                            // 2. Once response starts, discreet single-line stepper + clean response!
                             if (isMessageStreaming && !hasContent) {
+                                val currentDynamicThought = remember(activeThinking, message.thinking) {
+                                    formatDynamicThinkingText(activeThinking?.takeIf { it.isNotBlank() } ?: message.thinking)
+                                }
+
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(8.dp)),
                                     verticalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
-                                    // Stepper Line
+                                    // Stepper Line with Animated Dynamic Short Text
                                     Row(
                                         modifier = Modifier
                                             .clip(CircleShape)
@@ -520,14 +501,29 @@ fun ChatScreen(
                                                 .background(BrandCoral)
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                            text = thinkingPhase.toDisplayString(),
-                                            style = HermesTypography.bodyMedium.copy(
-                                                fontSize = 14.5.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = PureWhite
+                                        AnimatedContent(
+                                            targetState = currentDynamicThought,
+                                            transitionSpec = {
+                                                (fadeIn(animationSpec = tween(220, delayMillis = 30)) +
+                                                        slideInVertically(animationSpec = tween(220)) { it / 2 })
+                                                    .togetherWith(
+                                                        fadeOut(animationSpec = tween(180)) +
+                                                                slideOutVertically(animationSpec = tween(180)) { -it / 2 }
+                                                    )
+                                            },
+                                            label = "DynamicThinkingStep"
+                                        ) { stepText ->
+                                            Text(
+                                                text = stepText,
+                                                style = HermesTypography.bodyMedium.copy(
+                                                    fontSize = 15.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = PureWhite
+                                                ),
+                                                maxLines = 1,
+                                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                             )
-                                        )
+                                        }
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Icon(
                                             imageVector = Icons.Default.ChevronRight,
@@ -542,7 +538,22 @@ fun ChatScreen(
                                 }
                             } else {
                                 // Response ready / streamed -> Discreet single-line stepper
-                                if (!message.stepTitle.isNullOrBlank()) {
+                                val completedStepTitle = remember(message.stepTitle, message.thinking) {
+                                    if (!message.stepTitle.isNullOrBlank() && !message.stepTitle.equals("solution", ignoreCase = true)) {
+                                        message.stepTitle
+                                    } else if (!message.thinking.isNullOrBlank()) {
+                                        val lastLine = message.thinking.lines().lastOrNull { it.isNotBlank() }
+                                        if (!lastLine.isNullOrBlank()) {
+                                            formatDynamicThinkingText(lastLine).removeSuffix("...")
+                                        } else {
+                                            "Thought process"
+                                        }
+                                    } else {
+                                        null
+                                    }
+                                }
+
+                                if (!completedStepTitle.isNullOrBlank()) {
                                     Row(
                                         modifier = Modifier
                                             .clip(CircleShape)
@@ -561,10 +572,10 @@ fun ChatScreen(
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text(
-                                            text = message.stepTitle ?: "Thought process",
+                                            text = completedStepTitle ?: "Thought process",
                                             style = HermesTypography.bodyMedium.copy(
-                                                fontSize = 14.5.sp,
-                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 15.sp,
+                                                fontWeight = FontWeight.SemiBold,
                                                 color = PureWhite
                                             )
                                         )
@@ -1267,4 +1278,22 @@ private fun ChatMenuItem(
             )
         )
     }
+}
+
+/**
+ * Extracts and formats dynamic AI short thought text (e.g. "Running the ls command...", "Reading the ls output...")
+ * for smooth real-time animation inside the thinking block.
+ */
+fun formatDynamicThinkingText(raw: String?): String {
+    if (raw.isNullOrBlank()) return "Thinking..."
+    val lines = raw.trim().lines().map { it.trim() }.filter { it.isNotBlank() && !it.startsWith("```") }
+    val line = lines.lastOrNull() ?: "Thinking..."
+    val cleaned = line
+        .replace(Regex("""^[-*#\s]+"""), "")
+        .replace(Regex("""^[🛠️🌐⚡💻🖥️📂🟣🧠🔍🔷✅⚠️]+\s*"""), "")
+        .replace(Regex("""^Thinking Process:\s*""", RegexOption.IGNORE_CASE), "")
+        .replace(Regex("""^Round\s+\d+:\s*""", RegexOption.IGNORE_CASE), "")
+        .trim()
+    if (cleaned.isBlank()) return "Thinking..."
+    return if (cleaned.endsWith("...") || cleaned.endsWith(".")) cleaned else "$cleaned..."
 }

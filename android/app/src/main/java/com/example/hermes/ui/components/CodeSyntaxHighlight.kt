@@ -262,8 +262,10 @@ fun ClaudeCodeBlock(
             Text(
                 text = annotatedCode,
                 fontFamily = JetBrainsMono,
-                fontSize = 13.sp,
-                lineHeight = 20.sp
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+                color = PureWhite,
+                lineHeight = 22.sp
             )
         }
     }

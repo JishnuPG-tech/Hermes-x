@@ -855,6 +855,7 @@ class HermesDataRepository(
     private fun extractArtifactFromText(text: String): ExtractedArtifact? {
         if (text.isBlank()) return null
 
+        // 1. Explicit <antArtifact> tags are the authoritative artifact format
         val antMatch = ANT_ARTIFACT_REGEX.find(text)
         if (antMatch != null) {
             val attrs = antMatch.groupValues[1]
@@ -880,37 +881,45 @@ class HermesDataRepository(
             )
         }
 
+        // 2. Only consider pure code blocks if they are genuine whole-file source code
+        // NEVER treat shell commands (bash, sh, apt, ls, logs, text) or generic blocks as artifacts!
         val codeMatch = CODE_BLOCK_REGEX.find(text)
         if (codeMatch != null) {
             val rawLang = (codeMatch.groupValues[1]).trim().lowercase()
             val codeBody = codeMatch.groupValues[2].trim()
 
-            if (codeBody.length > 30) {
-                val (langName, ext, title) = when (rawLang) {
-                    "python", "py" -> Triple("Python", "PY", "calculator.py".takeIf { codeBody.contains("calc", true) } ?: "script.py")
-                    "kotlin", "kt" -> Triple("Kotlin", "KT", "MainActivity.kt")
-                    "javascript", "js" -> Triple("JavaScript", "JS", "app.js")
-                    "html" -> Triple("HTML", "HTML", "index.html")
-                    "bash", "sh" -> Triple("Bash", "SH", "setup.sh")
-                    "json" -> Triple("JSON", "JSON", "data.json")
-                    "markdown", "md" -> Triple("Markdown", "MD", "README.md")
-                    else -> Triple("Code", "CODE", "solution.txt")
-                }
+            val isTerminalOrText = rawLang.isBlank() || rawLang in setOf(
+                "bash", "sh", "zsh", "shell", "console", "terminal", "output", "text", "txt", "log"
+            )
+            // Exclude commands and short snippets
+            if (!isTerminalOrText && codeBody.length > 100) {
+                val fileCommentMatch = Regex("""(?:(?://|#|<!--)\s*(?:filename|file):\s*([a-zA-Z0-9_.-]+))""").find(codeBody)
+                val explicitName = fileCommentMatch?.groupValues?.get(1)
 
-                val cleanTitle = when {
-                    codeBody.contains("class Calculator", true) -> "Calculator"
-                    codeBody.contains("fun main", true) -> "Application"
-                    rawLang.contains("md") -> "Implementation Guide"
-                    else -> title.substringBeforeLast(".")
-                }
+                val classMatch = Regex("""(?:class|def|fun|interface)\s+([A-Za-z0-9_]+)""").find(codeBody)
+                val detectedClass = classMatch?.groupValues?.get(1)
 
-                return ExtractedArtifact(
-                    title = cleanTitle,
-                    type = "Code · $ext",
-                    language = langName,
-                    code = codeBody,
-                    stepTitle = "Building $cleanTitle"
-                )
+                val cleanTitle = explicitName ?: detectedClass
+                // Only create an artifact if an explicit filename or distinct class is present
+                if (cleanTitle != null && !cleanTitle.equals("solution", ignoreCase = true)) {
+                    val (langName, ext) = when (rawLang) {
+                        "python", "py" -> Pair("Python", "PY")
+                        "kotlin", "kt" -> Pair("Kotlin", "KT")
+                        "javascript", "js" -> Pair("JavaScript", "JS")
+                        "typescript", "ts" -> Pair("TypeScript", "TS")
+                        "html" -> Pair("HTML", "HTML")
+                        "markdown", "md" -> Pair("Markdown", "MD")
+                        else -> Pair("Code", "CODE")
+                    }
+
+                    return ExtractedArtifact(
+                        title = cleanTitle,
+                        type = if (ext == "MD") "Document · MD" else "Code · $ext",
+                        language = langName,
+                        code = codeBody,
+                        stepTitle = "Writing $cleanTitle"
+                    )
+                }
             }
         }
 

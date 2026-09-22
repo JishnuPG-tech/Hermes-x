@@ -158,6 +158,46 @@ def clean_tool_markup(t: str, is_token: bool = False) -> str:
         return t
     return t.strip()
 
+
+def format_dynamic_tool_phrases(tool_name: str, tool_args: Dict[str, Any]) -> tuple[str, str]:
+    """
+    Produces dynamic, human-readable short execution phrases for the thinking block.
+    Flow: e.g. "Running the ls command..." -> "Reading the ls output..." -> "Ready to serve to the user..."
+    """
+    cmd = str(tool_args.get("command") or "").strip()
+    path = str(tool_args.get("path") or tool_args.get("filename") or tool_args.get("filepath") or tool_args.get("target_path") or "").strip()
+    query = str(tool_args.get("query") or "").strip()
+    url = str(tool_args.get("url") or "").strip()
+
+    if tool_name in ("bash_exec", "computer_run_command") and cmd:
+        tokens = cmd.split()
+        first = tokens[0].split("/")[-1].split("\\")[-1] if tokens else "bash"
+        if len(tokens) > 1 and first in ("git", "apt", "apt-get", "npm", "pip", "docker", "pnpm", "yarn", "systemctl", "service"):
+            short_cmd = f"{first} {tokens[1]}"
+        else:
+            short_cmd = first
+        return f"Running the {short_cmd} command...", f"Reading the {short_cmd} output..."
+    elif "file" in tool_name or "read" in tool_name or "write" in tool_name or "edit" in tool_name:
+        fname = path.split("/")[-1].split("\\")[-1] if path else "file"
+        action = "Reading" if "read" in tool_name else ("Writing" if "write" in tool_name else "Editing")
+        return f"{action} {fname}...", f"Analyzing {fname} content..."
+    elif "list_directory" in tool_name or "dir" in tool_name:
+        folder = path.split("/")[-1].split("\\")[-1] if path and path != "." else "directory"
+        return f"Inspecting the {folder}...", f"Reading directory structure..."
+    elif "search" in tool_name or "web" in tool_name:
+        q_short = query[:32] + ("..." if len(query) > 32 else "") if query else "web"
+        return f"Searching the web for {q_short}...", f"Reading search results..."
+    elif "fetch" in tool_name:
+        domain = url.split("//")[-1].split("/")[0] if url else "webpage"
+        return f"Fetching {domain}...", f"Reading page output..."
+    elif "status" in tool_name or "diagnostics" in tool_name:
+        return "Checking system metrics...", "Reading diagnostic output..."
+    elif "knowledge" in tool_name:
+        return "Querying knowledge base...", "Reading knowledge records..."
+    else:
+        clean = tool_name.replace("_", " ")
+        return f"Running {clean}...", f"Reading {clean} output..."
+
 class HermesAgent:
     def __init__(self, upstream_url: str = UPSTREAM_URL, api_key: str = UPSTREAM_API_KEY):
         self.upstream_url = upstream_url
@@ -383,9 +423,11 @@ class HermesAgent:
                             # 1. Proactive URL Scraping
                             if urls and "fetch_webpage" in known_tools and not gathered_data_blocks:
                                 for target_url in urls[:2]:
-                                    yield {"type": "thinking", "content": f"🌐 Fetching live webpage: {target_url}...\n"}
+                                    domain = target_url.split("//")[-1].split("/")[0]
+                                    yield {"type": "thinking", "content": f"Fetching {domain}...\n"}
                                     page_content = await registry.execute_tool("fetch_webpage", {"url": target_url})
                                     gathered_data_blocks.append(f"[fetch_webpage ({target_url})]:\n{page_content}")
+                                    yield {"type": "thinking", "content": f"Reading {domain} output...\n"}
 
                             # 2. Proactive Web Search for Research & Current Topics
                             research_keywords = [
@@ -398,9 +440,11 @@ class HermesAgent:
                                 clean_query = re.sub(r'^(?:please\s+|can\s+you\s+|research\s+about\s+|search\s+for\s+|investigate\s+)', '', last_user_msg, flags=re.I).strip()
                                 if not clean_query:
                                     clean_query = last_user_msg
-                                yield {"type": "thinking", "content": f"🔍 Searching web for: {clean_query}...\n"}
+                                q_short = clean_query[:32] + ("..." if len(clean_query) > 32 else "")
+                                yield {"type": "thinking", "content": f"Searching the web for {q_short}...\n"}
                                 result_str = await registry.execute_tool("web_search", {"query": clean_query})
                                 gathered_data_blocks.append(f"[web_search ({clean_query})]:\n{result_str}")
+                                yield {"type": "thinking", "content": "Reading search results...\n"}
 
                             # 3. Proactive Knowledge Search across Notion (Primary) & Obsidian
                             knowledge_keywords = [
@@ -410,29 +454,33 @@ class HermesAgent:
                             ]
                             has_knowledge_intent = any(k in p_lower for k in knowledge_keywords)
                             if step == 0 and has_knowledge_intent and "search_knowledge" in known_tools and not gathered_data_blocks:
-                                yield {"type": "thinking", "content": f"🔷 Proactively querying Notion knowledge base: {last_user_msg}...\n"}
+                                yield {"type": "thinking", "content": "Querying knowledge base...\n"}
                                 k_result_str = await registry.execute_tool("search_knowledge", {"query": last_user_msg, "limit": 4})
                                 gathered_data_blocks.append(f"[search_knowledge (Notion Primary)]:\n{k_result_str}")
+                                yield {"type": "thinking", "content": "Reading knowledge records...\n"}
 
                             # 4. Proactive Server Computer & Storage status
                             computer_keywords = ["server", "computer", "disk", "storage", "workspace", "workspaces", "system status", "diagnostics"]
                             if step == 0 and any(k in p_lower for k in computer_keywords) and "computer_system_status" in known_tools and not any("computer_system_status" in b for b in gathered_data_blocks):
-                                yield {"type": "thinking", "content": f"🖥️ Proactively inspecting Server Computer system metrics...\n"}
+                                yield {"type": "thinking", "content": "Checking system metrics...\n"}
                                 status_str = await registry.execute_tool("computer_system_status", {})
                                 gathered_data_blocks.append(f"[computer_system_status]:\n{status_str}")
+                                yield {"type": "thinking", "content": "Reading diagnostic output...\n"}
 
                             # 5. Proactive Registered Projects list
                             if step == 0 and any(k in p_lower for k in ["project list", "list projects", "what projects", "active projects"]) and "computer_project_list" in known_tools and not any("computer_project_list" in b for b in gathered_data_blocks):
-                                yield {"type": "thinking", "content": f"📁 Inspecting registered projects on Server Computer...\n"}
+                                yield {"type": "thinking", "content": "Inspecting registered projects...\n"}
                                 plist_str = await registry.execute_tool("computer_project_list", {})
                                 gathered_data_blocks.append(f"[computer_project_list]:\n{plist_str}")
+                                yield {"type": "thinking", "content": "Reading project records...\n"}
 
                             # 6. Proactive File & Directory inspection
                             file_keywords = ["what files", "file list", "directory", "codebase", "folder structure", "check repository", "show files"]
                             if step == 0 and any(k in p_lower for k in file_keywords) and "list_directory" in known_tools and not any("list_directory" in b for b in gathered_data_blocks):
-                                yield {"type": "thinking", "content": f"📂 Autonomously inspecting project directory structure...\n"}
+                                yield {"type": "thinking", "content": "Running the ls command...\n"}
                                 dir_str = await registry.execute_tool("list_directory", {"path": "."})
                                 gathered_data_blocks.append(f"[list_directory (.)]:\n{dir_str}")
+                                yield {"type": "thinking", "content": "Reading the ls output...\n"}
 
                             break
 
@@ -440,35 +488,18 @@ class HermesAgent:
                         for tc in unique_calls:
                             tool_name = tc["name"]
                             tool_args = tc["arguments"]
+                            start_phrase, done_phrase = format_dynamic_tool_phrases(tool_name, tool_args)
                             query_desc = tool_args.get("query") or tool_args.get("url") or tool_args.get("command") or tool_args.get("project_id") or tool_name
-                            
-                            icon = "🛠️"
-                            if "knowledge" in tool_name:
-                                icon = "🔷"
-                            elif "search" in tool_name or "web" in tool_name or "fetch" in tool_name:
-                                icon = "🌐"
-                            elif "python" in tool_name:
-                                icon = "⚡"
-                            elif "bash" in tool_name or "exec" in tool_name:
-                                icon = "💻"
-                            elif "computer" in tool_name:
-                                icon = "🖥️"
-                            elif "file" in tool_name or "directory" in tool_name:
-                                icon = "📂"
-                            elif "vault" in tool_name:
-                                icon = "🟣"
-                            elif "memory" in tool_name:
-                                icon = "🧠"
 
-                            yield {"type": "thinking", "content": f"{icon} Executing {tool_name}: {query_desc}...\n"}
+                            yield {"type": "thinking", "content": f"{start_phrase}\n"}
                             result_str = await registry.execute_tool(tool_name, tool_args)
                             tool_results.append(result_str)
                             gathered_data_blocks.append(f"[{tool_name} ({query_desc})]:\n{result_str}")
 
                             if "error" in result_str.lower() or "failed" in result_str.lower():
-                                yield {"type": "thinking", "content": f"⚠️ {tool_name} returned an error or non-zero status. Self-correcting in next reasoning step...\n"}
+                                yield {"type": "thinking", "content": f"Analyzing error in {tool_name}...\n"}
                             else:
-                                yield {"type": "thinking", "content": f"✅ {tool_name} completed successfully.\n"}
+                                yield {"type": "thinking", "content": f"{done_phrase}\n"}
 
                         # Preserve the normal OpenAI tool-call conversation
                         # contract. This lets the next round reason over the
@@ -567,16 +598,10 @@ class HermesAgent:
                     "stream": True
                 }
 
-                if gathered_data_blocks:
-                    yield {
-                        "type": "thinking",
-                        "content": f"\nSynthesizing verified findings from {len(gathered_data_blocks)} data and tool execution blocks into final production response...\n"
-                    }
-                else:
-                    yield {
-                        "type": "thinking",
-                        "content": "Analyzing task objectives and synthesizing direct high-precision solution...\n"
-                    }
+                yield {
+                    "type": "thinking",
+                    "content": "Ready to serve to the user...\n"
+                }
 
                 inside_think = False
                 stream_succeeded = False

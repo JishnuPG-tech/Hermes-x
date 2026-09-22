@@ -56,7 +56,8 @@ fun parseInlineMarkdown(text: String): AnnotatedString {
                     pushStyle(
                         SpanStyle(
                             fontFamily = JetBrainsMono,
-                            fontSize = 13.5.sp,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
                             color = SyntaxPillText,
                             background = SyntaxPillBg
                         )
@@ -351,8 +352,8 @@ fun ClaudeMarkdownView(
                     ) {
                         Box(
                             modifier = Modifier
-                                .width(3.dp)
-                                .height(24.dp)
+                                .width(3.5.dp)
+                                .height(26.dp)
                                 .clip(RoundedCornerShape(2.dp))
                                 .background(BrandCoral)
                         )
@@ -360,11 +361,12 @@ fun ClaudeMarkdownView(
                         Text(
                             text = parseInlineMarkdown(block.text),
                             style = HermesTypography.bodyLarge.copy(
+                                fontFamily = AnthropicSans,
                                 fontStyle = FontStyle.Italic,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.5.sp,
+                                fontWeight = FontWeight.SemiBold,
                                 color = PureWhite,
-                                lineHeight = 22.sp
+                                lineHeight = 24.sp
                             )
                         )
                     }
@@ -374,14 +376,14 @@ fun ClaudeMarkdownView(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 6.dp, top = 2.dp, bottom = 2.dp),
+                            .padding(start = 6.dp, top = 3.dp, bottom = 3.dp),
                         verticalAlignment = Alignment.Top
                     ) {
                         Text(
                             text = "•",
                             style = HermesTypography.bodyLarge.copy(
                                 color = BrandCoral,
-                                fontSize = 16.sp,
+                                fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold
                             ),
                             modifier = Modifier.padding(end = 10.dp)
@@ -389,11 +391,11 @@ fun ClaudeMarkdownView(
                         Text(
                             text = parseInlineMarkdown(block.text),
                             style = HermesTypography.bodyLarge.copy(
-                                fontFamily = AnthropicSerif,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
+                                fontFamily = AnthropicSans,
+                                fontSize = 17.5.sp,
+                                fontWeight = FontWeight.SemiBold,
                                 color = PureWhite,
-                                lineHeight = 24.sp
+                                lineHeight = 26.sp
                             ),
                             modifier = Modifier.weight(1f)
                         )
@@ -404,14 +406,14 @@ fun ClaudeMarkdownView(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 6.dp, top = 2.dp, bottom = 2.dp),
+                            .padding(start = 6.dp, top = 3.dp, bottom = 3.dp),
                         verticalAlignment = Alignment.Top
                     ) {
                         Text(
                             text = "${block.number}.",
                             style = HermesTypography.bodyMedium.copy(
                                 color = PureWhite,
-                                fontSize = 14.5.sp,
+                                fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold
                             ),
                             modifier = Modifier.padding(end = 8.dp)
@@ -419,11 +421,11 @@ fun ClaudeMarkdownView(
                         Text(
                             text = parseInlineMarkdown(block.text),
                             style = HermesTypography.bodyLarge.copy(
-                                fontFamily = AnthropicSerif,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
+                                fontFamily = AnthropicSans,
+                                fontSize = 17.5.sp,
+                                fontWeight = FontWeight.SemiBold,
                                 color = PureWhite,
-                                lineHeight = 24.sp
+                                lineHeight = 26.sp
                             ),
                             modifier = Modifier.weight(1f)
                         )
@@ -434,11 +436,11 @@ fun ClaudeMarkdownView(
                     Text(
                         text = parseInlineMarkdown(block.text),
                         style = HermesTypography.bodyLarge.copy(
-                            fontFamily = AnthropicSerif,
-                            fontSize = 16.5.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontFamily = AnthropicSans,
+                            fontSize = 17.5.sp,
+                            fontWeight = FontWeight.SemiBold,
                             color = PureWhite,
-                            lineHeight = 25.sp
+                            lineHeight = 26.sp
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
