@@ -33,10 +33,12 @@ fun MainNavigation(
     val currentUserName by authViewModel.userName.collectAsStateWithLifecycle()
     val currentUserEmail by authViewModel.userEmail.collectAsStateWithLifecycle()
 
-    var isSplashVisible by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(true) }
+    var isSplashVisible by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(!startVoice) }
 
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(1000)
+        if (!startVoice) {
+            kotlinx.coroutines.delay(1000)
+        }
         isSplashVisible = false
     }
 
@@ -45,7 +47,12 @@ fun MainNavigation(
         return
     }
 
-    val backStack = rememberNavBackStack(if (isLoggedIn == true) NavHome else NavAuth)
+    val initialRoute = when {
+        isLoggedIn != true -> NavAuth
+        startVoice -> NavVoice
+        else -> NavHome
+    }
+    val backStack = rememberNavBackStack(initialRoute)
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val sessions by chatViewModel.sessions.collectAsStateWithLifecycle()
