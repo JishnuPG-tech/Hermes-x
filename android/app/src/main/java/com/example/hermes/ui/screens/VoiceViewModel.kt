@@ -163,8 +163,9 @@ class VoiceViewModel(
                     speechRecognizer = SpeechRecognizer.createSpeechRecognizer(getApplication()).apply {
                         setRecognitionListener(object : RecognitionListener {
                             override fun onReadyForSpeech(params: Bundle?) {
-                                _voiceState.value = VoiceState.LISTENING
-                                _statusText.value = "Listening…"
+                                if (_voiceState.value == VoiceState.LISTENING) {
+                                    _statusText.value = "Listening…"
+                                }
                             }
                             override fun onBeginningOfSpeech() {
                                 if (isPlayingAudio) interruptAndBargeIn()
@@ -179,19 +180,28 @@ class VoiceViewModel(
                                 // 4 = ERROR_SERVER, 5 = ERROR_CLIENT
                                 if (error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
                                     errorCount = 0
-                                    if (!_isMuted.value && !isPlayingAudio) {
-                                        mainHandler.postDelayed({ startListening() }, 600)
+                                    if (!_isMuted.value && !isPlayingAudio && _voiceState.value == VoiceState.LISTENING) {
+                                        mainHandler.postDelayed({
+                                            if (!_isMuted.value && !isPlayingAudio && _voiceState.value == VoiceState.LISTENING) {
+                                                startListening()
+                                            }
+                                        }, 600)
                                     }
                                 } else {
                                     errorCount++
                                     if (errorCount > 2) {
                                         // Stop retrying and require manual tap
                                         errorCount = 0
-                                        _voiceState.value = VoiceState.LISTENING
-                                        _statusText.value = "Tap to speak"
+                                        if (_voiceState.value == VoiceState.LISTENING) {
+                                            _statusText.value = "Tap to speak"
+                                        }
                                     } else {
-                                        if (!_isMuted.value && !isPlayingAudio) {
-                                            mainHandler.postDelayed({ startListening() }, 600)
+                                        if (!_isMuted.value && !isPlayingAudio && _voiceState.value == VoiceState.LISTENING) {
+                                            mainHandler.postDelayed({
+                                                if (!_isMuted.value && !isPlayingAudio && _voiceState.value == VoiceState.LISTENING) {
+                                                    startListening()
+                                                }
+                                            }, 600)
                                         }
                                     }
                                 }
@@ -203,7 +213,7 @@ class VoiceViewModel(
                                     ?.firstOrNull()
                                 if (!spoken.isNullOrBlank() && !_isMuted.value) {
                                     sendTextInput(spoken)
-                                } else if (!_isMuted.value && !isPlayingAudio) {
+                                } else if (!_isMuted.value && !isPlayingAudio && _voiceState.value == VoiceState.LISTENING) {
                                     startListening()
                                 }
                             }
@@ -211,8 +221,7 @@ class VoiceViewModel(
                                 val partial = partialResults
                                     ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                                     ?.firstOrNull()
-                                if (!partial.isNullOrBlank()) {
-                                    if (isPlayingAudio) interruptAndBargeIn()
+                                if (!partial.isNullOrBlank() && _voiceState.value == VoiceState.LISTENING) {
                                     _statusText.value = partial
                                 }
                             }
@@ -225,7 +234,9 @@ class VoiceViewModel(
     }
 
     fun startListening() {
-        if (_isMuted.value || isPlayingAudio) return
+        if (_isMuted.value || isPlayingAudio || _voiceState.value == VoiceState.THINKING || _voiceState.value == VoiceState.SPEAKING) return
+        _voiceState.value = VoiceState.LISTENING
+        _statusText.value = "Listening…"
         mainHandler.post {
             try {
                 val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
@@ -324,7 +335,7 @@ class VoiceViewModel(
                     val state = json.optString("state")
                     when (state) {
                         "listening" -> {
-                            if (!isPlayingAudio) {
+                            if (!isPlayingAudio && audioQueue.isEmpty() && !_isMuted.value) {
                                 _voiceState.value = VoiceState.LISTENING
                                 if (_statusText.value.startsWith("Thinking") ||
                                     _statusText.value.startsWith("Hold tight")) {
@@ -343,7 +354,7 @@ class VoiceViewModel(
                             stopListening()
                         }
                         "idle" -> {
-                            if (!isPlayingAudio) {
+                            if (!isPlayingAudio && audioQueue.isEmpty() && !_isMuted.value) {
                                 _voiceState.value = VoiceState.LISTENING
                                 _statusText.value = "Listening…"
                                 startListening()
@@ -389,18 +400,30 @@ class VoiceViewModel(
         val nextChunk = audioQueue.poll()
         if (nextChunk == null) {
             isPlayingAudio = false
-            _voiceState.value = VoiceState.LISTENING
-            _statusText.value = "Listening…"
-            startListening()
+            if (!_isMuted.value) {
+                _voiceState.value = VoiceState.LISTENING
+                _statusText.value = "Listening…"
+                startListening()
+            } else {
+                _voiceState.value = VoiceState.MUTED
+                _statusText.value = "Muted"
+            }
             return
         }
 
         isPlayingAudio = true
         _voiceState.value = VoiceState.SPEAKING
+        stopListening()
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val tempFile = File.createTempFile("hermes_tts_", ".mp3", getApplication<Application>().cacheDir)
+                val isWav = nextChunk.size >= 4 &&
+                    nextChunk[0] == 'R'.code.toByte() &&
+                    nextChunk[1] == 'I'.code.toByte() &&
+                    nextChunk[2] == 'F'.code.toByte() &&
+                    nextChunk[3] == 'F'.code.toByte()
+                val ext = if (isWav) ".wav" else ".mp3"
+                val tempFile = File.createTempFile("hermes_tts_", ext, getApplication<Application>().cacheDir)
                 FileOutputStream(tempFile).use { it.write(nextChunk) }
 
                 withContext(Dispatchers.Main) {
@@ -434,6 +457,7 @@ class VoiceViewModel(
     // ---------- sendTextInput — routes to WS or native HTTP ----------
     fun sendTextInput(text: String) {
         if (text.isBlank()) return
+        stopListening()
         val wasPlaying = isPlayingAudio || _voiceState.value == VoiceState.SPEAKING
         if (wasPlaying) {
             interruptAndBargeIn()
@@ -455,13 +479,14 @@ class VoiceViewModel(
 
         _voiceState.value = VoiceState.THINKING
         _statusText.value = "Thinking…"
+        stopListening()
 
         if (wsConnected && webSocket != null) {
             // Primary: send to WS
             val payload = JSONObject().apply {
                 put("type", "text_input")
                 put("text", query)
-                put("model", _selectedModel.value)
+                put("model", "hermes-agent")
                 put("barge_in", wasPlaying)
             }
             webSocket?.send(payload.toString())
@@ -469,7 +494,7 @@ class VoiceViewModel(
             // Fallback: send to HTTP chat API and read response via TTS
             viewModelScope.launch {
                 try {
-                    val response = apiClient.sendChatMessageFallback(query, _selectedModel.value)
+                    val response = apiClient.sendChatMessageFallback(query, "hermes-agent")
                     if (response.isNotBlank()) {
                         speakWithTts(response)
                     } else {

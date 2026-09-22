@@ -113,6 +113,7 @@ class VoiceGateway:
                     break
 
                 if "bytes" in message and message["bytes"]:
+                    raw_bytes = message["bytes"]
                     # Binary PCM/Audio frame
                     # Wake-word detection: Phonetic Candidate -> Stage 2 STT Verification
                     if wake_detector.process_pcm16_chunk(raw_bytes):
@@ -177,8 +178,9 @@ class VoiceGateway:
                         # Process text input directly as a turn
                         if active_turn_task and not active_turn_task.done():
                             active_turn_task.cancel()
+                        requested_model = data.get("model") or "hermes-agent"
                         active_turn_task = asyncio.create_task(
-                            self._process_text_turn(websocket, session, inp_msg.text, cancel_event)
+                            self._process_text_turn(websocket, session, inp_msg.text, cancel_event, model=requested_model)
                         )
 
                     elif mtype == "command_cancel":
@@ -300,6 +302,7 @@ class VoiceGateway:
         user_text: str,
         cancel_event: asyncio.Event,
         metrics: Optional[VoiceTimingMetrics] = None,
+        model: str = "hermes-agent",
     ) -> None:
         """Drive full LLM generation, sentence chunking, TTS arbitration, and background task offloading."""
         cancel_event.clear()
@@ -390,7 +393,7 @@ class VoiceGateway:
 
             queue: asyncio.Queue = asyncio.Queue()
             msg_id = f"msg_{uuid.uuid4().hex[:12]}"
-            model = "hermes-default"
+            agent_model = model or "hermes-agent"
 
             # Run agent loop in background
             agent_task = asyncio.create_task(
@@ -398,7 +401,7 @@ class VoiceGateway:
                     session.session_id,
                     user_text,
                     messages,
-                    model,
+                    agent_model,
                     msg_id,
                     queue,
                 )
@@ -419,15 +422,21 @@ class VoiceGateway:
                 if item is None:
                     break
 
-                # Extract text deltas
+                # Extract text deltas from multi-line SSE frames
                 if isinstance(item, str):
-                    if item.startswith("data: "):
-                        data_part = item[6:].strip()
-                        if data_part and data_part != "[DONE]":
-                            try:
-                                parsed = json.loads(data_part)
-                                if parsed.get("type") == "content_block_delta":
-                                    delta_text = parsed.get("delta", {}).get("text", "")
+                    for line in item.splitlines():
+                        line = line.strip()
+                        if line.startswith("data: "):
+                            data_part = line[6:].strip()
+                            if data_part and data_part != "[DONE]":
+                                try:
+                                    parsed = json.loads(data_part)
+                                    delta_text = ""
+                                    if parsed.get("type") == "content_block_delta":
+                                        delta_text = parsed.get("delta", {}).get("text", "")
+                                    elif "choices" in parsed and len(parsed["choices"]) > 0:
+                                        delta_text = parsed["choices"][0].get("delta", {}).get("content", "")
+
                                     if delta_text:
                                         full_assistant_text.append(delta_text)
                                         # Feed chunker
@@ -444,8 +453,8 @@ class VoiceGateway:
                                                 cancel_event,
                                                 metrics,
                                             )
-                            except Exception:
-                                pass
+                                except Exception as err:
+                                    logger.debug("Voice SSE parse error ignored: %s", err)
 
             # Flush remaining chunker buffer
             for phrase in chunker.flush():
@@ -461,6 +470,21 @@ class VoiceGateway:
                     cancel_event,
                     metrics,
                 )
+
+            # Fallback if assistant did not output any spoken audio phrase
+            if not full_assistant_text and not cancel_event.is_set():
+                fallback_phrase = "Task completed."
+                turn_tts_index += 1
+                await self._synthesize_and_send_phrase(
+                    websocket,
+                    session,
+                    fallback_phrase,
+                    turn_id,
+                    turn_tts_index,
+                    cancel_event,
+                    metrics,
+                )
+                full_assistant_text.append(fallback_phrase)
 
             turn.assistant_text = "".join(full_assistant_text)
             metrics.e2e_turn_ms = round((time.perf_counter() * 1000.0) - metrics.llm_start_ms, 2)
