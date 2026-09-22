@@ -163,11 +163,11 @@ class TTSManager:
                 success=True,
             )
 
-        # 1. Try Kokoro if registered and circuit allows
+        # 1. Try Kokoro if registered, ready, and circuit allows
         kokoro = self._providers.get("kokoro")
         kokoro_circuit = self._circuits.get("kokoro")
 
-        if kokoro and kokoro_circuit and kokoro_circuit.can_attempt():
+        if kokoro and getattr(kokoro, "_is_ready", False) and kokoro_circuit and kokoro_circuit.can_attempt():
             try:
                 # Run with fallback deadline
                 result = await asyncio.wait_for(
@@ -191,19 +191,22 @@ class TTSManager:
         # 2. Fallback to EdgeTTS
         edge = self._providers.get("edge_tts")
         edge_circuit = self._circuits.get("edge_tts")
-        if edge and edge_circuit and edge_circuit.can_attempt():
+        if edge and (not edge_circuit or edge_circuit.can_attempt()):
             try:
                 result = await edge.synthesize(request)
                 if result.success:
-                    edge_circuit.record_success()
+                    if edge_circuit:
+                        edge_circuit.record_success()
                     self._processed_generations.add(request.tts_generation_id)
                     return result
                 else:
-                    edge_circuit.record_failure()
+                    if edge_circuit:
+                        edge_circuit.record_failure()
                     logger.error("EdgeTTS fallback synthesis failed: %s", result.error)
                     return result
             except Exception as exc:
-                edge_circuit.record_failure()
+                if edge_circuit:
+                    edge_circuit.record_failure()
                 logger.error("EdgeTTS synthesis error: %s", exc)
                 return TTSGenerationResult(
                     request_id=request.request_id,
@@ -238,12 +241,10 @@ class TTSManager:
 
         kokoro = self._providers.get("kokoro")
         kokoro_circuit = self._circuits.get("kokoro")
-        used_edge = False
 
-        if kokoro and kokoro_circuit and kokoro_circuit.can_attempt():
-            first_chunk_received = False
+        # 1. Try Kokoro stream if ready and circuit permits
+        if kokoro and getattr(kokoro, "_is_ready", False) and kokoro_circuit and kokoro_circuit.can_attempt():
             try:
-                # We attempt kokoro stream, but if no chunks within deadline, fail over
                 async def _get_first():
                     async for chunk in kokoro.synthesize_stream(request):
                         return chunk
@@ -251,7 +252,6 @@ class TTSManager:
 
                 first_chunk = await asyncio.wait_for(_get_first(), timeout=self.fallback_deadline)
                 if first_chunk:
-                    first_chunk_received = True
                     kokoro_circuit.record_success()
                     yield first_chunk
                     async for chunk in kokoro.synthesize_stream(request):
@@ -262,13 +262,17 @@ class TTSManager:
             except (asyncio.TimeoutError, Exception) as exc:
                 kokoro_circuit.record_failure()
                 logger.warning("Kokoro streaming failed (%s), shifting to EdgeTTS stream", exc)
-                used_edge = True
 
-        if not used_edge and not kokoro:
-            used_edge = True
-
-        if used_edge:
-            edge = self._providers.get("edge_tts")
-            if edge:
+        # 2. Seamless failover to EdgeTTS stream
+        edge = self._providers.get("edge_tts")
+        edge_circuit = self._circuits.get("edge_tts")
+        if edge and (not edge_circuit or edge_circuit.can_attempt()):
+            try:
                 async for chunk in edge.synthesize_stream(request):
+                    if edge_circuit:
+                        edge_circuit.record_success()
                     yield chunk
+            except Exception as exc:
+                if edge_circuit:
+                    edge_circuit.record_failure()
+                logger.error("EdgeTTS stream failed: %s", exc)
