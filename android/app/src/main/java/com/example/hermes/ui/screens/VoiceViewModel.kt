@@ -11,12 +11,12 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hermes.data.HermesApiClient
 import com.example.hermes.data.PreferencesManager
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,10 +27,7 @@ import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import okio.ByteString
-import okio.ByteString.Companion.toByteString
 import org.json.JSONObject
-import com.example.hermes.voice.LocalWakeWordDetector
-import com.example.hermes.voice.PcmAudioRecorder
 import java.io.File
 import java.io.FileOutputStream
 import java.util.LinkedList
@@ -53,13 +50,17 @@ class VoiceViewModel(
     application: Application
 ) : AndroidViewModel(application) {
 
+    companion object {
+        private const val TAG = "VoiceViewModel"
+    }
+
     private val apiClient: HermesApiClient = HermesApiClient.instance
     private val prefs: PreferencesManager = PreferencesManager.getInstance(application)
 
-    private val _voiceState = MutableStateFlow(VoiceState.CONNECTING)
+    private val _voiceState = MutableStateFlow(VoiceState.SPEAKING)
     val voiceState: StateFlow<VoiceState> = _voiceState.asStateFlow()
 
-    private val _statusText = MutableStateFlow("Hold tight, connecting…")
+    private val _statusText = MutableStateFlow("Hi Jishnu! How can I help you today?")
     val statusText: StateFlow<String> = _statusText.asStateFlow()
 
     private val _isMuted = MutableStateFlow(false)
@@ -78,6 +79,7 @@ class VoiceViewModel(
     private var currentPersona: String = "Rounded"
     private var currentLanguage: String = "English (United Kingdom)"
     private var currentPace: String = "Normal"
+    private var currentUserName: String = "Jishnu"
 
     // ---------- WebSocket (primary mode) ----------
     private var webSocket: WebSocket? = null
@@ -89,26 +91,34 @@ class VoiceViewModel(
     private var mediaPlayer: MediaPlayer? = null
     private var isPlayingAudio = false
 
-    // ---------- Native Android (fallback mode) ----------
+    // ---------- Native Android (fallback & instant greeting) ----------
     private var tts: TextToSpeech? = null
     private var ttsReady = false
+    private var hasSpokenInitialGreeting = false
     private var speechRecognizer: SpeechRecognizer? = null
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    // Duplex PCM streaming pipeline & on-device wake detection
-    private var pcmRecorder: PcmAudioRecorder? = null
-    private var localWakeDetector: LocalWakeWordDetector? = null
     private val _liveRms = MutableStateFlow(0f)
     val liveRms: StateFlow<Float> = _liveRms.asStateFlow()
 
+    private var lastAssistantPhrase: String? = null
+    private var hasReceivedAudioForTurn: Boolean = false
+
     // ---------- Init ----------
     init {
-        initPcmStreaming()
         viewModelScope.launch {
             try {
                 currentPersona = prefs.voicePersona.first()
                 currentLanguage = prefs.voiceLanguage.first()
                 currentPace = prefs.voicePace.first()
+                val rawName = prefs.userName.first()
+                val firstName = rawName.trim().split("\\s+".toRegex()).firstOrNull { it.isNotBlank() }?.replaceFirstChar { it.uppercase() } ?: "Jishnu"
+                currentUserName = firstName
+
+                val greeting = "Hi $firstName! How can I help you today?"
+                _statusText.value = greeting
+                _voiceState.value = VoiceState.SPEAKING
+
                 _selectedVoice.value = when (currentPersona) {
                     "Airy"   -> "en-US-AriaNeural"
                     "Mellow" -> "en-US-GuyNeural"
@@ -116,49 +126,17 @@ class VoiceViewModel(
                     "Brass"  -> "en-US-EricNeural"
                     else     -> "en-US-ChristopherNeural"
                 }
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                Log.w(TAG, "Error loading voice preferences", e)
+            }
+
             initTts()
             initSpeechRecognizer()
             connect()
         }
     }
 
-    private fun initPcmStreaming() {
-        localWakeDetector = LocalWakeWordDetector(
-            sampleRate = 16000,
-            onWakeWordDetected = {
-                viewModelScope.launch(Dispatchers.Main) {
-                    if (_voiceState.value != VoiceState.THINKING && _voiceState.value != VoiceState.SPEAKING) {
-                        _voiceState.value = VoiceState.LISTENING
-                        _statusText.value = "Hey Hermes detected! Listening…"
-                        if (isPlayingAudio) interruptAndBargeIn()
-                    }
-                }
-            },
-            onSpeechActivityChanged = { isSpeaking ->
-                if (isSpeaking && isPlayingAudio) {
-                    viewModelScope.launch(Dispatchers.Main) {
-                        interruptAndBargeIn()
-                    }
-                }
-            }
-        )
-
-        pcmRecorder = PcmAudioRecorder(
-            sampleRate = 16000,
-            chunkDurationMs = 50,
-            onChunkRecorded = { chunk, rms ->
-                _liveRms.value = rms
-                localWakeDetector?.processChunk(chunk, rms)
-
-                if (wsConnected && _voiceState.value == VoiceState.LISTENING && !_isMuted.value && !isPlayingAudio) {
-                    webSocket?.send(chunk.toByteString(0, chunk.size))
-                }
-            }
-        )
-    }
-
-    // ---------- TextToSpeech (native fallback) ----------
+    // ---------- TextToSpeech (native instant greeting & fallback) ----------
     private fun initTts() {
         tts = TextToSpeech(getApplication()) { status ->
             if (status == TextToSpeech.SUCCESS) {
@@ -171,36 +149,58 @@ class VoiceViewModel(
                 tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                     override fun onStart(utteranceId: String?) {
                         _voiceState.value = VoiceState.SPEAKING
+                        stopListening()
                     }
                     override fun onDone(utteranceId: String?) {
-                        if (!_isMuted.value) {
-                            _voiceState.value = VoiceState.LISTENING
-                            _statusText.value = "Listening…"
-                            mainHandler.post { startListening() }
+                        viewModelScope.launch(Dispatchers.Main) {
+                            if (!_isMuted.value) {
+                                _voiceState.value = VoiceState.LISTENING
+                                _statusText.value = "Listening…"
+                                startListening()
+                            }
                         }
                     }
                     @Deprecated("Deprecated")
                     override fun onError(utteranceId: String?) {
-                        if (!_isMuted.value) {
-                            _voiceState.value = VoiceState.LISTENING
-                            _statusText.value = "Listening…"
-                            mainHandler.post { startListening() }
+                        viewModelScope.launch(Dispatchers.Main) {
+                            if (!_isMuted.value) {
+                                _voiceState.value = VoiceState.LISTENING
+                                _statusText.value = "Listening…"
+                                startListening()
+                            }
                         }
                     }
                 })
                 ttsReady = true
+                triggerInitialGreeting()
+            } else {
+                Log.e(TAG, "TextToSpeech initialization failed with status $status")
+                // If TTS fails, transition to listening directly
+                _voiceState.value = VoiceState.LISTENING
+                _statusText.value = "Listening…"
+                startListening()
             }
         }
     }
 
-    private fun speakWithTts(text: String) {
-        if (!ttsReady || text.isBlank()) return
-        _voiceState.value = VoiceState.SPEAKING
-        _statusText.value = text
-        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "hermes_${UUID.randomUUID()}")
+    private fun triggerInitialGreeting() {
+        if (hasSpokenInitialGreeting || !ttsReady) return
+        hasSpokenInitialGreeting = true
+        val greeting = "Hi $currentUserName! How can I help you today?"
+        _statusText.value = greeting
+        speakWithTts(greeting)
     }
 
-    // ---------- SpeechRecognizer ----------
+    private fun speakWithTts(text: String) {
+        if (!ttsReady || text.isBlank()) return
+        stopListening()
+        _voiceState.value = VoiceState.SPEAKING
+        _statusText.value = text
+        val utteranceId = "hermes_${UUID.randomUUID()}"
+        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
+    }
+
+    // ---------- SpeechRecognizer (Real-time Streaming & Captions) ----------
     private fun initSpeechRecognizer() {
         mainHandler.post {
             try {
@@ -213,55 +213,49 @@ class VoiceViewModel(
                                 }
                             }
                             override fun onBeginningOfSpeech() {
-                                if (isPlayingAudio) interruptAndBargeIn()
-                            }
-                            override fun onRmsChanged(rmsdB: Float) {}
-                            override fun onBufferReceived(buffer: ByteArray?) {}
-                            override fun onEndOfSpeech() {}
-                            private var errorCount = 0
-
-                            override fun onError(error: Int) {
-                                // 7 = ERROR_NO_MATCH, 6 = ERROR_SPEECH_TIMEOUT
-                                // 4 = ERROR_SERVER, 5 = ERROR_CLIENT
-                                if (error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
-                                    errorCount = 0
-                                    if (!_isMuted.value && !isPlayingAudio && _voiceState.value == VoiceState.LISTENING) {
-                                        mainHandler.postDelayed({
-                                            if (!_isMuted.value && !isPlayingAudio && _voiceState.value == VoiceState.LISTENING) {
-                                                startListening()
-                                            }
-                                        }, 600)
-                                    }
-                                } else {
-                                    errorCount++
-                                    if (errorCount > 2) {
-                                        // Stop retrying and require manual tap
-                                        errorCount = 0
-                                        if (_voiceState.value == VoiceState.LISTENING) {
-                                            _statusText.value = "Tap to speak"
-                                        }
-                                    } else {
-                                        if (!_isMuted.value && !isPlayingAudio && _voiceState.value == VoiceState.LISTENING) {
-                                            mainHandler.postDelayed({
-                                                if (!_isMuted.value && !isPlayingAudio && _voiceState.value == VoiceState.LISTENING) {
-                                                    startListening()
-                                                }
-                                            }, 600)
-                                        }
-                                    }
+                                if (isPlayingAudio || _voiceState.value == VoiceState.SPEAKING) {
+                                    interruptAndBargeIn()
                                 }
                             }
+                            override fun onRmsChanged(rmsdB: Float) {
+                                if (_voiceState.value == VoiceState.LISTENING) {
+                                    _liveRms.value = (rmsdB.coerceIn(0f, 10f) / 10f)
+                                }
+                            }
+                            override fun onBufferReceived(buffer: ByteArray?) {}
+                            override fun onEndOfSpeech() {}
+
+                            override fun onError(error: Int) {
+                                Log.d(TAG, "SpeechRecognizer onError: $error")
+                                if (error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY) {
+                                    try { speechRecognizer?.cancel() } catch (_: Exception) {}
+                                }
+                                if (!_isMuted.value && !isPlayingAudio && _voiceState.value == VoiceState.LISTENING) {
+                                    val retryDelay = if (error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) 300L else 1000L
+                                    mainHandler.postDelayed({
+                                        if (!_isMuted.value && !isPlayingAudio && _voiceState.value == VoiceState.LISTENING) {
+                                            startListening()
+                                        }
+                                    }, retryDelay)
+                                }
+                            }
+
                             override fun onResults(results: Bundle?) {
-                                errorCount = 0
                                 val spoken = results
                                     ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                                     ?.firstOrNull()
                                 if (!spoken.isNullOrBlank() && !_isMuted.value) {
+                                    _statusText.value = spoken
                                     sendTextInput(spoken)
                                 } else if (!_isMuted.value && !isPlayingAudio && _voiceState.value == VoiceState.LISTENING) {
-                                    startListening()
+                                    mainHandler.postDelayed({
+                                        if (!_isMuted.value && !isPlayingAudio && _voiceState.value == VoiceState.LISTENING) {
+                                            startListening()
+                                        }
+                                    }, 300)
                                 }
                             }
+
                             override fun onPartialResults(partialResults: Bundle?) {
                                 val partial = partialResults
                                     ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
@@ -270,34 +264,40 @@ class VoiceViewModel(
                                     _statusText.value = partial
                                 }
                             }
+
                             override fun onEvent(eventType: Int, params: Bundle?) {}
                         })
                     }
                 }
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to create SpeechRecognizer", e)
+            }
         }
     }
 
     fun startListening() {
-        if (_isMuted.value || isPlayingAudio || _voiceState.value == VoiceState.THINKING || _voiceState.value == VoiceState.SPEAKING) return
+        if (_isMuted.value || isPlayingAudio || _voiceState.value == VoiceState.SPEAKING || _voiceState.value == VoiceState.THINKING) return
         _voiceState.value = VoiceState.LISTENING
         _statusText.value = "Listening…"
-        pcmRecorder?.start(viewModelScope)
+
         mainHandler.post {
             try {
+                speechRecognizer?.cancel()
                 val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                     putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
                     putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
+                    putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, getApplication<Application>().packageName)
                 }
                 speechRecognizer?.startListening(intent)
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                Log.e(TAG, "Error starting SpeechRecognizer", e)
+            }
         }
     }
 
     fun stopListening() {
-        pcmRecorder?.stop()
         mainHandler.post {
             try {
                 speechRecognizer?.stopListening()
@@ -321,25 +321,27 @@ class VoiceViewModel(
                 put("persona", currentPersona)
                 put("language", currentLanguage)
                 put("pace", currentPace)
+                put("user_name", currentUserName)
+                put("greet", false) // Local instant greeting already handled
             })
         }
         webSocket?.send(payload.toString())
     }
 
     fun connect() {
-        _voiceState.value = VoiceState.CONNECTING
-        _statusText.value = "Hold tight, connecting…"
-
         viewModelScope.launch {
             try {
                 webSocket = apiClient.connectVoiceWebSocket(
                     listener = object : WebSocketListener() {
                         override fun onOpen(webSocket: WebSocket, response: Response) {
                             wsConnected = true
-                            _voiceState.value = VoiceState.LISTENING
-                            _statusText.value = "Listening…"
+                            Log.i(TAG, "Voice WebSocket connected successfully")
                             sendSessionOpen()
-                            startListening()
+                            if (hasSpokenInitialGreeting && !isPlayingAudio && _voiceState.value != VoiceState.SPEAKING) {
+                                _voiceState.value = VoiceState.LISTENING
+                                _statusText.value = "Listening…"
+                                startListening()
+                            }
                         }
                         override fun onMessage(webSocket: WebSocket, text: String) {
                             handleTextMessage(text)
@@ -349,13 +351,16 @@ class VoiceViewModel(
                         }
                         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                             wsConnected = false
-                            // Fall back to native Android voice (STT + TTS + HTTP)
-                            _voiceState.value = VoiceState.LISTENING
-                            _statusText.value = "Listening…"
-                            mainHandler.post { startListening() }
+                            Log.w(TAG, "Voice WebSocket failed: ${t.message}. Operating in native voice fallback mode.")
+                            if (hasSpokenInitialGreeting && !isPlayingAudio && _voiceState.value != VoiceState.SPEAKING) {
+                                _voiceState.value = VoiceState.LISTENING
+                                _statusText.value = "Listening…"
+                                mainHandler.post { startListening() }
+                            }
                         }
                         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                             wsConnected = false
+                            Log.i(TAG, "Voice WebSocket closed: $reason")
                             _voiceState.value = VoiceState.DISCONNECTED
                             _statusText.value = "Disconnected"
                         }
@@ -366,10 +371,12 @@ class VoiceViewModel(
                 )
             } catch (e: Exception) {
                 wsConnected = false
-                // Graceful fallback — use native Android voice
-                _voiceState.value = VoiceState.LISTENING
-                _statusText.value = "Listening…"
-                mainHandler.post { startListening() }
+                Log.w(TAG, "Error connecting Voice WebSocket: ${e.message}")
+                if (hasSpokenInitialGreeting && !isPlayingAudio && _voiceState.value != VoiceState.SPEAKING) {
+                    _voiceState.value = VoiceState.LISTENING
+                    _statusText.value = "Listening…"
+                    mainHandler.post { startListening() }
+                }
             }
         }
     }
@@ -382,7 +389,7 @@ class VoiceViewModel(
                     val state = json.optString("state")
                     when (state) {
                         "listening" -> {
-                            if (!isPlayingAudio && audioQueue.isEmpty() && !_isMuted.value) {
+                            if (!isPlayingAudio && audioQueue.isEmpty() && !_isMuted.value && _voiceState.value != VoiceState.SPEAKING) {
                                 _voiceState.value = VoiceState.LISTENING
                                 if (_statusText.value.startsWith("Thinking") ||
                                     _statusText.value.startsWith("Hold tight")) {
@@ -401,10 +408,16 @@ class VoiceViewModel(
                             stopListening()
                         }
                         "idle" -> {
-                            if (!isPlayingAudio && audioQueue.isEmpty() && !_isMuted.value) {
-                                _voiceState.value = VoiceState.LISTENING
-                                _statusText.value = "Listening…"
-                                startListening()
+                            if (!isPlayingAudio && audioQueue.isEmpty() && !_isMuted.value && _voiceState.value != VoiceState.SPEAKING) {
+                                val phrase = lastAssistantPhrase
+                                if (!hasReceivedAudioForTurn && !phrase.isNullOrBlank()) {
+                                    lastAssistantPhrase = null
+                                    speakWithTts(phrase)
+                                } else {
+                                    _voiceState.value = VoiceState.LISTENING
+                                    _statusText.value = "Listening…"
+                                    startListening()
+                                }
                             }
                         }
                     }
@@ -412,13 +425,15 @@ class VoiceViewModel(
                 "assistant_text" -> {
                     val phrase = json.optString("text")
                     if (phrase.isNotBlank()) {
-                        _voiceState.value = VoiceState.SPEAKING
                         _statusText.value = phrase
-                        // If WS audio doesn't arrive, TTS will speak it
+                        lastAssistantPhrase = phrase
                         if (!wsConnected) speakWithTts(phrase)
                     }
                 }
-                "audio_start" -> { currentAudioBuffer.reset() }
+                "audio_start" -> {
+                    currentAudioBuffer.reset()
+                    hasReceivedAudioForTurn = true
+                }
                 "audio_end" -> {
                     val audioData = currentAudioBuffer.toByteArray()
                     if (audioData.isNotEmpty()) enqueueAudio(audioData)
@@ -501,7 +516,7 @@ class VoiceViewModel(
         }
     }
 
-    // ---------- sendTextInput — routes to WS or native HTTP ----------
+    // ---------- sendTextInput — routes to WS or native HTTP fallback ----------
     fun sendTextInput(text: String) {
         if (text.isBlank()) return
         stopListening()
@@ -527,9 +542,10 @@ class VoiceViewModel(
         _voiceState.value = VoiceState.THINKING
         _statusText.value = "Thinking…"
         stopListening()
+        hasReceivedAudioForTurn = false
+        lastAssistantPhrase = null
 
         if (wsConnected && webSocket != null) {
-            // Primary: send to WS
             val payload = JSONObject().apply {
                 put("type", "text_input")
                 put("text", query)
@@ -538,7 +554,6 @@ class VoiceViewModel(
             }
             webSocket?.send(payload.toString())
         } else {
-            // Fallback: send to HTTP chat API and read response via TTS
             viewModelScope.launch {
                 try {
                     val response = apiClient.sendChatMessageFallback(query, "hermes-agent")
@@ -574,6 +589,8 @@ class VoiceViewModel(
             audioQueue.clear()
             currentAudioBuffer.reset()
             isPlayingAudio = false
+            hasReceivedAudioForTurn = false
+            lastAssistantPhrase = null
             tts?.stop()
 
             if (wsConnected && wasPlaying) {
@@ -582,6 +599,12 @@ class VoiceViewModel(
                     put("scope", "current")
                 }
                 webSocket?.send(cancelPayload.toString())
+            }
+
+            if (!_isMuted.value) {
+                _voiceState.value = VoiceState.LISTENING
+                _statusText.value = "Listening…"
+                startListening()
             }
         }
     }
@@ -593,7 +616,7 @@ class VoiceViewModel(
             _voiceState.value = VoiceState.MUTED
             _statusText.value = "Muted"
             stopListening()
-            tts?.stop()
+            interruptAndBargeIn()
         } else {
             _voiceState.value = VoiceState.LISTENING
             _statusText.value = "Listening…"
@@ -608,9 +631,6 @@ class VoiceViewModel(
         try { mediaPlayer?.stop(); mediaPlayer?.release() } catch (_: Exception) {}
         mediaPlayer = null
         tts?.shutdown()
-        try { pcmRecorder?.stop() } catch (_: Exception) {}
-        pcmRecorder = null
-        localWakeDetector = null
         mainHandler.post {
             try { speechRecognizer?.destroy() } catch (_: Exception) {}
             speechRecognizer = null

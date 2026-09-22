@@ -133,20 +133,29 @@ fun VoiceScreen(
                 .offset(y = (-30).dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            val dotColor = when (voiceState) {
+                VoiceState.SPEAKING -> com.example.hermes.theme.BrandCoral
+                VoiceState.LISTENING -> AccentGreen
+                VoiceState.THINKING -> AccentWarning
+                VoiceState.MUTED -> DestructiveRed
+                else -> com.example.hermes.theme.BrandCoral
+            }
+
             Box(
                 modifier = Modifier
                     .scale(if (voiceState == VoiceState.SPEAKING) pulseScale else 1.0f)
                     .clickable {
                         if (voiceState == VoiceState.SPEAKING) {
                             voiceViewModel.interruptAndBargeIn()
+                        } else if (voiceState == VoiceState.LISTENING) {
+                            voiceViewModel.startListening()
                         }
                     },
                 contentAlignment = Alignment.Center
             ) {
-                // Pulsing coral dot — replaces starburst logo
                 HermesThinkingDot(
                     size = if (voiceState == VoiceState.CONNECTING || voiceState == VoiceState.THINKING) 56.dp else 52.dp,
-                    color = com.example.hermes.theme.BrandCoral
+                    color = dotColor
                 )
             }
 

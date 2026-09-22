@@ -159,15 +159,45 @@ class VoiceGateway:
                         session.speed = open_msg.speed
                         session.sample_rate = open_msg.sample_rate
                         session.client_metadata = open_msg.client_metadata
-                        await self._send_json(
-                            websocket,
-                            AssistantStateMessage(
-                                session_id=sid,
-                                state="listening",
-                                current_task_id=None,
-                                metrics=VoiceTimingMetrics(),
-                            ).model_dump(),
-                        )
+                        user_name = (open_msg.client_metadata or {}).get("user_name") or "Jishnu"
+                        greet_requested = (open_msg.client_metadata or {}).get("greet", False)
+
+                        if greet_requested:
+                            greeting_phrase = f"Hi {user_name}! How can I help you today?"
+                            turn_id = f"turn_{uuid.uuid4().hex[:8]}"
+                            metrics = VoiceTimingMetrics()
+                            await self._send_json(
+                                websocket,
+                                AssistantStateMessage(
+                                    session_id=sid,
+                                    state="speaking",
+                                    current_task_id=None,
+                                    metrics=metrics,
+                                ).model_dump(),
+                            )
+                            if active_turn_task and not active_turn_task.done():
+                                active_turn_task.cancel()
+                            active_turn_task = asyncio.create_task(
+                                self._synthesize_and_send_phrase(
+                                    websocket,
+                                    session,
+                                    greeting_phrase,
+                                    turn_id,
+                                    0,
+                                    cancel_event,
+                                    metrics,
+                                )
+                            )
+                        else:
+                            await self._send_json(
+                                websocket,
+                                AssistantStateMessage(
+                                    session_id=sid,
+                                    state="listening",
+                                    current_task_id=None,
+                                    metrics=VoiceTimingMetrics(),
+                                ).model_dump(),
+                            )
 
                     elif mtype == "text_input":
                         inp_msg = TextInputMessage.model_validate(data)
