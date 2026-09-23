@@ -1330,5 +1330,29 @@ class HermesApiClient(
             Result.failure(e)
         }
     }
+
+    /**
+     * Securely store service credentials into the encrypted vault on backend.
+     */
+    suspend fun saveIntegrationCredentials(service: String, credentials: Map<String, String>): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val jsonObject = org.json.JSONObject().apply {
+                put("service", service)
+                val cObj = org.json.JSONObject()
+                credentials.forEach { (k, v) -> cObj.put(k, v) }
+                put("credentials", cObj)
+            }
+            val req = Request.Builder()
+                .url("$baseUrl/api/vault/credentials")
+                .post(jsonObject.toString().toRequestBody(JSON_MEDIA_TYPE))
+                .header("Authorization", "Bearer $apiKey")
+                .build()
+            okHttpClient.newCall(req).execute().use { resp ->
+                resp.isSuccessful
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
 }
 

@@ -44,7 +44,19 @@ Please let me know if you would like me to inspect any of these files or run any
 3. Sovereign Execution Authority:
    - The upstream inference service only supplies model tokens; Hermes Agent owns tool execution and server-side work. "Hermes Agent is the King. OmniRoute powers the king."
    - Execute tools autonomously when needed (bash_exec, list_directory, search, python_exec).
-   - Render all code, output, and diagrams directly inside the chat using standard markdown code fences (```bash, ```python, ```markdown, ```html). Never output <antArtifact> tags."""
+   - Render all code, output, and diagrams directly inside the chat using standard markdown code fences (```bash, ```python, ```markdown, ```html). Never output <antArtifact> tags.
+
+4. Service Integrations & Encrypted Vault (Replit-style):
+   - You have access to a secure AES-256 encrypted credential vault.
+   - When the user asks you to connect to a service (such as GitHub, GitLab, Notion, Vercel, Supabase, Slack, Discord, or any webapp/APK), OR when an operation requires an authentication token (e.g. GITHUB_TOKEN for private repos, committing, pushing, or issues) that is not configured:
+   - NEVER ask for raw tokens or passwords in plain chat text!
+   - ALWAYS output an interactive in-chat integration card using this exact XML markup:
+     <hermesIntegration service="github" title="Connect GitHub Account" description="Enter your GitHub Personal Access Token to grant Hermes Agent secure access to your repositories and code.">
+       <field name="token" label="Personal Access Token" type="password" placeholder="ghp_... or github_pat_..." hint="Required scopes: repo, read:user, workflow" required="true" />
+     </hermesIntegration>
+   - The client application renders this as a secure, interactive card that encrypts and stores the credentials into the user's AES-256 vault.
+   - For other services, adapt service name and fields (e.g. service="notion", service="vercel", etc.).
+   - Once the user saves credentials, you can immediately access their service with full capabilities."""
 
 try:
     MAX_TOOL_ROUNDS = max(1, min(int(os.getenv("HERMES_MAX_TOOL_ROUNDS", "6")), 12))
@@ -385,6 +397,43 @@ class HermesAgent:
                                 has_images = True
                                 image_parts.append(part)
                     last_user_msg = " ".join(text_parts).strip()
+
+        # Resolve Vault Credentials into runtime environment
+        try:
+            from harness.security.credential_vault import get_credential_vault
+            vault = get_credential_vault()
+            gh_token = vault.resolve_secret("github_main")
+            if gh_token:
+                os.environ["GITHUB_TOKEN"] = gh_token
+                os.environ["GH_TOKEN"] = gh_token
+            hf_token = vault.resolve_secret("hf_primary")
+            if hf_token:
+                os.environ["HF_TOKEN"] = hf_token
+            notion_token = vault.resolve_secret("notion_primary")
+            if notion_token:
+                os.environ["NOTION_API_KEY"] = notion_token
+        except Exception as e:
+            logger.debug(f"Vault resolution notice: {e}")
+
+        # Intent Detection: Direct Service Integration Request (Replit-style in-chat card)
+        p_lower = last_user_msg.lower().strip()
+        is_connect_gh = any(ph in p_lower for ph in ["connect to github", "connect github", "integrate github", "link my github", "setup github", "add github"])
+        if is_connect_gh and not os.environ.get("GITHUB_TOKEN"):
+            yield {
+                "type": "thinking",
+                "content": "Analysing GitHub connection request and preparing secure vault card...\n"
+            }
+            card_response = (
+                "I would love to connect to your GitHub account! Please enter your GitHub Personal Access Token in the secure card below:\n\n"
+                "<hermesIntegration service=\"github\" title=\"Connect GitHub Account\" description=\"Enter your GitHub Personal Access Token to grant Hermes Agent secure access to your repositories, code, and pull requests.\">\n"
+                "  <field name=\"token\" label=\"Personal Access Token\" type=\"password\" placeholder=\"ghp_... or github_pat_...\" hint=\"Recommended scopes: repo, read:user, workflow\" required=\"true\" />\n"
+                "</hermesIntegration>\n\n"
+                "Your token is encrypted with AES-256 and stored securely in the Hermes Vault. Once connected, I can inspect your code, clone repositories, commit changes, and manage issues for you!"
+            )
+            for chunk in [card_response[i:i+32] for i in range(0, len(card_response), 32)]:
+                yield {"type": "content", "content": chunk}
+                await asyncio.sleep(0.01)
+            return
 
         # 2. RAG Context Injection from Semantic Vector Database
         rag_context = ""

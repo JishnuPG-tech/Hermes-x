@@ -12,8 +12,28 @@ from pydantic import BaseModel
 
 router = APIRouter()
 
-STORAGE_DIR = Path("/data/sessions") if Path("/data").exists() else Path("/tmp/sessions")
-STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+# Multi-tiered resilient storage directories:
+# 1. HuggingFace persistent mount (/data)
+# 2. Local workspace persistence (./data)
+# 3. User home persistence (~/.hermes)
+# 4. Ephemeral fallback (/tmp/sessions)
+CANDIDATE_DIRS = [
+    Path("/data/sessions"),
+    Path("/data/hermes"),
+    Path.cwd() / "data",
+    Path.home() / ".hermes",
+    Path("/tmp/sessions")
+]
+
+STORAGE_DIR = Path("/data/sessions") if Path("/data").exists() else (Path.cwd() / "data")
+for d in CANDIDATE_DIRS:
+    try:
+        d.mkdir(parents=True, exist_ok=True)
+        STORAGE_DIR = d
+        break
+    except Exception:
+        continue
+
 SESSIONS_FILE = STORAGE_DIR / "sessions_db.json"
 
 _SESSIONS: Dict[str, Dict[str, Any]] = {}
@@ -28,28 +48,37 @@ def _now_iso() -> str:
 
 def _load_data():
     global _SESSIONS, _MESSAGES, _CONV_TO_SESSION
-    if SESSIONS_FILE.exists():
-        try:
-            raw = json.loads(SESSIONS_FILE.read_text(encoding="utf-8"))
-            _SESSIONS = raw.get("sessions", {})
-            _MESSAGES = raw.get("messages", {})
-            for sess_id, sess in _SESSIONS.items():
-                cuuid = sess.get("conversation_uuid")
-                if cuuid:
-                    _CONV_TO_SESSION[cuuid] = sess_id
-        except Exception:
-            _SESSIONS = {}
-            _MESSAGES = {}
+    # Try reading from primary and all fallback candidate paths
+    for cand in [SESSIONS_FILE] + [d / "sessions_db.json" for d in CANDIDATE_DIRS]:
+        if cand.exists():
+            try:
+                raw = json.loads(cand.read_text(encoding="utf-8"))
+                loaded_sess = raw.get("sessions", {})
+                loaded_msgs = raw.get("messages", {})
+                if loaded_sess:
+                    _SESSIONS.update(loaded_sess)
+                    _MESSAGES.update(loaded_msgs)
+                    for sess_id, sess in _SESSIONS.items():
+                        cuuid = sess.get("conversation_uuid")
+                        if cuuid:
+                            _CONV_TO_SESSION[cuuid] = sess_id
+                    break
+            except Exception:
+                continue
 
 def _save_data():
-    try:
-        payload = {
-            "sessions": _SESSIONS,
-            "messages": _MESSAGES
-        }
-        SESSIONS_FILE.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    except Exception:
-        pass
+    payload = {
+        "sessions": _SESSIONS,
+        "messages": _MESSAGES
+    }
+    encoded = json.dumps(payload, ensure_ascii=False, indent=2)
+    # Write to all available writable persistence candidate directories
+    for d in CANDIDATE_DIRS:
+        try:
+            d.mkdir(parents=True, exist_ok=True)
+            (d / "sessions_db.json").write_text(encoded, encoding="utf-8")
+        except Exception:
+            pass
 
 _load_data()
 
@@ -80,9 +109,7 @@ async def create_session(request: Request):
         body = await request.json()
     except Exception:
         body = {}
-
-    user_id = request.headers.get("X-User-ID", "").strip() or body.get("user_id", "")
-
+    
     session_id = body.get("id") or f"sess_{uuid.uuid4().hex[:24]}"
     conv_uuid = body.get("conversation_uuid") or str(uuid.uuid4())
     title = body.get("title")
@@ -93,8 +120,7 @@ async def create_session(request: Request):
         "conversation_uuid": conv_uuid,
         "title": title,
         "created_at": now,
-        "updated_at": now,
-        "user_id": user_id
+        "updated_at": now
     }
     
     _SESSIONS[session_id] = session_obj
@@ -110,10 +136,8 @@ async def create_session(request: Request):
 @router.get("/sessions")
 @router.get("/api/v1/sessions")
 @router.get("/hermes/v1/sessions")
-async def list_sessions(limit: int = Query(50, le=100), user_id: str = Query("")):
+async def list_sessions(limit: int = Query(50, le=100)):
     items = list(_SESSIONS.values())
-    if user_id:
-        items = [s for s in items if s.get("user_id", "") == user_id]
     sliced = items[-limit:]
     return {
         "data": sliced,
@@ -315,14 +339,12 @@ async def append_session_message(session_id: str, request: Request):
         else:
             # Auto-provision
             now = _now_iso()
-            user_id = request.headers.get("X-User-ID", "").strip()
             _SESSIONS[session_id] = {
                 "id": session_id,
                 "conversation_uuid": session_id,
                 "title": "Chat",
                 "created_at": now,
-                "updated_at": now,
-                "user_id": user_id
+                "updated_at": now
             }
             _MESSAGES[session_id] = []
             

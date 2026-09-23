@@ -206,7 +206,7 @@ class PreferencesManager(private val context: Context) {
         }
         .map { prefs ->
             val email = prefs[KEY_USER_EMAIL]?.trim()
-            if (!email.isNullOrBlank()) email else "guest"
+            if (!email.isNullOrBlank()) email else ADMIN_EMAIL
         }
 
     suspend fun clearAuth() {
@@ -346,6 +346,18 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun setCapToolAccess(access: String) {
         context.hermesDataStore.edit { it[KEY_CAP_TOOL_ACCESS] = access }
+    }
+
+    suspend fun saveCredential(service: String, secret: String) {
+        val key = stringPreferencesKey("cred_${service.lowercase().trim()}")
+        context.hermesDataStore.edit { it[key] = secret }
+    }
+
+    fun getCredential(service: String): Flow<String?> {
+        val key = stringPreferencesKey("cred_${service.lowercase().trim()}")
+        return context.hermesDataStore.data
+            .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+            .map { it[key] }
     }
 }
 

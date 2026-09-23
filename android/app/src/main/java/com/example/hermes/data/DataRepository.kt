@@ -87,6 +87,7 @@ interface DataRepository {
     suspend fun testChannel(channel: String, message: String): Result<TestChannelResponseDto>
     suspend fun getOmniRouteTelemetry(): Result<OmniRouteTelemetryDto>
     suspend fun searchMessagesFts(query: String): List<FtsSearchResultDto>
+    suspend fun saveIntegrationCredentials(service: String, credentials: Map<String, String>): Boolean
 
     // Auth and Server Preferences
     val isLoggedIn: kotlinx.coroutines.flow.Flow<Boolean>
@@ -244,6 +245,11 @@ class HermesDataRepository(
         repositoryScope.launch(Dispatchers.IO) {
             prefs.currentUserId.collect { userId ->
                 activeUserId = userId
+                try {
+                    db.sessionDao().migrateGuestSessions(userId)
+                    db.messageDao().migrateGuestMessages(userId)
+                } catch (_: Exception) {}
+
                 val cachedSessions = db.sessionDao().getSessionsList(userId)
                 if (cachedSessions.isNotEmpty()) {
                     val localDtos = cachedSessions.map {
@@ -608,7 +614,10 @@ class HermesDataRepository(
         repositoryScope.launch {
             newSmoother.renderedText.collect { smoothContent ->
                 if (_isStreaming.value) {
-                    val artifactMeta = extractArtifactFromText(smoothContent)
+                    val artifactMeta = if (smoothContent.contains("```") || smoothContent.contains("<antArtifact")) {
+                        extractArtifactFromText(smoothContent)
+                    } else null
+
                     updateAssistantMessage(
                         id = assistantMsgId,
                         content = smoothContent,
@@ -976,9 +985,8 @@ class HermesDataRepository(
         repositoryScope.launch(Dispatchers.IO) {
             try {
                 val serverSessions = apiClient.getSessions()
-                if (serverSessions.isNotEmpty()) {
-                    _sessions.value = serverSessions
-                    roomDb?.let { db ->
+                roomDb?.let { db ->
+                    if (serverSessions.isNotEmpty()) {
                         db.sessionDao().upsertSessions(serverSessions.map {
                             SessionEntity(
                                 id = it.session_id,
@@ -988,6 +996,18 @@ class HermesDataRepository(
                                 userId = activeUserId
                             )
                         })
+                    }
+                    val allLocal = db.sessionDao().getSessionsList(activeUserId)
+                    if (allLocal.isNotEmpty()) {
+                        val localDtos = allLocal.map {
+                            SessionDto(
+                                session_id = it.id,
+                                title = it.title,
+                                model = it.model,
+                                updated_at = it.updatedAt / 1000.0
+                            )
+                        }
+                        _sessions.value = localDtos.sortedByDescending { it.updated_at }
                     }
                 }
             } catch (_: Exception) {}
@@ -1545,6 +1565,14 @@ class HermesDataRepository(
         val prefix = if (start > 0) "…" else ""
         val suffix = if (end < content.length) "…" else ""
         return prefix + content.substring(start, end).replace("\n", " ") + suffix
+    }
+
+    override suspend fun saveIntegrationCredentials(service: String, credentials: Map<String, String>): Boolean = withContext(Dispatchers.IO) {
+        val token = credentials["token"] ?: credentials.values.firstOrNull() ?: ""
+        if (token.isNotBlank()) {
+            prefsManager?.saveCredential(service, token)
+        }
+        apiClient.saveIntegrationCredentials(service, credentials)
     }
 
     override fun clearMessages() {

@@ -301,10 +301,15 @@ def _resolve_account(authorization: Optional[str] = None) -> Dict[str, Any]:
         from gateway.auth_api import decode_session_token
         payload = decode_session_token(authorization)
         if payload:
+            email = (payload.get("email") or "").lower().strip()
+            if email and email != "jishnupg2005@gmail.com":
+                raise HTTPException(
+                    status_code=403,
+                    detail="Access Denied: Hermes Agent is strictly private and accessible only by authorized owner jishnupg2005@gmail.com"
+                )
             uid = payload.get("sub", "usr_0123456789abcdef")
-            email = payload.get("email", "jishnupg2005@gmail.com")
             name = payload.get("name", "Jishnu (Admin Max)")
-            is_super_admin = email in {"jishnupg2005@gmail.com", "jishnu.pg@gmail.com"}
+            is_super_admin = True
             return {
                 "uuid": uid,
                 "email_address": email,

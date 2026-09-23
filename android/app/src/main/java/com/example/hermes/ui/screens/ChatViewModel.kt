@@ -86,6 +86,21 @@ class ChatViewModel(
         )
     }
 
+    fun submitIntegrationCredentials(
+        service: String,
+        credentials: Map<String, String>,
+        model: String = "hermes-agent"
+    ) {
+        viewModelScope.launch {
+            repository.saveIntegrationCredentials(service, credentials)
+            val serviceName = service.replaceFirstChar { it.uppercase() }
+            sendMessage(
+                content = "I have securely connected my $serviceName account and saved the credentials into the vault. Please verify the connection and proceed with my request.",
+                model = model
+            )
+        }
+    }
+
     fun stopGeneration() {
         repository.stopGeneration()
     }

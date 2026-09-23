@@ -801,15 +801,42 @@ fun ChatScreen(
                                     )
                                 }
 
+                                // Check for in-chat Integration Card (Replit-style credential vault)
+                                val integrationSpec = remember(message.content) {
+                                    if (message.content.contains("<hermesIntegration", ignoreCase = true)) {
+                                        IntegrationCardParser.parse(message.content)
+                                    } else null
+                                }
+
+                                val displayContent = remember(message.content, integrationSpec) {
+                                    if (integrationSpec != null) {
+                                        message.content.replace(Regex("""<hermesIntegration[\s\S]*?</hermesIntegration>""", RegexOption.IGNORE_CASE), "").trim()
+                                    } else {
+                                        message.content
+                                    }
+                                }
+
                                 // Assistant Formatted Content using ClaudeMarkdownView (Zero raw **, ##, || leak!)
                                 Column(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    ClaudeMarkdownView(
-                                        content = message.content,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
+                                    if (displayContent.isNotBlank()) {
+                                        ClaudeMarkdownView(
+                                            content = displayContent,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+
+                                    if (integrationSpec != null) {
+                                        HermesIntegrationCard(
+                                            spec = integrationSpec,
+                                            onConnect = { service, creds ->
+                                                chatViewModel.submitIntegrationCredentials(service, creds, selectedModel)
+                                            }
+                                        )
+                                    }
+
                                     if (isMessageStreaming) {
                                         StreamingBlinkingCursor()
                                     }

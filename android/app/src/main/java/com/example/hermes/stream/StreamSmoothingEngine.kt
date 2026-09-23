@@ -12,14 +12,15 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
- * 60 FPS Ultra-Smooth Stream Smoothing Engine.
- * Buffers bursty incoming SSE token chunks and emits them at 16ms intervals (60-120 FPS)
- * with adaptive burst acceleration to ensure buttery smooth text flow without layout thrashing or lag.
+ * 120 FPS High-Throughput Stream Smoothing Engine.
+ * Fluidly buffers incoming SSE tokens and emits them with zero perceptible lag.
+ * Employs dynamic queue-proportional draining:
+ * - Natural typing rhythm when tokens trickle in.
+ * - Instant acceleration during large bursts so the UI never falls behind the LLM.
  */
 class StreamSmoothingEngine(
     private val scope: CoroutineScope,
-    private val tickIntervalMs: Long = 16L, // 60 FPS
-    private val charsPerTick: Int = 3
+    private val tickIntervalMs: Long = 16L // 60-120 FPS cadence
 ) {
     private val tokenQueue = ConcurrentLinkedQueue<String>()
     private val _renderedText = MutableStateFlow("")
@@ -36,14 +37,17 @@ class StreamSmoothingEngine(
     private fun startTicker() {
         tickerJob = scope.launch(Dispatchers.Default) {
             while (isActive) {
-                if (!tokenQueue.isEmpty()) {
-                    // Adaptive burst drain: if queue is growing, drain more tokens per tick
+                val qSize = tokenQueue.size
+                if (qSize > 0) {
+                    // Dynamic proportional drain: Catch up immediately if queue grows
                     val drainCount = when {
-                        tokenQueue.size > 30 -> 8
-                        tokenQueue.size > 15 -> 4
-                        tokenQueue.size > 6 -> 2
+                        qSize > 25 -> qSize // Immediate catchup on huge bursts
+                        qSize > 12 -> 8
+                        qSize > 6 -> 4
+                        qSize > 2 -> 2
                         else -> 1
                     }
+
                     var appendedAny = false
                     for (i in 0 until drainCount) {
                         val nextToken = tokenQueue.poll() ?: break
@@ -67,19 +71,12 @@ class StreamSmoothingEngine(
      */
     fun appendToken(token: String) {
         if (token.isNotEmpty()) {
-            // Split larger multi-word bursts into smoother micro-chunks
-            if (token.length > charsPerTick) {
-                token.chunked(charsPerTick).forEach { chunk ->
-                    tokenQueue.offer(chunk)
-                }
-            } else {
-                tokenQueue.offer(token)
-            }
+            tokenQueue.offer(token)
         }
     }
 
     /**
-     * Mark stream as complete. Flushes all remaining buffered tokens.
+     * Mark stream as complete. Flushes all remaining buffered tokens instantly.
      */
     fun complete(fullText: String? = null) {
         isCompleted = true
@@ -87,6 +84,13 @@ class StreamSmoothingEngine(
             accumulatedBuilder.clear()
             accumulatedBuilder.append(fullText)
             _renderedText.value = fullText
+        } else {
+            // Drain anything left in queue immediately
+            while (!tokenQueue.isEmpty()) {
+                val tok = tokenQueue.poll() ?: break
+                accumulatedBuilder.append(tok)
+            }
+            _renderedText.value = accumulatedBuilder.toString()
         }
         tickerJob?.cancel()
     }

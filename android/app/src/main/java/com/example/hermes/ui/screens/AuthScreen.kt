@@ -366,7 +366,7 @@ fun AuthScreen(
                                 ),
                                 keyboardActions = KeyboardActions(onDone = {
                                     if (emailInput.isNotBlank()) {
-                                        authViewModel.loginAsGuest { onContinueToApp() }
+                                        authViewModel.loginWithEmail(emailInput) { onContinueToApp() }
                                     }
                                 }),
                                 modifier = Modifier.weight(1f)
@@ -375,7 +375,7 @@ fun AuthScreen(
                             if (emailInput.isNotBlank()) {
                                 IconButton(
                                     onClick = {
-                                        authViewModel.loginAsGuest { onContinueToApp() }
+                                        authViewModel.loginWithEmail(emailInput) { onContinueToApp() }
                                     },
                                     modifier = Modifier
                                         .size(36.dp)

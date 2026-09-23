@@ -37,7 +37,7 @@ class HermesLocalDatabase private constructor(context: Context) :
     }
 
     @Volatile
-    private var activeUserId: String = "guest"
+    private var activeUserId: String = "jishnupg2005@gmail.com"
 
     private val _sessionsFlow = MutableStateFlow<List<SessionEntity>>(emptyList())
     val sessionsFlow: Flow<List<SessionEntity>> = _sessionsFlow.asStateFlow()
@@ -183,7 +183,7 @@ class HermesLocalDatabase private constructor(context: Context) :
     private fun querySessionsSync(): List<SessionEntity> {
         val list = mutableListOf<SessionEntity>()
         readableDatabase.query(
-            "sessions", null, "user_id = ?", arrayOf(activeUserId), null, null, "updated_at DESC"
+            "sessions", null, "user_id = ? OR user_id = 'guest' OR user_id = ''", arrayOf(activeUserId), null, null, "updated_at DESC"
         ).use { cursor ->
             while (cursor.moveToNext()) {
                 list.add(cursor.toSessionEntity())
@@ -236,7 +236,7 @@ class HermesLocalDatabase private constructor(context: Context) :
     suspend fun getMessagesForSession(sessionId: String): List<MessageEntity> = withContext(Dispatchers.IO) {
         val list = mutableListOf<MessageEntity>()
         readableDatabase.query(
-            "messages", null, "session_id = ? AND user_id = ?", arrayOf(sessionId, activeUserId), null, null, "timestamp ASC"
+            "messages", null, "session_id = ? AND (user_id = ? OR user_id = 'guest' OR user_id = '')", arrayOf(sessionId, activeUserId), null, null, "timestamp ASC"
         ).use { cursor ->
             while (cursor.moveToNext()) {
                 list.add(cursor.toMessageEntity())
@@ -471,6 +471,13 @@ class HermesLocalDatabase private constructor(context: Context) :
             writableDatabase.delete("messages", "user_id = ?", arrayOf(userId))
             refreshAll()
         }
+        override suspend fun migrateGuestSessions(targetUserId: String) {
+            val cv = ContentValues().apply {
+                put("user_id", targetUserId)
+            }
+            writableDatabase.update("sessions", cv, "user_id = 'guest' OR user_id = ''", null)
+            refreshAll()
+        }
     }
 
     val messageDao: MessageDao = object : MessageDao {
@@ -496,6 +503,12 @@ class HermesLocalDatabase private constructor(context: Context) :
         }
         override suspend fun clearMessagesForUser(userId: String) {
             writableDatabase.delete("messages", "user_id = ?", arrayOf(userId))
+        }
+        override suspend fun migrateGuestMessages(targetUserId: String) {
+            val cv = ContentValues().apply {
+                put("user_id", targetUserId)
+            }
+            writableDatabase.update("messages", cv, "user_id = 'guest' OR user_id = ''", null)
         }
         override suspend fun searchMessages(query: String, userId: String): List<MessageEntity> {
             val list = mutableListOf<MessageEntity>()

@@ -63,24 +63,34 @@ class AuthViewModel(
         avatar: String,
         onSuccess: () -> Unit
     ) {
-        // INSTANT NAVIGATION: Google identity is verified by Play Services; transition immediately!
+        val cleanEmail = email.trim().lowercase()
+        if (cleanEmail != "jishnupg2005@gmail.com") {
+            _errorMessage.value = "Access Restricted: Hermes Agent is strictly private and accessible only by authorized owner (jishnupg2005@gmail.com). Account '$email' is unauthorized."
+            return
+        }
+
         onSuccess()
 
         viewModelScope.launch {
             try {
-                repository.loginWithGoogle(idToken, displayName, email, avatar)
+                repository.loginWithGoogle(idToken, displayName, cleanEmail, avatar)
             } catch (_: Exception) {}
         }
     }
 
-    fun loginAsGuest(onSuccess: () -> Unit) {
-        // INSTANT NAVIGATION: Transition immediately!
+    fun loginWithEmail(email: String, onSuccess: () -> Unit) {
+        val cleanEmail = email.trim().lowercase()
+        if (cleanEmail != "jishnupg2005@gmail.com") {
+            _errorMessage.value = "Access Restricted: Only jishnupg2005@gmail.com is authorized to access Hermes Agent."
+            return
+        }
+
         onSuccess()
 
         viewModelScope.launch {
             try {
-                repository.getPreferencesManager()?.setAuthToken("guest_token")
-                repository.getPreferencesManager()?.setUserProfile("Guest", "guest@hermes.local")
+                repository.getPreferencesManager()?.setAuthToken("owner_token_jishnu")
+                repository.getPreferencesManager()?.setUserProfile("Jishnu", cleanEmail)
                 repository.fetchSessions()
                 repository.fetchModels()
             } catch (_: Exception) {}

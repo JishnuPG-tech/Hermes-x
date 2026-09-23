@@ -160,15 +160,23 @@ async def google_login(payload: GoogleAuthRequest, response: Response):
         name = id_info.get("name", email.split("@")[0] if email else "Hermes Admin")
         now_iso = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        is_super_admin = email in ADMIN_EMAILS or email == "jishnupg2005@gmail.com"
+        # Strict Single-User Whitelist: ONLY jishnupg2005@gmail.com can access Hermes
+        if email != "jishnupg2005@gmail.com":
+            logger.warning("Blocked unauthorized login attempt for: %s", email)
+            raise HTTPException(
+                status_code=403,
+                detail="Access Denied: Hermes Agent is strictly private and accessible only by authorized owner jishnupg2005@gmail.com"
+            )
+
+        is_super_admin = True
         
         user_obj = {
             "id": f"usr_{user_id[:16]}",
             "google_sub": user_id,
             "email": email,
-            "name": f"{name} (Admin Max)" if is_super_admin else name,
+            "name": f"{name} (Admin Max)",
             "picture": id_info.get("picture", ""),
-            "is_admin": is_super_admin,
+            "is_admin": True,
             "tier": "claude_max"
         }
 
@@ -234,7 +242,6 @@ async def google_login(payload: GoogleAuthRequest, response: Response):
         return {
             "success": True,
             "account": account_data,
-            "google_sub": user_id,
             "secret": session_key,
             "sessionKey": session_key,
             "sso_url": None,
@@ -257,6 +264,13 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
     payload = decode_session_token(authorization)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid session token")
+
+    email = (payload.get("email") or "").lower().strip()
+    if email != "jishnupg2005@gmail.com":
+        raise HTTPException(
+            status_code=403,
+            detail="Access Denied: Hermes Agent is strictly private and accessible only by authorized owner jishnupg2005@gmail.com"
+        )
         
     return {
         "authenticated": True,
