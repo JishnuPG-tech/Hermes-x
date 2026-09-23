@@ -362,7 +362,7 @@ class HermesAgent:
             if model_id not in candidates:
                 candidates.append(model_id)
 
-        return candidates
+        return candidates[:3]
 
     async def stream_chat(
         self,
@@ -417,6 +417,9 @@ class HermesAgent:
 
         # Intent Detection: Direct Service Integration Request (Replit-style in-chat card)
         p_lower = last_user_msg.lower().strip()
+        task_tier = registry.classify_task_tier(last_user_msg) if last_user_msg else "fast"
+        is_greeting_or_fast = len(p_lower.split()) <= 4 and any(g in p_lower for g in ["hi", "hello", "hey", "who are you", "what can you do", "help", "ping", "test", "thanks", "ok"])
+        is_coding = (task_tier == "coding")
         is_connect_gh = any(ph in p_lower for ph in ["connect to github", "connect github", "integrate github", "link my github", "setup github", "add github"])
         if is_connect_gh and not os.environ.get("GITHUB_TOKEN"):
             yield {
@@ -477,6 +480,24 @@ class HermesAgent:
         stream_succeeded = False
         last_error = ""
 
+        if is_greeting_or_fast:
+            p_l = last_user_msg.lower()
+            if any(w in p_l for w in ["who are you", "what is your name", "your name"]):
+                greeting_msg = "I am Hermes Agent, a sovereign agentic AI and your loyal companion! How may I assist you today?"
+            elif any(w in p_l for w in ["what can you do", "help", "features"]):
+                greeting_msg = (
+                    "I can do lots of tasks for you! I can run terminal commands on your server, write and debug code in any language, "
+                    "perform deep web research, manage knowledge notes and memory, monitor system diagnostics, voice conversations, "
+                    "and execute multi-step autonomous workflows. What would you like to build or run today?"
+                )
+            else:
+                greeting_msg = "Hello! I am Hermes Agent, your loyal companion and autonomous partner. How may I serve you today?"
+
+            for word in greeting_msg.split(" "):
+                yield {"type": "text", "content": word + " "}
+                await asyncio.sleep(0.01)
+            return
+
         for candidate in candidate_models:
             current_messages = list(payload_messages)
             gathered_data_blocks = []
@@ -519,7 +540,7 @@ class HermesAgent:
                         raw_text_accum = ""
                         tool_calls_buffer = {}
 
-                        async with self.http_client.stream("POST", "/chat/completions", json=req_body, timeout=httpx.Timeout(45.0, connect=4.0)) as response:
+                        async with self.http_client.stream("POST", "/chat/completions", json=req_body, timeout=httpx.Timeout(8.0, connect=2.0)) as response:
                             if response.status_code != 200:
                                 break
 
@@ -812,10 +833,12 @@ class HermesAgent:
                 inside_think = False
                 stream_succeeded = False
 
-                async with self.http_client.stream("POST", "/chat/completions", json=synth_req, timeout=httpx.Timeout(120.0, connect=4.0, read=120.0)) as synth_resp:
+                async with self.http_client.stream("POST", "/chat/completions", json=synth_req, timeout=httpx.Timeout(10.0, connect=2.0, read=10.0)) as synth_resp:
                     if synth_resp.status_code != 200:
                         err_text = await synth_resp.aread()
                         last_error = f"Upstream {candidate} ({synth_resp.status_code}): {err_text.decode('utf-8', errors='ignore')}"
+                        if synth_resp.status_code in (401, 403):
+                            break
                         continue
 
                     async for line in synth_resp.aiter_lines():

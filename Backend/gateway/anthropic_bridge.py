@@ -179,9 +179,13 @@ def get_candidate_models(requested_model: Optional[str] = None, chat_id: Optiona
     cooled = [m for m in candidates if MODEL_COOLDOWN_MAP.get(m, 0) >= now]
     return active + cooled
 
+EXTERNAL_UPSTREAM_URL = (os.getenv("UPSTREAM_OMNIROUTE_URL") or "https://jishnupg-opencode-cli.hf.space/v1").rstrip("/") + "/chat/completions"
+EXTERNAL_KEY = os.getenv("UPSTREAM_API_KEY", os.getenv("API_KEY_SECRET", "Jishnu2005"))
+
 FALLBACK_URLS = [
     UPSTREAM_URL,
     "http://127.0.0.1:8642/v1/chat/completions",
+    EXTERNAL_UPSTREAM_URL,
 ]
 
 async def stream_upstream(payload: dict, requested_model: Optional[str] = None, chat_id: Optional[str] = None):
@@ -190,7 +194,7 @@ async def stream_upstream(payload: dict, requested_model: Optional[str] = None, 
     urls_to_try = list(dict.fromkeys(FALLBACK_URLS))
     candidate_models = get_candidate_models(requested_model or payload.get("model"), chat_id)
 
-    # Limit candidate attempts to the top 3 best models with a 6s stream connection timeout
+    # Limit candidate attempts to the top 3 best models with a stream connection timeout
     for model_name in candidate_models[:3]:
         payload_copy = dict(payload)
         payload_copy["model"] = model_name
@@ -198,12 +202,13 @@ async def stream_upstream(payload: dict, requested_model: Optional[str] = None, 
 
         for url in urls_to_try:
             try:
-                async with httpx.AsyncClient(timeout=httpx.Timeout(connect=5.0, read=12.0, write=5.0, pool=5.0)) as client:
+                auth = UPSTREAM_KEY or (EXTERNAL_KEY if "hf.space" in url else "")
+                async with httpx.AsyncClient(timeout=httpx.Timeout(connect=5.0, read=40.0, write=5.0, pool=5.0)) as client:
                     async with client.stream(
                         "POST",
                         url,
                         headers={
-                            **({"Authorization": f"Bearer {UPSTREAM_KEY}"} if UPSTREAM_KEY else {}),
+                            **({"Authorization": f"Bearer {auth}"} if auth else {}),
                             "Content-Type": "application/json",
                         },
                         json=payload_copy,
@@ -252,7 +257,7 @@ async def stream_upstream(payload: dict, requested_model: Optional[str] = None, 
                         else:
                             last_err = f"HTTP {r.status_code} from {url} for model {model_name}"
             except Exception as e:
-                last_err = f"{url} ({model_name}): {e}"
+                last_err = f"{url} ({model_name}): {str(e) or type(e).__name__}"
                 continue
 
         if model_succeeded:

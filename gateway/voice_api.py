@@ -43,7 +43,41 @@ class VoiceTurnRequest(BaseModel):
     voice: Optional[str] = Field(None, description="Voice ID override")
 
 
-# ── Full-Duplex WebSockets ───────────────────────────────────
+class HermesExecuteRequest(BaseModel):
+    objective: str = Field(..., description="Objective or command to execute via Hermes Agent")
+    task_type: Optional[str] = Field("general", description="Category: code, research, terminal, etc.")
+    background: Optional[bool] = Field(False, description="Whether to run in background")
+    chat_id: Optional[str] = Field("hugging_voice", description="Context chat session identifier")
+
+
+# ── Hugging Voice Realtime Full-Duplex WebSockets ────────────
+
+@router.websocket("/v1/realtime")
+@router.websocket("/hugging-voice/ws")
+@router.websocket("/voice/apollo/ws")
+async def hugging_voice_realtime_websocket_endpoint(websocket: WebSocket, session_id: Optional[str] = Query(None)):
+    """Official Hugging Face speech-to-speech / Hugging Voice Realtime WebSocket endpoint."""
+    from gateway.hugging_voice import handle_hugging_voice_websocket
+    await handle_hugging_voice_websocket(websocket, session_id=session_id)
+
+
+# ── Hermes Action Execution Endpoint ─────────────────────────
+
+@router.post("/api/voice/hermes-execute")
+@router.post("/v1/voice/hermes-execute")
+async def hermes_execute_endpoint(req: HermesExecuteRequest):
+    """Execute autonomous actions, tool calls, or background jobs via Hermes Agent."""
+    from gateway.hugging_voice import execute_hermes_action
+    result = await execute_hermes_action(
+        objective=req.objective,
+        task_type=req.task_type or "general",
+        background=req.background or False,
+        chat_id=req.chat_id or "hugging_voice",
+    )
+    return result
+
+
+# ── Classic Voice Full-Duplex WebSockets ─────────────────────
 
 @router.websocket("/v1/voice/ws")
 @router.websocket("/voice")
@@ -80,12 +114,28 @@ async def list_voices():
     return {
         "voices": [
             {
+                "id": "en-US-JennyNeural",
+                "name": "Jenny (Sweet & Calm Neural)",
+                "gender": "female",
+                "language": "en-US",
+                "provider": "edge_tts",
+                "recommended": True,
+            },
+            {
+                "id": "en-US-AriaNeural",
+                "name": "Aria (Clear & Warm Neural)",
+                "gender": "female",
+                "language": "en-US",
+                "provider": "edge_tts",
+                "recommended": False,
+            },
+            {
                 "id": "en-US-ChristopherNeural",
                 "name": "Christopher (Neural)",
                 "gender": "male",
                 "language": "en-US",
                 "provider": "edge_tts",
-                "recommended": True,
+                "recommended": False,
             },
             {
                 "id": "en-US-GuyNeural",

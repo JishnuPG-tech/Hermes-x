@@ -1217,6 +1217,85 @@ class HermesApiClient(
     }.flowOn(Dispatchers.IO)
 
     /**
+     * Connects to the Hugging Voice Realtime WebSocket endpoint.
+     */
+    fun connectHuggingVoiceWebSocket(
+        listener: WebSocketListener,
+        voice: String? = null
+    ): WebSocket {
+        val baseWs = if (baseUrl.startsWith("https://")) {
+            baseUrl.replace("https://", "wss://") + "/hugging-voice/ws"
+        } else {
+            baseUrl.replace("http://", "ws://") + "/hugging-voice/ws"
+        }
+
+        val url = if (!voice.isNullOrBlank()) {
+            "$baseWs?voice=" + java.net.URLEncoder.encode(voice, "UTF-8")
+        } else {
+            baseWs
+        }
+
+        val request = Request.Builder()
+            .url(url)
+            .header("Authorization", "Bearer $apiKey")
+            .build()
+
+        return okHttpClient.newWebSocket(request, listener)
+    }
+
+    /**
+     * Backward-compatibility alias for Apollo / OpenAI Realtime WebSocket connection.
+     */
+    fun connectApolloRealtimeWebSocket(
+        listener: WebSocketListener,
+        voice: String? = null
+    ): WebSocket = connectHuggingVoiceWebSocket(listener, voice)
+
+    /**
+     * Execute autonomous action or background task via Hermes voice execution layer.
+     */
+    suspend fun executeVoiceTask(
+        objective: String,
+        taskType: String = "general",
+        background: Boolean = false,
+        chatId: String = "hugging_voice"
+    ): Result<VoiceTaskExecutionResult> = withContext(Dispatchers.IO) {
+        try {
+            val jsonPayload = org.json.JSONObject().apply {
+                put("objective", objective)
+                put("task_type", taskType)
+                put("background", background)
+                put("chat_id", chatId)
+            }
+
+            val body = jsonPayload.toString().toRequestBody("application/json".toMediaType())
+            val req = Request.Builder()
+                .url("$baseUrl/api/voice/hermes-execute")
+                .post(body)
+                .header("Authorization", "Bearer $apiKey")
+                .build()
+
+            val resp = okHttpClient.newCall(req).execute()
+            val respStr = resp.body?.string() ?: "{}"
+            if (!resp.isSuccessful) {
+                return@withContext Result.failure(Exception("HTTP ${resp.code}: $respStr"))
+            }
+
+            val json = org.json.JSONObject(respStr)
+            val resultObj = VoiceTaskExecutionResult(
+                status = json.optString("status", "completed"),
+                result = json.optString("result").takeIf { it.isNotEmpty() },
+                summary = json.optString("summary").takeIf { it.isNotEmpty() },
+                taskId = json.optString("task_id").takeIf { it.isNotEmpty() },
+                error = json.optString("error").takeIf { it.isNotEmpty() }
+            )
+            Result.success(resultObj)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Connects to the full-duplex Voice WebSocket endpoint.
      */
     fun connectVoiceWebSocket(
@@ -1355,4 +1434,13 @@ class HermesApiClient(
         }
     }
 }
+
+data class VoiceTaskExecutionResult(
+    val status: String,
+    val result: String? = null,
+    val summary: String? = null,
+    val taskId: String? = null,
+    val error: String? = null
+)
+
 

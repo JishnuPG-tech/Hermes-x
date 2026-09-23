@@ -38,12 +38,13 @@ fun VoiceSettingsScreen(
     val coroutineScope = rememberCoroutineScope()
     val prefs = remember { com.example.hermes.data.PreferencesManager.getInstance(context) }
 
-    val personas = listOf("Airy", "Mellow", "Glassy", "Rounded", "Brass")
-    val savedPersona by prefs.voicePersona.collectAsState(initial = "Rounded")
+    val personas = listOf("Glassy", "Airy", "Mellow", "Rounded", "Brass")
+    val savedPersona by prefs.voicePersona.collectAsState(initial = "Glassy")
     val savedLanguage by prefs.voiceLanguage.collectAsState(initial = "English (United Kingdom)")
     val savedPace by prefs.voicePace.collectAsState(initial = "Normal")
+    val savedVoiceMode by prefs.voiceMode.collectAsState(initial = "hugging_voice")
 
-    val selectedIndex = personas.indexOf(savedPersona).let { if (it >= 0) it else 3 }
+    val selectedIndex = personas.indexOf(savedPersona).let { if (it >= 0) it else 0 }
 
     var showLanguageMenu by remember { mutableStateOf(false) }
     var showPaceMenu by remember { mutableStateOf(false) }
@@ -59,18 +60,13 @@ fun VoiceSettingsScreen(
     )
     val paces = listOf("Slow", "Normal", "Fast")
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(CanvasNearBlack)
-            .safeDrawingPadding(),
-        contentPadding = PaddingValues(bottom = 32.dp)
-    ) {
-        // ── Top Bar ──────────────────────────────────────────────────────────
-        item {
+    Scaffold(
+        topBar = {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .background(CanvasNearBlack)
+                    .statusBarsPadding()
                     .padding(horizontal = 4.dp, vertical = 6.dp)
             ) {
                 IconButton(
@@ -94,349 +90,274 @@ fun VoiceSettingsScreen(
                     modifier = Modifier.align(Alignment.Center)
                 )
             }
-        }
-
-        // ── Persona Section Label ─────────────────────────────────────────────
-        item {
-            Text(
-                text = "VOICE PERSONA",
-                style = HermesTypography.labelSmall.copy(
-                    fontSize = 11.sp,
-                    color = TextMuted,
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = 0.8.sp
-                ),
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
-            )
-        }
-
-        // ── Persona Carousel ──────────────────────────────────────────────────
-        item {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .pointerInput(Unit) {
-                        var totalDrag = 0f
-                        detectHorizontalDragGestures(
-                            onDragStart = { totalDrag = 0f },
-                            onHorizontalDrag = { _, dragAmount -> totalDrag += dragAmount },
-                            onDragEnd = {
-                                if (totalDrag > 50 && selectedIndex > 0) {
-                                    coroutineScope.launch { prefs.setVoicePersona(personas[selectedIndex - 1]) }
-                                } else if (totalDrag < -50 && selectedIndex < personas.size - 1) {
-                                    coroutineScope.launch { prefs.setVoicePersona(personas[selectedIndex + 1]) }
-                                }
-                            }
-                        )
-                    },
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Persona Cards Row
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(180.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    // Left peeking card
-                    if (selectedIndex > 0) {
-                        val alpha by animateFloatAsState(
-                            targetValue = 0.45f, animationSpec = tween(200), label = "leftAlpha"
-                        )
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.CenterStart)
-                                .padding(start = 16.dp)
-                                .width(110.dp)
-                                .height(140.dp)
-                                .alpha(alpha)
-                                .clip(RoundedCornerShape(24.dp))
-                                .background(Color(0xFF1C1B19))
-                                .border(1.dp, BorderSubtle, RoundedCornerShape(24.dp))
-                                .clickable { coroutineScope.launch { prefs.setVoicePersona(personas[selectedIndex - 1]) } },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = personas[selectedIndex - 1],
-                                style = HermesTypography.bodyLarge.copy(
-                                    fontSize = 16.sp,
-                                    color = TextSubtle,
-                                    textAlign = TextAlign.Center
-                                )
-                            )
-                        }
-                    }
-
-                    // Center active card
-                    Box(
-                        modifier = Modifier
-                            .width(160.dp)
-                            .height(160.dp)
-                            .clip(RoundedCornerShape(28.dp))
-                            .background(Color(0xFF222120))
-                            .border(1.dp, Color(0xFF3A3835), RoundedCornerShape(28.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Text(
-                                text = personas[selectedIndex],
-                                style = HermesTypography.displayLarge.copy(
-                                    fontSize = 24.sp,
-                                    color = TextPrimaryWarm,
-                                    fontFamily = AnthropicSerif,
-                                    fontWeight = FontWeight.Normal,
-                                    textAlign = TextAlign.Center
-                                )
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Box(
-                                modifier = Modifier
-                                    .clip(CircleShape)
-                                    .background(BrandCoral.copy(alpha = 0.15f))
-                                    .border(1.dp, BrandCoral.copy(alpha = 0.35f), CircleShape)
-                                    .padding(horizontal = 10.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = "Active",
-                                    style = HermesTypography.labelSmall.copy(
-                                        fontSize = 10.sp,
-                                        color = BrandCoral,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                )
-                            }
-                        }
-                    }
-
-                    // Right peeking card
-                    if (selectedIndex < personas.size - 1) {
-                        val alpha by animateFloatAsState(
-                            targetValue = 0.45f, animationSpec = tween(200), label = "rightAlpha"
-                        )
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.CenterEnd)
-                                .padding(end = 16.dp)
-                                .width(110.dp)
-                                .height(140.dp)
-                                .alpha(alpha)
-                                .clip(RoundedCornerShape(24.dp))
-                                .background(Color(0xFF1C1B19))
-                                .border(1.dp, BorderSubtle, RoundedCornerShape(24.dp))
-                                .clickable { coroutineScope.launch { prefs.setVoicePersona(personas[selectedIndex + 1]) } },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = personas[selectedIndex + 1],
-                                style = HermesTypography.bodyLarge.copy(
-                                    fontSize = 16.sp,
-                                    color = TextSubtle,
-                                    textAlign = TextAlign.Center
-                                )
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // Dot indicators
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(7.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    personas.forEachIndexed { idx, _ ->
-                        val isSelected = idx == selectedIndex
-                        val dotSize by animateDpAsState(
-                            targetValue = if (isSelected) 7.dp else 4.5.dp,
-                            animationSpec = tween(200),
-                            label = "dotSize"
-                        )
-                        val dotAlpha by animateFloatAsState(
-                            targetValue = if (isSelected) 1f else 0.35f,
-                            animationSpec = tween(200),
-                            label = "dotAlpha"
-                        )
-                        Box(
-                            modifier = Modifier
-                                .size(dotSize)
-                                .alpha(dotAlpha)
-                                .clip(CircleShape)
-                                .background(TextPrimaryWarm)
-                                .clickable { coroutineScope.launch { prefs.setVoicePersona(personas[idx]) } }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-                // Swipe hint
+        },
+        containerColor = CanvasNearBlack
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            contentPadding = PaddingValues(bottom = 36.dp)
+        ) {
+            // ── Persona Section Label ─────────────────────────────────────────────
+            item {
                 Text(
-                    text = "Swipe to change voice",
+                    text = "VOICE PERSONA",
                     style = HermesTypography.labelSmall.copy(
-                        fontSize = 12.sp,
-                        color = TextMuted
-                    )
+                        fontSize = 11.sp,
+                        color = TextMuted,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 0.8.sp
+                    ),
+                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 12.dp)
                 )
             }
-        }
 
-        item { Spacer(modifier = Modifier.height(28.dp)) }
-
-        // ── Settings Section Label ──────────────────────────────────────────
-        item {
-            Text(
-                text = "SETTINGS",
-                style = HermesTypography.labelSmall.copy(
-                    fontSize = 11.sp,
-                    color = TextMuted,
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = 0.8.sp
-                ),
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
-            )
-        }
-
-        // ── Language + Pace rows inside single card ──────────────────────────
-        item {
-            Column(
-                modifier = Modifier
-                    .padding(horizontal = 16.dp)
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(Color(0xFF1F1E1C))
-                    .border(1.dp, BorderSubtle, RoundedCornerShape(18.dp))
-            ) {
-                // Language Row
-                Box {
-                    Row(
+            // ── Persona Carousel ──────────────────────────────────────────────────
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .pointerInput(Unit) {
+                            var totalDrag = 0f
+                            detectHorizontalDragGestures(
+                                onDragStart = { totalDrag = 0f },
+                                onHorizontalDrag = { _, dragAmount -> totalDrag += dragAmount },
+                                onDragEnd = {
+                                    if (totalDrag > 50 && selectedIndex > 0) {
+                                        coroutineScope.launch { prefs.setVoicePersona(personas[selectedIndex - 1]) }
+                                    } else if (totalDrag < -50 && selectedIndex < personas.size - 1) {
+                                        coroutineScope.launch { prefs.setVoicePersona(personas[selectedIndex + 1]) }
+                                    }
+                                }
+                            )
+                        },
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Persona Cards Row
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { showLanguageMenu = true }
-                            .padding(horizontal = 18.dp, vertical = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                            .height(180.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Column {
-                            Text(
-                                text = "Language",
-                                style = HermesTypography.bodyLarge.copy(
-                                    fontSize = 15.sp,
-                                    color = TextPrimaryWarm,
-                                    fontWeight = FontWeight.Normal
-                                )
+                        // Left peeking card
+                        if (selectedIndex > 0) {
+                            val alpha by animateFloatAsState(
+                                targetValue = 0.45f, animationSpec = tween(200), label = "leftAlpha"
                             )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.CenterStart)
+                                    .padding(start = 16.dp)
+                                    .width(110.dp)
+                                    .height(140.dp)
+                                    .alpha(alpha)
+                                    .clip(RoundedCornerShape(24.dp))
+                                    .background(Color(0xFF1C1B19))
+                                    .border(1.dp, BorderSubtle, RoundedCornerShape(24.dp))
+                                    .clickable { coroutineScope.launch { prefs.setVoicePersona(personas[selectedIndex - 1]) } },
+                                contentAlignment = Alignment.Center
+                            ) {
                                 Text(
-                                    text = savedLanguage,
-                                    style = HermesTypography.bodySmall.copy(
-                                        fontSize = 13.sp,
-                                        color = TextMuted
+                                    text = personas[selectedIndex - 1],
+                                    style = HermesTypography.bodyLarge.copy(
+                                        fontSize = 16.sp,
+                                        color = TextSubtle,
+                                        textAlign = TextAlign.Center
                                     )
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
+                            }
+                        }
+
+                        // Center active card
+                        Box(
+                            modifier = Modifier
+                                .width(160.dp)
+                                .height(160.dp)
+                                .clip(RoundedCornerShape(28.dp))
+                                .background(Color(0xFF222120))
+                                .border(1.dp, Color(0xFF3A3835), RoundedCornerShape(28.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    text = personas[selectedIndex],
+                                    style = HermesTypography.displayLarge.copy(
+                                        fontSize = 24.sp,
+                                        color = TextPrimaryWarm,
+                                        fontFamily = AnthropicSerif,
+                                        fontWeight = FontWeight.Normal,
+                                        textAlign = TextAlign.Center
+                                    )
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
                                 Box(
                                     modifier = Modifier
                                         .clip(CircleShape)
-                                        .background(Color(0xFF282724))
-                                        .padding(horizontal = 6.dp, vertical = 1.dp)
+                                        .background(BrandCoral.copy(alpha = 0.15f))
+                                        .border(1.dp, BrandCoral.copy(alpha = 0.35f), CircleShape)
+                                        .padding(horizontal = 10.dp, vertical = 2.dp)
                                 ) {
                                     Text(
-                                        "BETA",
+                                        text = "Active",
                                         style = HermesTypography.labelSmall.copy(
-                                            color = TextMuted,
-                                            fontSize = 9.sp,
-                                            letterSpacing = 0.5.sp
+                                            fontSize = 10.sp,
+                                            color = BrandCoral,
+                                            fontWeight = FontWeight.Medium
                                         )
                                     )
                                 }
                             }
                         }
-                        Icon(
-                            Icons.Default.ChevronRight,
-                            contentDescription = null,
-                            tint = TextSubtle,
-                            modifier = Modifier.size(20.dp)
-                        )
+
+                        // Right peeking card
+                        if (selectedIndex < personas.size - 1) {
+                            val alpha by animateFloatAsState(
+                                targetValue = 0.45f, animationSpec = tween(200), label = "rightAlpha"
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .padding(end = 16.dp)
+                                    .width(110.dp)
+                                    .height(140.dp)
+                                    .alpha(alpha)
+                                    .clip(RoundedCornerShape(24.dp))
+                                    .background(Color(0xFF1C1B19))
+                                    .border(1.dp, BorderSubtle, RoundedCornerShape(24.dp))
+                                    .clickable { coroutineScope.launch { prefs.setVoicePersona(personas[selectedIndex + 1]) } },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = personas[selectedIndex + 1],
+                                    style = HermesTypography.bodyLarge.copy(
+                                        fontSize = 16.sp,
+                                        color = TextSubtle,
+                                        textAlign = TextAlign.Center
+                                    )
+                                )
+                            }
+                        }
                     }
-                    DropdownMenu(
-                        expanded = showLanguageMenu,
-                        onDismissRequest = { showLanguageMenu = false },
-                        modifier = Modifier
-                            .fillMaxWidth(0.9f)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0xFF1E1D1B))
-                            .border(1.dp, Color(0xFF2A2826), RoundedCornerShape(16.dp))
-                            .padding(vertical = 6.dp)
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Dot indicators
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(7.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        languages.forEach { lang ->
-                            val isSelected = lang == savedLanguage
-                            DropdownMenuItem(
-                                text = {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text(
-                                            text = lang,
-                                            style = HermesTypography.bodyMedium.copy(
-                                                fontSize = 15.sp,
-                                                color = if (isSelected) TextPrimaryWarm else TextMuted
-                                            )
-                                        )
-                                        if (isSelected) {
-                                            Icon(
-                                                Icons.Default.Check,
-                                                contentDescription = null,
-                                                tint = BrandCoral,
-                                                modifier = Modifier.size(17.dp)
-                                            )
-                                        }
-                                    }
-                                },
-                                onClick = {
-                                    coroutineScope.launch { prefs.setVoiceLanguage(lang) }
-                                    showLanguageMenu = false
-                                }
+                        personas.forEachIndexed { idx, _ ->
+                            val isSelected = idx == selectedIndex
+                            val dotSize by animateDpAsState(
+                                targetValue = if (isSelected) 7.dp else 4.5.dp,
+                                animationSpec = tween(200),
+                                label = "dotSize"
+                            )
+                            val dotAlpha by animateFloatAsState(
+                                targetValue = if (isSelected) 1f else 0.35f,
+                                animationSpec = tween(200),
+                                label = "dotAlpha"
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(dotSize)
+                                    .alpha(dotAlpha)
+                                    .clip(CircleShape)
+                                    .background(TextPrimaryWarm)
+                                    .clickable { coroutineScope.launch { prefs.setVoicePersona(personas[idx]) } }
                             )
                         }
                     }
-                }
 
-                // Divider
-                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
-
-                // Pace Row
-                Box {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { showPaceMenu = true }
-                            .padding(horizontal = 18.dp, vertical = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "Speaking pace",
-                            style = HermesTypography.bodyLarge.copy(
-                                fontSize = 15.sp,
-                                color = TextPrimaryWarm,
-                                fontWeight = FontWeight.Normal
-                            )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    // Swipe hint
+                    Text(
+                        text = "Swipe to change voice",
+                        style = HermesTypography.labelSmall.copy(
+                            fontSize = 12.sp,
+                            color = TextMuted
                         )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = savedPace,
-                                style = HermesTypography.bodyMedium.copy(
-                                    color = TextMuted,
-                                    fontSize = 14.sp
+                    )
+                }
+            }
+
+            item { Spacer(modifier = Modifier.height(28.dp)) }
+
+            // ── Settings Section Label ──────────────────────────────────────────
+            item {
+                Text(
+                    text = "SETTINGS",
+                    style = HermesTypography.labelSmall.copy(
+                        fontSize = 11.sp,
+                        color = TextMuted,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 0.8.sp
+                    ),
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+                )
+            }
+
+            // ── Language + Pace rows inside single card ──────────────────────────
+            item {
+                Column(
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(Color(0xFF1F1E1C))
+                        .border(1.dp, BorderSubtle, RoundedCornerShape(18.dp))
+                ) {
+                    // Language Row
+                    Box {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showLanguageMenu = true }
+                                .padding(horizontal = 18.dp, vertical = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Language",
+                                    style = HermesTypography.bodyLarge.copy(
+                                        fontSize = 15.sp,
+                                        color = TextPrimaryWarm,
+                                        fontWeight = FontWeight.Normal
+                                    )
                                 )
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = savedLanguage,
+                                        style = HermesTypography.bodySmall.copy(
+                                            fontSize = 13.sp,
+                                            color = TextMuted
+                                        )
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF282724))
+                                            .padding(horizontal = 6.dp, vertical = 1.dp)
+                                    ) {
+                                        Text(
+                                            "BETA",
+                                            style = HermesTypography.labelSmall.copy(
+                                                color = TextMuted,
+                                                fontSize = 9.sp,
+                                                letterSpacing = 0.5.sp
+                                            )
+                                        )
+                                    }
+                                }
+                            }
                             Icon(
                                 Icons.Default.ChevronRight,
                                 contentDescription = null,
@@ -444,67 +365,282 @@ fun VoiceSettingsScreen(
                                 modifier = Modifier.size(20.dp)
                             )
                         }
-                    }
-                    DropdownMenu(
-                        expanded = showPaceMenu,
-                        onDismissRequest = { showPaceMenu = false },
-                        modifier = Modifier
-                            .width(180.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0xFF1E1D1B))
-                            .border(1.dp, Color(0xFF2A2826), RoundedCornerShape(16.dp))
-                            .padding(vertical = 6.dp)
-                    ) {
-                        paces.forEach { p ->
-                            val isSelected = p == savedPace
-                            DropdownMenuItem(
-                                text = {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text(
-                                            text = p,
-                                            style = HermesTypography.bodyMedium.copy(
-                                                fontSize = 15.sp,
-                                                color = if (isSelected) TextPrimaryWarm else TextMuted
+                        DropdownMenu(
+                            expanded = showLanguageMenu,
+                            onDismissRequest = { showLanguageMenu = false },
+                            modifier = Modifier
+                                .fillMaxWidth(0.9f)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color(0xFF1E1D1B))
+                                .border(1.dp, Color(0xFF2A2826), RoundedCornerShape(16.dp))
+                                .padding(vertical = 6.dp)
+                        ) {
+                            languages.forEach { lang ->
+                                val isSelected = lang == savedLanguage
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                text = lang,
+                                                style = HermesTypography.bodyMedium.copy(
+                                                    fontSize = 15.sp,
+                                                    color = if (isSelected) TextPrimaryWarm else TextMuted
+                                                )
                                             )
-                                        )
-                                        if (isSelected) {
-                                            Icon(
-                                                Icons.Default.Check,
-                                                contentDescription = null,
-                                                tint = BrandCoral,
-                                                modifier = Modifier.size(17.dp)
-                                            )
+                                            if (isSelected) {
+                                                Icon(
+                                                    Icons.Default.Check,
+                                                    contentDescription = null,
+                                                    tint = BrandCoral,
+                                                    modifier = Modifier.size(17.dp)
+                                                )
+                                            }
                                         }
+                                    },
+                                    onClick = {
+                                        coroutineScope.launch { prefs.setVoiceLanguage(lang) }
+                                        showLanguageMenu = false
                                     }
-                                },
-                                onClick = {
-                                    coroutineScope.launch { prefs.setVoicePace(p) }
-                                    showPaceMenu = false
+                                )
+                            }
+                        }
+                    }
+
+                    // Divider
+                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
+
+                    // Pace Row
+                    Box {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showPaceMenu = true }
+                                .padding(horizontal = 18.dp, vertical = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Speaking pace",
+                                style = HermesTypography.bodyLarge.copy(
+                                    fontSize = 15.sp,
+                                    color = TextPrimaryWarm,
+                                    fontWeight = FontWeight.Normal
+                                )
+                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = savedPace,
+                                    style = HermesTypography.bodyMedium.copy(
+                                        color = TextMuted,
+                                        fontSize = 14.sp
+                                    )
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    Icons.Default.ChevronRight,
+                                    contentDescription = null,
+                                    tint = TextSubtle,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                        DropdownMenu(
+                            expanded = showPaceMenu,
+                            onDismissRequest = { showPaceMenu = false },
+                            modifier = Modifier
+                                .width(180.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color(0xFF1E1D1B))
+                                .border(1.dp, Color(0xFF2A2826), RoundedCornerShape(16.dp))
+                                .padding(vertical = 6.dp)
+                        ) {
+                            paces.forEach { p ->
+                                val isSelected = p == savedPace
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                text = p,
+                                                style = HermesTypography.bodyMedium.copy(
+                                                    fontSize = 15.sp,
+                                                    color = if (isSelected) TextPrimaryWarm else TextMuted
+                                                )
+                                            )
+                                            if (isSelected) {
+                                                Icon(
+                                                    Icons.Default.Check,
+                                                    contentDescription = null,
+                                                    tint = BrandCoral,
+                                                    modifier = Modifier.size(17.dp)
+                                                )
+                                            }
+                                        }
+                                    },
+                                    onClick = {
+                                        coroutineScope.launch { prefs.setVoicePace(p) }
+                                        showPaceMenu = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            item { Spacer(modifier = Modifier.height(20.dp)) }
+
+            // ── Engine Mode Section Label ─────────────────────────────────────────
+            item {
+                Text(
+                    text = "ENGINE ARCHITECTURE",
+                    style = HermesTypography.labelSmall.copy(
+                        fontSize = 11.sp,
+                        color = TextMuted,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 0.8.sp
+                    ),
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
+                )
+            }
+
+            // ── Engine Mode Cards ─────────────────────────────────────────────────
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color(0xFF191816))
+                        .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp))
+                ) {
+                    // Option 1: Hugging Voice (Realtime)
+                    val isHuggingVoice = savedVoiceMode == "hugging_voice" || savedVoiceMode == "apollo"
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { coroutineScope.launch { prefs.setVoiceMode("hugging_voice") } }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "Hugging Voice (Realtime)",
+                                    modifier = Modifier.weight(1f, fill = false),
+                                    style = HermesTypography.bodyMedium.copy(
+                                        fontSize = 15.sp,
+                                        color = if (isHuggingVoice) TextPrimaryWarm else TextMuted,
+                                        fontWeight = if (isHuggingVoice) FontWeight.SemiBold else FontWeight.Normal
+                                    )
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(Color(0xFF1E3A24))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "RECOMMENDED",
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        style = HermesTypography.labelSmall.copy(
+                                            fontSize = 9.sp,
+                                            color = AccentGreen,
+                                            fontWeight = FontWeight.Bold,
+                                            letterSpacing = 0.5.sp
+                                        )
+                                    )
                                 }
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Full-duplex conversational voice, sub-50ms instant barge-in, AudioTrack streaming PCM.",
+                                style = HermesTypography.bodySmall.copy(
+                                    fontSize = 12.sp,
+                                    color = TextMuted,
+                                    lineHeight = 16.sp
+                                )
+                            )
+                        }
+                        if (isHuggingVoice) {
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = null,
+                                tint = BrandCoral,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
+                    HorizontalDivider(color = BorderSubtle, thickness = 0.5.dp)
+
+                    // Option 2: Classic Voice Engine
+                    val isClassic = savedVoiceMode == "classic"
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { coroutineScope.launch { prefs.setVoiceMode("classic") } }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Classic Voice Engine",
+                                style = HermesTypography.bodyMedium.copy(
+                                    fontSize = 15.sp,
+                                    color = if (isClassic) TextPrimaryWarm else TextMuted,
+                                    fontWeight = if (isClassic) FontWeight.SemiBold else FontWeight.Normal
+                                )
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Standard multiplexed turn-based audio with MediaPlayer buffering.",
+                                style = HermesTypography.bodySmall.copy(
+                                    fontSize = 12.sp,
+                                    color = TextMuted,
+                                    lineHeight = 16.sp
+                                )
+                            )
+                        }
+                        if (isClassic) {
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = null,
+                                tint = BrandCoral,
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
                 }
             }
-        }
 
-        item { Spacer(modifier = Modifier.height(16.dp)) }
+            item { Spacer(modifier = Modifier.height(16.dp)) }
 
-        // ── Footer note ──────────────────────────────────────────────────────
-        item {
-            Text(
-                text = "Voice quality and language availability depend on your device and network conditions.",
-                style = HermesTypography.bodySmall.copy(
-                    fontSize = 12.sp,
-                    color = TextMuted,
-                    lineHeight = 17.sp
-                ),
-                modifier = Modifier.padding(horizontal = 20.dp)
-            )
+            // ── Footer note ──────────────────────────────────────────────────────
+            item {
+                Text(
+                    text = "Voice quality and language availability depend on your device and network conditions.",
+                    style = HermesTypography.bodySmall.copy(
+                        fontSize = 12.sp,
+                        color = TextMuted,
+                        lineHeight = 17.sp
+                    ),
+                    modifier = Modifier.padding(horizontal = 20.dp)
+                )
+            }
         }
     }
 }

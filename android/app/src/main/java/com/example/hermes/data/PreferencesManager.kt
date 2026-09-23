@@ -32,6 +32,7 @@ class PreferencesManager(private val context: Context) {
         val KEY_GOOGLE_SUB = stringPreferencesKey("google_sub")
 
         val KEY_FONT_STYLE = stringPreferencesKey("font_style")
+        val KEY_VOICE_MODE = stringPreferencesKey("voice_engine_mode")
         val KEY_VOICE_PERSONA = stringPreferencesKey("voice_persona")
         val KEY_VOICE_LANGUAGE = stringPreferencesKey("voice_language")
         val KEY_VOICE_PACE = stringPreferencesKey("voice_pace")
@@ -258,6 +259,17 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun setFontStyle(style: String) {
         context.hermesDataStore.edit { it[KEY_FONT_STYLE] = style }
+    }
+
+    val voiceMode: Flow<String> = context.hermesDataStore.data
+        .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+        .map { 
+            val mode = it[KEY_VOICE_MODE] ?: "hugging_voice"
+            if (mode == "apollo") "hugging_voice" else mode
+        }
+
+    suspend fun setVoiceMode(mode: String) {
+        context.hermesDataStore.edit { it[KEY_VOICE_MODE] = mode }
     }
 
     val voicePersona: Flow<String> = context.hermesDataStore.data
