@@ -30,7 +30,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun VoiceScreen(
-    onClose: () -> Unit,
+    onClose: (String?) -> Unit = {},
     onOpenVoiceSettings: () -> Unit = {},
     voiceViewModel: VoiceViewModel = viewModel()
 ) {
@@ -38,6 +38,7 @@ fun VoiceScreen(
     val captionText by voiceViewModel.statusText.collectAsStateWithLifecycle()
     val isMuted by voiceViewModel.isMuted.collectAsStateWithLifecycle()
     val selectedModel by voiceViewModel.selectedModel.collectAsStateWithLifecycle()
+    val activeSessionId by voiceViewModel.currentSessionId.collectAsStateWithLifecycle()
     var showModelSheet by remember { mutableStateOf(false) }
 
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -264,7 +265,7 @@ fun VoiceScreen(
                         .size(52.dp)
                         .clip(CircleShape)
                         .background(PureWhite)
-                        .clickable(onClick = onClose),
+                        .clickable { onClose(activeSessionId) },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(

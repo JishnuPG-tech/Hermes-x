@@ -131,3 +131,19 @@ async def list_directory(path: str = ".") -> str:
         return "\n".join(entries) if entries else "[Directory is empty]"
     except Exception as e:
         return f"[ERROR] Failed to list directory {path}: {e}"
+
+
+@registry.register(
+    name="list_dir",
+    description="List files and subdirectories in a directory path on the server.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "path": {"type": "string", "description": "The directory path to list (defaults to current directory)."}
+        },
+    },
+    category="files",
+)
+async def list_dir(path: Optional[str] = None) -> str:
+    return await list_directory(path=path or ".")
+

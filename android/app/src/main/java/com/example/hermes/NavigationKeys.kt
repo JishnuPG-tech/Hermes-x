@@ -14,7 +14,7 @@ import kotlinx.serialization.Serializable
     val initialModel: String = "Hermes Smart"
 ) : NavKey
 @Serializable data object NavVoice : NavKey
-@Serializable data object NavChats : NavKey
+@Serializable data class NavChats(val filterType: String = "all") : NavKey
 @Serializable data object NavProjects : NavKey
 @Serializable data object NavCode : NavKey
 @Serializable data object NavArtifacts : NavKey
@@ -26,6 +26,10 @@ import kotlinx.serialization.Serializable
     val artifactLanguage: String? = null
 ) : NavKey
 @Serializable data object NavTasks : NavKey
+@Serializable data object NavSkills : NavKey
+@Serializable data object NavAgents : NavKey
+@Serializable data object NavKnowledge : NavKey
+@Serializable data object NavActivity : NavKey
 @Serializable data object NavSettings : NavKey
 @Serializable data object NavProfile : NavKey
 @Serializable data object NavBilling : NavKey

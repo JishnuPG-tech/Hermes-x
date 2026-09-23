@@ -432,42 +432,52 @@ class VoiceGateway:
             )
             return
 
-        # Regular conversational turn: Stream directly via agent_executor
+        # Regular conversational turn: Stream directly via canonical AgentRuntime
         try:
-            from gateway import agent_executor as ae
+            from hermes_core.runtime.agent_runtime import AgentRuntime
+            from hermes_core.runtime.models import ExecutionContext
 
-            # Use conversational history from session
-            messages = [
-                {"role": "system", "content": VOICE_SYSTEM_DIRECTIVE},
-            ]
+            runtime = AgentRuntime.get_instance()
+            context = ExecutionContext(
+                user_id=session.user_id or "default_user",
+                session_id=session.session_id,
+                project_id="default",
+                voice_session_id=session.session_id,
+                is_admin=True,
+            )
+
+            # Build conversational history from session
+            messages = []
             for prev_turn in session.turns[-5:]:
                 if prev_turn.user_text:
                     messages.append({"role": "user", "content": prev_turn.user_text})
                 if prev_turn.assistant_text:
                     messages.append({"role": "assistant", "content": prev_turn.assistant_text})
-            for prev_turn in session.turns[-5:]:
-                if prev_turn.user_text:
-                    messages.append({"role": "user", "content": prev_turn.user_text})
-                if prev_turn.assistant_text:
-                    messages.append({"role": "assistant", "content": prev_turn.assistant_text})
+            messages.append({"role": "user", "content": user_text})
 
             queue: asyncio.Queue = asyncio.Queue()
-            msg_id = f"msg_{uuid.uuid4().hex[:12]}"
             agent_model = model or "hermes-agent"
 
-            # Run agent loop in background
-            agent_task = asyncio.create_task(
-                ae.run_autonomous_agent(
-                    session.session_id,
-                    user_text,
-                    messages,
-                    agent_model,
-                    msg_id,
-                    queue,
-                )
-            )
-            turn_ctx.tasks.append(agent_task)
+            # Run canonical AgentRuntime stream in background task feeding queue
+            async def _voice_stream_worker():
+                try:
+                    async for event in runtime.stream_chat(
+                        messages=messages,
+                        context=context,
+                        model=agent_model,
+                        custom_instructions="Prioritize concise spoken answers natural for live speech. Avoid markdown tables or lengthy code blocks.",
+                    ):
+                        if event.get("type") == "text":
+                            txt = event.get("content", "")
+                            if txt:
+                                await queue.put(txt)
+                except Exception as ex:
+                    logger.error(f"Voice agent stream failed: {ex}")
+                finally:
+                    await queue.put(None)
 
+            agent_task = asyncio.create_task(_voice_stream_worker())
+            turn_ctx.tasks.append(agent_task)
 
             full_assistant_text = []
 
@@ -477,46 +487,28 @@ class VoiceGateway:
                     break
 
                 try:
-                    item = await asyncio.wait_for(queue.get(), timeout=0.1)
+                    delta_text = await asyncio.wait_for(queue.get(), timeout=0.1)
                 except asyncio.TimeoutError:
                     continue
 
-                if item is None:
+                if delta_text is None:
                     break
 
-                # Extract text deltas from multi-line SSE frames
-                if isinstance(item, str):
-                    for line in item.splitlines():
-                        line = line.strip()
-                        if line.startswith("data: "):
-                            data_part = line[6:].strip()
-                            if data_part and data_part != "[DONE]":
-                                try:
-                                    parsed = json.loads(data_part)
-                                    delta_text = ""
-                                    if parsed.get("type") == "content_block_delta":
-                                        delta_text = parsed.get("delta", {}).get("text", "")
-                                    elif "choices" in parsed and len(parsed["choices"]) > 0:
-                                        delta_text = parsed["choices"][0].get("delta", {}).get("content", "")
-
-                                    if delta_text:
-                                        full_assistant_text.append(delta_text)
-                                        # Feed chunker
-                                        for phrase in chunker.feed(delta_text):
-                                            if cancel_event.is_set():
-                                                break
-                                            turn_tts_index += 1
-                                            await self._synthesize_and_send_phrase(
-                                                websocket,
-                                                session,
-                                                phrase,
-                                                turn_id,
-                                                turn_tts_index,
-                                                cancel_event,
-                                                metrics,
-                                            )
-                                except Exception as err:
-                                    logger.debug("Voice SSE parse error ignored: %s", err)
+                if isinstance(delta_text, str) and delta_text:
+                    full_assistant_text.append(delta_text)
+                    for phrase in chunker.feed(delta_text):
+                        if cancel_event.is_set():
+                            break
+                        turn_tts_index += 1
+                        await self._synthesize_and_send_phrase(
+                            websocket,
+                            session,
+                            phrase,
+                            turn_id,
+                            turn_tts_index,
+                            cancel_event,
+                            metrics,
+                        )
 
             # Flush remaining chunker buffer
             for phrase in chunker.flush():

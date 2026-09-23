@@ -21,6 +21,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hermes.theme.*
+import com.example.hermes.ui.components.AnthropicIcon
+import com.example.hermes.ui.components.AnthropicIcons
 import kotlinx.coroutines.launch
 
 @Composable
@@ -28,6 +30,9 @@ fun SettingsScreen(
     onOpenDrawer: () -> Unit,
     onNavigateProfile: () -> Unit = {},
     onNavigateBilling: () -> Unit = {},
+    onNavigateTasks: () -> Unit = {},
+    onNavigateAgents: () -> Unit = {},
+    onNavigateKnowledge: () -> Unit = {},
     onNavigateCapabilities: () -> Unit = {},
     onNavigateConnectors: () -> Unit = {},
     onNavigatePermissions: () -> Unit = {},
@@ -49,7 +54,7 @@ fun SettingsScreen(
     val themeMode by settingsViewModel.themeMode.collectAsState()
     val userEmail by settingsViewModel.userEmail.collectAsState()
     val selectedFontStyle by prefs.fontStyle.collectAsState(initial = "Default")
-    val voicePersona by prefs.voicePersona.collectAsState(initial = "Rounded")
+    val voicePersona by prefs.voicePersona.collectAsState(initial = "Jenny")
     val connectorDiscovery by prefs.connectorDiscovery.collectAsState(initial = true)
 
     val webSearchEnabled by prefs.capWebSearch.collectAsState(initial = true)
@@ -244,6 +249,38 @@ fun SettingsScreen(
                             subtitle = if (isAdmin) "Hermes Max (Admin Plan)" else "Free plan",
                             icon = Icons.Outlined.MonetizationOn,
                             onClick = onNavigateBilling
+                        )
+                    }
+                }
+
+                // Autonomous Systems & Workspace (Tasks, Agents, Knowledge)
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(Color(0xFF1F1E1C))
+                            .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp))
+                    ) {
+                        SettingOptionRow(
+                            title = "Tasks",
+                            subtitle = "Background cron & scheduled automations",
+                            anthropicIconId = AnthropicIcons.Tasks,
+                            onClick = onNavigateTasks
+                        )
+                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
+                        SettingOptionRow(
+                            title = "Agents",
+                            subtitle = "Specialized autonomous workforce",
+                            anthropicIconId = AnthropicIcons.AgentsSimple,
+                            onClick = onNavigateAgents
+                        )
+                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
+                        SettingOptionRow(
+                            title = "Knowledge",
+                            subtitle = "Notion & Obsidian vaults",
+                            anthropicIconId = AnthropicIcons.Knowledge,
+                            onClick = onNavigateKnowledge
                         )
                     }
                 }
@@ -615,7 +652,8 @@ fun SettingsScreen(
 private fun SettingOptionRow(
     title: String,
     subtitle: String? = null,
-    icon: ImageVector,
+    icon: ImageVector? = null,
+    anthropicIconId: Int? = null,
     titleColor: Color = TextPrimaryWarm,
     showChevron: Boolean = true,
     onClick: () -> Unit
@@ -627,12 +665,21 @@ private fun SettingOptionRow(
             .padding(horizontal = 18.dp, vertical = 15.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = if (titleColor == DestructiveRed) DestructiveRed else TextPrimaryWarm,
-            modifier = Modifier.size(22.dp)
-        )
+        if (anthropicIconId != null) {
+            AnthropicIcon(
+                drawableId = anthropicIconId,
+                contentDescription = null,
+                tint = if (titleColor == DestructiveRed) DestructiveRed else TextPrimaryWarm,
+                size = 22.dp
+            )
+        } else if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (titleColor == DestructiveRed) DestructiveRed else TextPrimaryWarm,
+                modifier = Modifier.size(22.dp)
+            )
+        }
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(

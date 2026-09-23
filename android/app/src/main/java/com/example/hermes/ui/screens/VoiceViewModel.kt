@@ -106,6 +106,8 @@ class VoiceViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, "hermes-agent")
 
+    val currentSessionId: StateFlow<String> = huggingVoiceEngine.voiceSessionId
+
     fun setModel(model: String) {
         if (isHuggingVoice(_voiceMode.value)) huggingVoiceEngine.setModel(model) else classicEngine.setModel(model)
     }

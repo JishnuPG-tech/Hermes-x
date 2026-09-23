@@ -24,6 +24,9 @@ import kotlin.math.sin
  */
 object HermesAudioFeedback {
 
+    @Volatile
+    var isSoundEnabled: Boolean = false
+
     private val soundScope = CoroutineScope(Dispatchers.Default)
 
     // Pre-synthesized micro PCM buffers for instant playback
@@ -118,6 +121,7 @@ object HermesAudioFeedback {
      * Play message sent sound effect: crisp, high-tech micro tap.
      */
     fun playMessageSent(context: Context) {
+        if (!isSoundEnabled) return
         try {
             playPcm(sentToneBuffer)
             vibrateSubtle(context, 18)
@@ -128,6 +132,7 @@ object HermesAudioFeedback {
      * Play response completed chime: sweet, warm harmonic double-tone.
      */
     fun playMessageReceived(context: Context) {
+        if (!isSoundEnabled) return
         try {
             playPcm(receivedToneBuffer)
             vibrateSubtle(context, 25)
@@ -138,6 +143,7 @@ object HermesAudioFeedback {
      * Play thinking step progress tick: delicate micro-tick.
      */
     fun playStepTransition(context: Context) {
+        if (!isSoundEnabled) return
         try {
             playPcm(stepTickBuffer)
             vibrateSubtle(context, 10)
@@ -148,6 +154,7 @@ object HermesAudioFeedback {
      * Play action click (button, menu item, chip tap).
      */
     fun playActionClick(context: Context) {
+        if (!isSoundEnabled) return
         try {
             val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
             audioManager?.playSoundEffect(AudioManager.FX_KEY_CLICK, 0.35f)

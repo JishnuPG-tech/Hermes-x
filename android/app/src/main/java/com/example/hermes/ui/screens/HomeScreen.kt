@@ -20,7 +20,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.hermes.data.ChatAttachment
 import com.example.hermes.theme.*
 import com.example.hermes.ui.components.*
-import com.example.hermes.ui.sound.HermesAudioFeedback
 
 @Composable
 fun HomeScreen(
@@ -266,21 +265,11 @@ fun HomeScreen(
                 onRemoveAttachment = { id ->
                     attachments = attachments.filterNot { it.id == id }
                 },
-                onModelClick = {
-                    HermesAudioFeedback.playActionClick(context)
-                    showModelSheet = true
-                },
-                onAttachClick = {
-                    HermesAudioFeedback.playActionClick(context)
-                    showAddSheet = true
-                },
-                onVoiceClick = {
-                    HermesAudioFeedback.playActionClick(context)
-                    onNavigateVoice()
-                },
+                onModelClick = { showModelSheet = true },
+                onAttachClick = { showAddSheet = true },
+                onVoiceClick = onNavigateVoice,
                 onSend = {
                     if (composerText.isNotBlank() || attachments.isNotEmpty()) {
-                        HermesAudioFeedback.playMessageSent(context)
                         val query = composerText.ifBlank { "Attached files" }
                         chatViewModel.setPendingAttachments(attachments)
                         composerText = ""

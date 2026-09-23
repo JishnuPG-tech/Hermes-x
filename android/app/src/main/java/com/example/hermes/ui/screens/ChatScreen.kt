@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,7 +40,6 @@ import com.example.hermes.data.*
 import com.example.hermes.theme.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.example.hermes.ui.components.*
-import com.example.hermes.ui.sound.HermesAudioFeedback
 import kotlinx.coroutines.launch
 
 @Composable
@@ -63,8 +63,6 @@ fun ChatScreen(
     var showRenameDialog by remember { mutableStateOf(false) }
     var renameChatTitle by remember { mutableStateOf("") }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
-    var showSummarySheet by remember { mutableStateOf(false) }
-    var selectedSummaryMessage by remember { mutableStateOf<ChatMessage?>(null) }
     var showModelSheet by remember { mutableStateOf(false) }
     var showAddSheet by remember { mutableStateOf(false) }
     var showChatOverflowMenu by remember { mutableStateOf(false) }
@@ -272,30 +270,6 @@ fun ChatScreen(
         }
     }
 
-    // Hermes Audio Feedback Hooks
-    var wasStreaming by remember { mutableStateOf(false) }
-    LaunchedEffect(isStreaming) {
-        if (wasStreaming && !isStreaming) {
-            HermesAudioFeedback.playMessageReceived(context)
-        }
-        wasStreaming = isStreaming
-    }
-
-    var lastPlayedPhase by remember { mutableStateOf<com.example.hermes.data.ThinkingPhase?>(null) }
-    var lastAudioPlayTime by remember { mutableLongStateOf(0L) }
-
-    LaunchedEffect(thinkingPhase) {
-        val now = System.currentTimeMillis()
-        if (thinkingPhase != com.example.hermes.data.ThinkingPhase.IDLE &&
-            thinkingPhase != lastPlayedPhase &&
-            (now - lastAudioPlayTime > 1200L)
-        ) {
-            lastPlayedPhase = thinkingPhase
-            lastAudioPlayTime = now
-            HermesAudioFeedback.playStepTransition(context)
-        }
-    }
-
     // Auto scroll down when new message or token arrives
     LaunchedEffect(messages.size, messages.lastOrNull()?.content?.length) {
         val targetIndex = messages.size - 1
@@ -339,10 +313,7 @@ fun ChatScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 // Left: Claude Hamburger Menu (3 lines: top long, middle long, bottom 60% short)
-                IconButton(onClick = {
-                    HermesAudioFeedback.playActionClick(context)
-                    onOpenDrawer()
-                }) {
+                IconButton(onClick = onOpenDrawer) {
                     ClaudeHamburgerIcon(color = PureWhite)
                 }
 
@@ -350,10 +321,7 @@ fun ChatScreen(
 
                 // Right: New Chat (+) and Overflow (⋮)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = {
-                        HermesAudioFeedback.playActionClick(context)
-                        chatViewModel.clearMessages()
-                    }) {
+                    IconButton(onClick = { chatViewModel.clearMessages() }) {
                         Icon(
                             imageVector = Icons.Outlined.AddCircleOutline,
                             contentDescription = "New chat",
@@ -363,10 +331,7 @@ fun ChatScreen(
                     }
 
                     Box {
-                        IconButton(onClick = {
-                            HermesAudioFeedback.playActionClick(context)
-                            showChatOverflowMenu = true
-                        }) {
+                        IconButton(onClick = { showChatOverflowMenu = true }) {
                             Icon(
                                 imageVector = Icons.Default.MoreVert,
                                 contentDescription = "Options",
@@ -617,23 +582,49 @@ fun ChatScreen(
                                 .trim()
 
                             if (cleanDisplayContent.isNotBlank()) {
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(20.dp))
-                                        .background(Color(0xFF262523))
-                                        .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp))
-                                        .padding(horizontal = 18.dp, vertical = 14.dp)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End,
+                                    verticalAlignment = Alignment.Bottom
                                 ) {
-                                    Text(
-                                        text = cleanDisplayContent,
-                                        style = HermesTypography.bodyLarge.copy(
-                                            fontFamily = AnthropicSans,
-                                            fontSize = 17.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = PureWhite,
-                                            lineHeight = 25.sp
+                                    val isThisCopied = copiedMessageId == message.id
+                                    IconButton(
+                                        onClick = {
+                                            clipboardManager.setText(AnnotatedString(cleanDisplayContent))
+                                            copiedMessageId = message.id
+                                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        },
+                                        modifier = Modifier
+                                            .padding(end = 6.dp, bottom = 4.dp)
+                                            .size(28.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isThisCopied) Icons.Default.Check else Icons.Outlined.ContentCopy,
+                                            contentDescription = "Copy message",
+                                            tint = if (isThisCopied) BrandCoral else Color(0xFF8E8D8A),
+                                            modifier = Modifier.size(16.dp)
                                         )
-                                    )
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(20.dp))
+                                            .background(Color(0xFF262523))
+                                            .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp))
+                                            .padding(horizontal = 18.dp, vertical = 14.dp)
+                                    ) {
+                                        SelectionContainer {
+                                            Text(
+                                                text = cleanDisplayContent,
+                                                style = HermesTypography.bodyLarge.copy(
+                                                    fontFamily = AnthropicSans,
+                                                    fontSize = 17.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = PureWhite,
+                                                    lineHeight = 25.sp
+                                                )
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -659,164 +650,37 @@ fun ChatScreen(
                             val isMessageStreaming = message.isStreaming || (index == messages.lastIndex && isStreaming)
                             val hasContent = message.content.isNotBlank()
 
-                            // Thinking state lifecycle (Screenshots 3, 4, 5, 6, 7):
-                            // 1. When loading and waiting for first tokens:
-                            //    Show dynamic animated rough short text (e.g. "Running the ls command...", "Reading the ls output...", "Ready to serve to the user...") + pulsing indicator!
-                            // 2. Once response starts, discreet single-line stepper + clean response!
-                            if (isMessageStreaming && !hasContent) {
-                                val currentDynamicThought = remember(thinkingPhase, activeThinking, message.thinking) {
-                                    when (thinkingPhase) {
-                                        com.example.hermes.data.ThinkingPhase.THOUGHT_PROCESS -> "Analysing the request..."
-                                        com.example.hermes.data.ThinkingPhase.BUILDING -> "Executing command & tools..."
-                                        com.example.hermes.data.ThinkingPhase.CREATING_FILE -> "Inspecting output & results..."
-                                        com.example.hermes.data.ThinkingPhase.FINALIZING -> "Organising for user..."
-                                        com.example.hermes.data.ThinkingPhase.COMPLETED -> "Ready to serve..."
-                                        else -> formatDynamicThinkingText(activeThinking?.takeIf { it.isNotBlank() } ?: message.thinking)
+                            // Embedded Artifact Card (Image 2 Exact UI/UX) - ONLY if artifact was created
+                            if (!message.artifactTitle.isNullOrBlank()) {
+                                val artTitle = message.artifactTitle ?: "Artifact"
+                                val artType = message.artifactType ?: "Document · MD"
+
+                                ClaudeArtifactCard(
+                                    title = artTitle,
+                                    type = artType,
+                                    onClick = {
+                                        onNavigateArtifactViewer(artTitle, artType, message.artifactCode, message.artifactLanguage)
                                     }
+                                )
+                            }
+
+                            // Check for in-chat Integration Card (Replit-style credential vault)
+                            val integrationSpec = remember(message.content) {
+                                if (message.content.contains("<hermesIntegration", ignoreCase = true)) {
+                                    IntegrationCardParser.parse(message.content)
+                                } else null
+                            }
+
+                            val displayContent = remember(message.content, integrationSpec) {
+                                if (integrationSpec != null) {
+                                    message.content.replace(Regex("""<hermesIntegration[\s\S]*?</hermesIntegration>""", RegexOption.IGNORE_CASE), "").trim()
+                                } else {
+                                    message.content
                                 }
+                            }
 
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(8.dp)),
-                                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                                ) {
-                                    // Stepper Line with Animated Dynamic Short Text
-                                    Row(
-                                        modifier = Modifier
-                                            .clip(CircleShape)
-                                            .clickable {
-                                                selectedSummaryMessage = message
-                                                showSummarySheet = true
-                                            }
-                                            .padding(vertical = 4.dp, horizontal = 2.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(8.dp)
-                                                .clip(CircleShape)
-                                                .background(BrandCoral)
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        AnimatedContent(
-                                            targetState = currentDynamicThought,
-                                            transitionSpec = {
-                                                (fadeIn(animationSpec = tween(220, delayMillis = 30)) +
-                                                        slideInVertically(animationSpec = tween(220)) { it / 2 })
-                                                    .togetherWith(
-                                                        fadeOut(animationSpec = tween(180)) +
-                                                                slideOutVertically(animationSpec = tween(180)) { -it / 2 }
-                                                    )
-                                            },
-                                            label = "DynamicThinkingStep"
-                                        ) { stepText ->
-                                            Text(
-                                                text = stepText,
-                                                style = HermesTypography.bodyMedium.copy(
-                                                    fontSize = 15.sp,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    color = PureWhite
-                                                ),
-                                                maxLines = 1,
-                                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                            )
-                                        }
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Icon(
-                                            imageVector = Icons.Default.ChevronRight,
-                                            contentDescription = null,
-                                            tint = PureWhite,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-
-                                    // Pulsing coral dot — Claude-style loading indicator
-                                    HermesThinkingDot(modifier = Modifier.padding(start = 2.dp))
-                                }
-                            } else {
-                                // Response ready / streamed -> Discreet single-line stepper
-                                val completedStepTitle = remember(message.stepTitle, message.thinking) {
-                                    if (!message.stepTitle.isNullOrBlank() && !message.stepTitle.equals("solution", ignoreCase = true)) {
-                                        message.stepTitle
-                                    } else if (!message.thinking.isNullOrBlank()) {
-                                        val lastLine = message.thinking.lines().lastOrNull { it.isNotBlank() }
-                                        if (!lastLine.isNullOrBlank()) {
-                                            formatDynamicThinkingText(lastLine).removeSuffix("...")
-                                        } else {
-                                            "Thought process"
-                                        }
-                                    } else {
-                                        null
-                                    }
-                                }
-
-                                if (!completedStepTitle.isNullOrBlank()) {
-                                    Row(
-                                        modifier = Modifier
-                                            .clip(CircleShape)
-                                            .clickable {
-                                                selectedSummaryMessage = message
-                                                showSummarySheet = true
-                                            }
-                                            .padding(vertical = 4.dp, horizontal = 2.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Outlined.Schedule,
-                                            contentDescription = null,
-                                            tint = PureWhite,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                            text = completedStepTitle ?: "Thought process",
-                                            style = HermesTypography.bodyMedium.copy(
-                                                fontSize = 15.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = PureWhite
-                                            )
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Icon(
-                                            imageVector = Icons.Default.ChevronRight,
-                                            contentDescription = null,
-                                            tint = PureWhite,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                }
-
-                                // Embedded Artifact Card (Image 2 Exact UI/UX) - ONLY if artifact was created
-                                if (!message.artifactTitle.isNullOrBlank()) {
-                                    val artTitle = message.artifactTitle ?: "Artifact"
-                                    val artType = message.artifactType ?: "Document · MD"
-
-                                    ClaudeArtifactCard(
-                                        title = artTitle,
-                                        type = artType,
-                                        onClick = {
-                                            onNavigateArtifactViewer(artTitle, artType, message.artifactCode, message.artifactLanguage)
-                                        }
-                                    )
-                                }
-
-                                // Check for in-chat Integration Card (Replit-style credential vault)
-                                val integrationSpec = remember(message.content) {
-                                    if (message.content.contains("<hermesIntegration", ignoreCase = true)) {
-                                        IntegrationCardParser.parse(message.content)
-                                    } else null
-                                }
-
-                                val displayContent = remember(message.content, integrationSpec) {
-                                    if (integrationSpec != null) {
-                                        message.content.replace(Regex("""<hermesIntegration[\s\S]*?</hermesIntegration>""", RegexOption.IGNORE_CASE), "").trim()
-                                    } else {
-                                        message.content
-                                    }
-                                }
-
-                                // Assistant Formatted Content using ClaudeMarkdownView (Zero raw **, ##, || leak!)
+                            // Assistant Formatted Content using ClaudeMarkdownView wrapped in SelectionContainer
+                            SelectionContainer {
                                 Column(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -841,8 +705,10 @@ fun ChatScreen(
                                         StreamingBlinkingCursor()
                                     }
                                 }
+                            }
 
-                                // Assistant Action Row (Image 3 Exact Design: Copy, Share/Forward, TTS Play, Thumbs Up, Thumbs Down, Regenerate)
+                            // Assistant Action Row (Image 3 Exact Design: Copy, Share/Forward, TTS Play, Thumbs Up, Thumbs Down, Regenerate)
+                            if (hasContent || !isMessageStreaming) {
                                 val isSpeakingThis = currentlyPlayingMessageId == message.id
                                 Row(
                                     modifier = Modifier
@@ -944,8 +810,9 @@ fun ChatScreen(
                                             }
                                     )
                                 }
+                            }
 
-                                Spacer(modifier = Modifier.height(6.dp))
+                            Spacer(modifier = Modifier.height(6.dp))
 
                                 // Bottom Disclaimer Row
                                 if (message == messages.lastOrNull { it.role == "assistant" }) {
@@ -973,7 +840,6 @@ fun ChatScreen(
                 }
             }
         }
-    }
 
             // Post-Voice Banner
             if (showVoiceEndedBanner) {
@@ -1067,21 +933,11 @@ fun ChatScreen(
                 isIncognito = isIncognito,
                 isStreaming = isStreaming,
                 onStopGeneration = { chatViewModel.stopGeneration() },
-                onModelClick = {
-                    HermesAudioFeedback.playActionClick(context)
-                    showModelSheet = true
-                },
-                onAttachClick = {
-                    HermesAudioFeedback.playActionClick(context)
-                    showAddSheet = true
-                },
-                onVoiceClick = {
-                    HermesAudioFeedback.playActionClick(context)
-                    onNavigateVoice()
-                },
+                onModelClick = { showModelSheet = true },
+                onAttachClick = { showAddSheet = true },
+                onVoiceClick = onNavigateVoice,
                 onSend = {
                     if (composerText.isNotBlank() || attachments.isNotEmpty()) {
-                        HermesAudioFeedback.playMessageSent(context)
                         val textToSend = composerText
                         val currentAtts = attachments
                         composerText = ""
@@ -1334,29 +1190,6 @@ fun ChatScreen(
             )
         }
 
-        // Reasoning Stepper Summary Sheet (Screenshots 4, 5, 6, 7)
-        if (showSummarySheet) {
-            val targetMsg = selectedSummaryMessage ?: messages.lastOrNull { it.role == "assistant" }
-            val promptTopic = targetMsg?.stepTitle ?: lastUserMessage.ifBlank { "Thought process" }
-
-            ExecutionSummarySheet(
-                onDismiss = { showSummarySheet = false },
-                onStopGeneration = {
-                    chatViewModel.stopGeneration()
-                    showSummarySheet = false
-                },
-                isThinkingActive = isStreaming && (targetMsg == null || targetMsg.id == messages.lastOrNull()?.id),
-                promptTopic = promptTopic,
-                thinkingContent = targetMsg?.thinking,
-                artifactName = targetMsg?.artifactTitle,
-                artifactType = targetMsg?.artifactType,
-                thinkingPhase = thinkingPhase,
-                onOpenArtifact = { title, type ->
-                    showSummarySheet = false
-                    onNavigateArtifactViewer(title, type, targetMsg?.artifactCode, targetMsg?.artifactLanguage)
-                }
-            )
-        }
 
         // Human-in-the-Loop Policy Approval Sheet
         activeApprovalToReview?.let { approval ->

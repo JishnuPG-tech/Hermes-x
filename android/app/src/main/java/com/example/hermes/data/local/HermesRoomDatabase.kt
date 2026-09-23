@@ -13,7 +13,7 @@ import androidx.room.RoomDatabase
         ProjectEntity::class,
         ArtifactEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class HermesRoomDatabase : RoomDatabase() {
@@ -34,7 +34,7 @@ abstract class HermesRoomDatabase : RoomDatabase() {
                     HermesRoomDatabase::class.java,
                     "hermes_room.db"
                 )
-                .fallbackToDestructiveMigration()
+                .fallbackToDestructiveMigration(true)
                 .build()
                 .also { INSTANCE = it }
             }

@@ -53,7 +53,7 @@ class HermesApiClient(
 ) {
     companion object {
         const val DEFAULT_BASE_URL = "https://jishnupg-hermes.hf.space"
-        const val DEFAULT_API_KEY = "Jishnu2005"
+        const val DEFAULT_API_KEY = ""
         val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
 
         val json = Json {
@@ -67,7 +67,7 @@ class HermesApiClient(
 
     private val cookieJar = InMemoryCookieJar()
 
-    private val okHttpClient = OkHttpClient.Builder()
+    val okHttpClient = OkHttpClient.Builder()
         .cookieJar(cookieJar)
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(120, TimeUnit.SECONDS)
@@ -1221,7 +1221,8 @@ class HermesApiClient(
      */
     fun connectHuggingVoiceWebSocket(
         listener: WebSocketListener,
-        voice: String? = null
+        voice: String? = null,
+        sessionId: String? = null
     ): WebSocket {
         val baseWs = if (baseUrl.startsWith("https://")) {
             baseUrl.replace("https://", "wss://") + "/hugging-voice/ws"
@@ -1229,8 +1230,16 @@ class HermesApiClient(
             baseUrl.replace("http://", "ws://") + "/hugging-voice/ws"
         }
 
-        val url = if (!voice.isNullOrBlank()) {
-            "$baseWs?voice=" + java.net.URLEncoder.encode(voice, "UTF-8")
+        val queryParams = mutableListOf<String>()
+        if (!voice.isNullOrBlank()) {
+            queryParams.add("voice=" + java.net.URLEncoder.encode(voice, "UTF-8"))
+        }
+        if (!sessionId.isNullOrBlank()) {
+            queryParams.add("session_id=" + java.net.URLEncoder.encode(sessionId, "UTF-8"))
+        }
+
+        val url = if (queryParams.isNotEmpty()) {
+            "$baseWs?" + queryParams.joinToString("&")
         } else {
             baseWs
         }
@@ -1248,8 +1257,9 @@ class HermesApiClient(
      */
     fun connectApolloRealtimeWebSocket(
         listener: WebSocketListener,
-        voice: String? = null
-    ): WebSocket = connectHuggingVoiceWebSocket(listener, voice)
+        voice: String? = null,
+        sessionId: String? = null
+    ): WebSocket = connectHuggingVoiceWebSocket(listener, voice, sessionId)
 
     /**
      * Execute autonomous action or background task via Hermes voice execution layer.
@@ -1431,6 +1441,109 @@ class HermesApiClient(
             }
         } catch (_: Exception) {
             false
+        }
+    }
+
+    /**
+     * Fetch skills catalog from backend.
+     */
+    suspend fun getSkills(sessionId: String = "global"): Result<List<SkillItemDto>> = withContext(Dispatchers.IO) {
+        try {
+            val req = Request.Builder()
+                .url("$baseUrl/api/v1/skills?session_id=$sessionId")
+                .get()
+                .header("Authorization", "Bearer $apiKey")
+                .build()
+            okHttpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext Result.failure(Exception("HTTP ${resp.code}"))
+                val bodyStr = resp.body?.string() ?: return@withContext Result.failure(Exception("Empty body"))
+                val res = json.decodeFromString<SkillsResponseDto>(bodyStr)
+                Result.success(res.skills)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Activate or deactivate a skill on backend.
+     */
+    suspend fun toggleSkill(skillName: String, active: Boolean, sessionId: String = "global"): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            val payload = json.encodeToString(SkillToggleRequestDto(skill_name = skillName, active = active, session_id = sessionId))
+            val req = Request.Builder()
+                .url("$baseUrl/api/v1/skills/activate")
+                .post(payload.toRequestBody(JSON_MEDIA_TYPE))
+                .header("Authorization", "Bearer $apiKey")
+                .build()
+            okHttpClient.newCall(req).execute().use { resp ->
+                Result.success(resp.isSuccessful)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Fetch workforce agent roles and capabilities from backend.
+     */
+    suspend fun getAgents(): Result<List<AgentRoleDto>> = withContext(Dispatchers.IO) {
+        try {
+            val req = Request.Builder()
+                .url("$baseUrl/api/v1/agents")
+                .get()
+                .header("Authorization", "Bearer $apiKey")
+                .build()
+            okHttpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext Result.failure(Exception("HTTP ${resp.code}"))
+                val bodyStr = resp.body?.string() ?: return@withContext Result.failure(Exception("Empty body"))
+                val res = json.decodeFromString<AgentsResponseDto>(bodyStr)
+                Result.success(res.agents)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Fetch knowledge summary metrics and connected sources.
+     */
+    suspend fun getKnowledgeSummary(): Result<KnowledgeSummaryResponseDto> = withContext(Dispatchers.IO) {
+        try {
+            val req = Request.Builder()
+                .url("$baseUrl/api/v1/knowledge/summary")
+                .get()
+                .header("Authorization", "Bearer $apiKey")
+                .build()
+            okHttpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext Result.failure(Exception("HTTP ${resp.code}"))
+                val bodyStr = resp.body?.string() ?: return@withContext Result.failure(Exception("Empty body"))
+                val res = json.decodeFromString<KnowledgeSummaryResponseDto>(bodyStr)
+                Result.success(res)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Fetch system and task execution activity timeline.
+     */
+    suspend fun getActivity(limit: Int = 40): Result<List<ActivityEventDto>> = withContext(Dispatchers.IO) {
+        try {
+            val req = Request.Builder()
+                .url("$baseUrl/api/v1/activity?limit=$limit")
+                .get()
+                .header("Authorization", "Bearer $apiKey")
+                .build()
+            okHttpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext Result.failure(Exception("HTTP ${resp.code}"))
+                val bodyStr = resp.body?.string() ?: return@withContext Result.failure(Exception("Empty body"))
+                val res = json.decodeFromString<ActivityResponseDto>(bodyStr)
+                Result.success(res.events)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 }

@@ -34,6 +34,10 @@ interface DataRepository {
     val knowledgeSources: StateFlow<List<KnowledgeSourceDto>>
     val directoryServers: StateFlow<List<DirectoryServerItemDto>>
     val terminalLogs: StateFlow<List<String>>
+    val skills: StateFlow<List<SkillItemDto>>
+    val agents: StateFlow<List<AgentRoleDto>>
+    val knowledgeSummary: StateFlow<KnowledgeSummaryResponseDto?>
+    val activityEvents: StateFlow<List<ActivityEventDto>>
 
     fun sendMessage(
         content: String,
@@ -78,6 +82,11 @@ interface DataRepository {
     suspend fun navigateBrowser(url: String): BrowserNavigateResponseDto?
     suspend fun getBrowserScreenshot(): BrowserScreenshotResponseDto?
     suspend fun getWorkforceRoles(): List<WorkforceRoleDto>
+    fun fetchSkills(sessionId: String = "global")
+    suspend fun toggleSkill(skillName: String, active: Boolean, sessionId: String = "global"): Boolean
+    fun fetchAgents()
+    fun fetchKnowledgeSummary()
+    fun fetchActivity()
     suspend fun getAutomations(): List<ScheduledAutomationDto>
     suspend fun createAutomation(title: String, prompt: String, cronExpression: String = "0 * * * *"): Boolean
     suspend fun toggleAutomation(automationId: String): Boolean
@@ -88,6 +97,18 @@ interface DataRepository {
     suspend fun getOmniRouteTelemetry(): Result<OmniRouteTelemetryDto>
     suspend fun searchMessagesFts(query: String): List<FtsSearchResultDto>
     suspend fun saveIntegrationCredentials(service: String, credentials: Map<String, String>): Boolean
+    fun recordVoiceTurn(
+        sessionId: String,
+        userTranscript: String,
+        assistantReply: String,
+        toolObjective: String? = null,
+        toolOutput: String? = null,
+        title: String? = null
+    )
+    fun recordVoiceUserMessage(sessionId: String, userText: String)
+    fun recordVoiceAssistantDelta(sessionId: String, delta: String)
+    fun recordVoiceAssistantMessage(sessionId: String, assistantText: String)
+    fun recordVoiceToolExecution(sessionId: String, objective: String, rawOutput: String)
 
     // Auth and Server Preferences
     val isLoggedIn: kotlinx.coroutines.flow.Flow<Boolean>
@@ -180,6 +201,18 @@ class HermesDataRepository(
     private val _terminalLogs = MutableStateFlow<List<String>>(emptyList())
     override val terminalLogs: StateFlow<List<String>> = _terminalLogs.asStateFlow()
 
+    private val _skills = MutableStateFlow<List<SkillItemDto>>(emptyList())
+    override val skills: StateFlow<List<SkillItemDto>> = _skills.asStateFlow()
+
+    private val _agents = MutableStateFlow<List<AgentRoleDto>>(emptyList())
+    override val agents: StateFlow<List<AgentRoleDto>> = _agents.asStateFlow()
+
+    private val _knowledgeSummary = MutableStateFlow<KnowledgeSummaryResponseDto?>(null)
+    override val knowledgeSummary: StateFlow<KnowledgeSummaryResponseDto?> = _knowledgeSummary.asStateFlow()
+
+    private val _activityEvents = MutableStateFlow<List<ActivityEventDto>>(emptyList())
+    override val activityEvents: StateFlow<List<ActivityEventDto>> = _activityEvents.asStateFlow()
+
     companion object {
         val DEFAULT_MODELS = listOf(
             ModelOptionDto(
@@ -257,7 +290,8 @@ class HermesDataRepository(
                             session_id = it.id,
                             title = it.title,
                             model = it.model,
-                            updated_at = it.updatedAt / 1000.0
+                            updated_at = it.updatedAt / 1000.0,
+                            session_type = it.sessionType
                         )
                     }
                     val localIds = localDtos.map { it.session_id }.toSet()
@@ -277,7 +311,8 @@ class HermesDataRepository(
                         session_id = it.id,
                         title = it.title,
                         model = it.model,
-                        updated_at = it.updatedAt / 1000.0
+                        updated_at = it.updatedAt / 1000.0,
+                        session_type = it.sessionType
                     )
                 }
                 val localIds = localDtos.map { it.session_id }.toSet()
@@ -993,7 +1028,8 @@ class HermesDataRepository(
                                 title = it.title,
                                 model = it.model ?: "hermes-agent",
                                 updatedAt = (it.updated_at * 1000).toLong(),
-                                userId = activeUserId
+                                userId = activeUserId,
+                                sessionType = it.session_type
                             )
                         })
                     }
@@ -1004,7 +1040,8 @@ class HermesDataRepository(
                                 session_id = it.id,
                                 title = it.title,
                                 model = it.model,
-                                updated_at = it.updatedAt / 1000.0
+                                updated_at = it.updatedAt / 1000.0,
+                                session_type = it.sessionType
                             )
                         }
                         _sessions.value = localDtos.sortedByDescending { it.updated_at }
@@ -1243,6 +1280,251 @@ class HermesDataRepository(
 
     override fun renameSession(sessionId: String, title: String) {
         updateSessionTitle(sessionId, title)
+    }
+
+    override fun recordVoiceTurn(
+        sessionId: String,
+        userTranscript: String,
+        assistantReply: String,
+        toolObjective: String?,
+        toolOutput: String?,
+        title: String?
+    ) {
+        val nowSec = System.currentTimeMillis() / 1000.0
+        val nowMs = System.currentTimeMillis()
+
+        // 1. Ensure or update session in memory
+        val existingSession = _sessions.value.firstOrNull { it.session_id == sessionId }
+        val finalTitle = when {
+            !title.isNullOrBlank() && (existingSession?.title.isNullOrBlank() || existingSession?.title in listOf("Chat", "New chat", "Voice Chat", "Untitled")) -> title
+            !existingSession?.title.isNullOrBlank() && existingSession.title !in listOf("Chat", "New chat", "Voice Chat", "Untitled") -> existingSession.title
+            userTranscript.isNotBlank() -> {
+                val words = userTranscript.trim().split(" ")
+                val candidate = if (words.size > 4) words.take(4).joinToString(" ") else userTranscript.take(28)
+                candidate.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+            }
+            else -> "Voice Chat"
+        }
+
+        val updatedSession = SessionDto(
+            session_id = sessionId,
+            title = finalTitle,
+            model = "hermes-agent",
+            message_count = (existingSession?.message_count ?: 0) + (if (userTranscript.isNotBlank()) 1 else 0) + (if (assistantReply.isNotBlank()) 1 else 0),
+            created_at = existingSession?.created_at ?: nowSec,
+            updated_at = nowSec,
+            session_type = "voice"
+        )
+
+        _sessions.value = listOf(updatedSession) + _sessions.value.filter { it.session_id != sessionId }
+
+        // 2. Persist in local Room Database
+        roomDb?.let { db ->
+            repositoryScope.launch(Dispatchers.IO) {
+                db.sessionDao().upsertSessions(listOf(
+                    SessionEntity(
+                        id = sessionId,
+                        title = finalTitle,
+                        model = "hermes-agent",
+                        updatedAt = nowMs,
+                        userId = activeUserId,
+                        sessionType = "voice"
+                    )
+                ))
+
+                val messagesToInsert = mutableListOf<MessageEntity>()
+                if (userTranscript.isNotBlank()) {
+                    messagesToInsert.add(
+                        MessageEntity(
+                            id = UUID.randomUUID().toString(),
+                            sessionId = sessionId,
+                            role = "user",
+                            content = userTranscript.trim(),
+                            timestamp = nowMs - 1000,
+                            userId = activeUserId
+                        )
+                    )
+                }
+
+                var fullAssistantText = assistantReply.trim()
+                if (!toolOutput.isNullOrBlank()) {
+                    fullAssistantText += "\n\n```bash\n$ ${toolObjective ?: "run"}\n${toolOutput.trim()}\n```"
+                }
+
+                if (fullAssistantText.isNotBlank()) {
+                    messagesToInsert.add(
+                        MessageEntity(
+                            id = UUID.randomUUID().toString(),
+                            sessionId = sessionId,
+                            role = "assistant",
+                            content = fullAssistantText,
+                            timestamp = nowMs,
+                            userId = activeUserId
+                        )
+                    )
+                }
+
+                if (messagesToInsert.isNotEmpty()) {
+                    db.messageDao().insertMessages(messagesToInsert)
+                }
+
+                // If currently viewed in ChatScreen, update the active message flow
+                if (_currentSessionId.value == sessionId) {
+                    val currentList = _messages.value.toMutableList()
+                    if (userTranscript.isNotBlank()) {
+                        currentList.add(ChatMessage(role = "user", content = userTranscript.trim()))
+                    }
+                    if (fullAssistantText.isNotBlank()) {
+                        currentList.add(ChatMessage(role = "assistant", content = fullAssistantText))
+                    }
+                    _messages.value = currentList
+                }
+            }
+        }
+
+        // 3. Trigger asynchronous AI title generation if session has a generic title
+        if (existingSession == null || existingSession.title in listOf("Chat", "New chat", "Voice Chat", "Untitled")) {
+            repositoryScope.launch(Dispatchers.IO) {
+                try {
+                    val aiTitle = apiClient.generateChatTitle(userTranscript, assistantReply)
+                    if (!aiTitle.isNullOrBlank()) {
+                        updateSessionTitle(sessionId, aiTitle)
+                    }
+                } catch (_: Exception) {}
+            }
+        }
+    }
+
+    override fun recordVoiceUserMessage(sessionId: String, userText: String) {
+        if (userText.isBlank()) return
+        val nowSec = System.currentTimeMillis() / 1000.0
+        val nowMs = System.currentTimeMillis()
+
+        // 1. Memory session update
+        val existingSession = _sessions.value.firstOrNull { it.session_id == sessionId }
+        val finalTitle = if (existingSession != null && !existingSession.title.isNullOrBlank() && existingSession.title !in listOf("Chat", "New chat", "Voice Chat", "Untitled")) {
+            existingSession.title
+        } else {
+            val words = userText.trim().split(" ")
+            val candidate = if (words.size > 4) words.take(4).joinToString(" ") else userText.take(28)
+            candidate.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+        }
+
+        val updatedSession = SessionDto(
+            session_id = sessionId,
+            title = finalTitle,
+            model = "hermes-agent",
+            message_count = (existingSession?.message_count ?: 0) + 1,
+            created_at = existingSession?.created_at ?: nowSec,
+            updated_at = nowSec,
+            session_type = "voice"
+        )
+        _sessions.value = listOf(updatedSession) + _sessions.value.filter { it.session_id != sessionId }
+
+        // 2. Active message flow update for instant UI display
+        _currentSessionId.value = sessionId
+        val currentList = _messages.value.toMutableList()
+        currentList.add(ChatMessage(role = "user", content = userText.trim()))
+        _messages.value = currentList
+
+        // 3. Persist to Room DB immediately
+        roomDb?.let { db ->
+            repositoryScope.launch(Dispatchers.IO) {
+                db.sessionDao().upsertSessions(listOf(
+                    SessionEntity(
+                        id = sessionId,
+                        title = finalTitle,
+                        model = "hermes-agent",
+                        updatedAt = nowMs,
+                        userId = activeUserId,
+                        sessionType = "voice"
+                    )
+                ))
+                db.messageDao().insertMessages(listOf(
+                    MessageEntity(
+                        id = UUID.randomUUID().toString(),
+                        sessionId = sessionId,
+                        role = "user",
+                        content = userText.trim(),
+                        timestamp = nowMs,
+                        userId = activeUserId
+                    )
+                ))
+            }
+        }
+    }
+
+    override fun recordVoiceAssistantDelta(sessionId: String, delta: String) {
+        if (delta.isEmpty()) return
+        val currentList = _messages.value.toMutableList()
+        if (currentList.isNotEmpty() && currentList.last().role == "assistant") {
+            val last = currentList.removeAt(currentList.size - 1)
+            currentList.add(last.copy(content = last.content + delta))
+        } else {
+            currentList.add(ChatMessage(role = "assistant", content = delta))
+        }
+        _messages.value = currentList
+    }
+
+    override fun recordVoiceAssistantMessage(sessionId: String, assistantText: String) {
+        if (assistantText.isBlank()) return
+        val nowSec = System.currentTimeMillis() / 1000.0
+        val nowMs = System.currentTimeMillis()
+
+        // Update count
+        val existingSession = _sessions.value.firstOrNull { it.session_id == sessionId }
+        if (existingSession != null) {
+            val updated = existingSession.copy(
+                message_count = existingSession.message_count + 1,
+                updated_at = nowSec
+            )
+            _sessions.value = listOf(updated) + _sessions.value.filter { it.session_id != sessionId }
+        }
+
+        // Persist to Room
+        roomDb?.let { db ->
+            repositoryScope.launch(Dispatchers.IO) {
+                db.messageDao().insertMessages(listOf(
+                    MessageEntity(
+                        id = UUID.randomUUID().toString(),
+                        sessionId = sessionId,
+                        role = "assistant",
+                        content = assistantText.trim(),
+                        timestamp = nowMs,
+                        userId = activeUserId
+                    )
+                ))
+            }
+        }
+    }
+
+    override fun recordVoiceToolExecution(sessionId: String, objective: String, rawOutput: String) {
+        if (rawOutput.isBlank()) return
+        val formatted = "\n\n```bash\n$ $objective\n${rawOutput.trim()}\n```"
+        val currentList = _messages.value.toMutableList()
+        if (currentList.isNotEmpty() && currentList.last().role == "assistant") {
+            val last = currentList.removeAt(currentList.size - 1)
+            currentList.add(last.copy(content = last.content + formatted))
+        } else {
+            currentList.add(ChatMessage(role = "assistant", content = formatted))
+        }
+        _messages.value = currentList
+
+        val nowMs = System.currentTimeMillis()
+        roomDb?.let { db ->
+            repositoryScope.launch(Dispatchers.IO) {
+                db.messageDao().insertMessages(listOf(
+                    MessageEntity(
+                        id = UUID.randomUUID().toString(),
+                        sessionId = sessionId,
+                        role = "assistant",
+                        content = formatted.trim(),
+                        timestamp = nowMs,
+                        userId = activeUserId
+                    )
+                ))
+            }
+        }
     }
 
     override fun togglePinSession(sessionId: String) {
@@ -1573,6 +1855,47 @@ class HermesDataRepository(
             prefsManager?.saveCredential(service, token)
         }
         apiClient.saveIntegrationCredentials(service, credentials)
+    }
+
+    override fun fetchSkills(sessionId: String) {
+        repositoryScope.launch(Dispatchers.IO) {
+            val res = apiClient.getSkills(sessionId)
+            res.onSuccess { _skills.value = it }
+        }
+    }
+
+    override suspend fun toggleSkill(skillName: String, active: Boolean, sessionId: String): Boolean {
+        val res = apiClient.toggleSkill(skillName, active, sessionId)
+        if (res.getOrDefault(false)) {
+            _skills.value = _skills.value.map {
+                if (it.name.equals(skillName, ignoreCase = true) || it.id.equals(skillName, ignoreCase = true)) {
+                    it.copy(is_active = active)
+                } else it
+            }
+            return true
+        }
+        return false
+    }
+
+    override fun fetchAgents() {
+        repositoryScope.launch(Dispatchers.IO) {
+            val res = apiClient.getAgents()
+            res.onSuccess { _agents.value = it }
+        }
+    }
+
+    override fun fetchKnowledgeSummary() {
+        repositoryScope.launch(Dispatchers.IO) {
+            val res = apiClient.getKnowledgeSummary()
+            res.onSuccess { _knowledgeSummary.value = it }
+        }
+    }
+
+    override fun fetchActivity() {
+        repositoryScope.launch(Dispatchers.IO) {
+            val res = apiClient.getActivity(limit = 50)
+            res.onSuccess { _activityEvents.value = it }
+        }
     }
 
     override fun clearMessages() {

@@ -10,7 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,10 +41,14 @@ fun ClaudeDrawerContent(
     userEmail: String = "",
     onNavigateHome: () -> Unit,
     onNavigateChats: () -> Unit,
+    onNavigateVoiceChats: () -> Unit = {},
     onNavigateProjects: () -> Unit,
-    onNavigateCode: () -> Unit,
+    onNavigateTasks: () -> Unit = {},
+    onNavigateAgents: () -> Unit = {},
+    onNavigateSkills: () -> Unit = {},
+    onNavigateKnowledge: () -> Unit = {},
     onNavigateArtifacts: () -> Unit,
-    onNavigateTasks: () -> Unit,
+    onNavigateActivity: () -> Unit = {},
     onNavigateSettings: () -> Unit,
     onNewChat: () -> Unit,
     onOpenRecentChat: (String) -> Unit = {}
@@ -72,16 +76,17 @@ fun ClaudeDrawerContent(
                     fontWeight = FontWeight.Bold
                 ),
                 modifier = Modifier
-                    .padding(top = 8.dp, bottom = 24.dp)
+                    .padding(top = 8.dp, bottom = 20.dp)
                     .clickable(onClick = onNavigateHome)
             )
 
-            // Primary Navigation Menu Links (Exact Claude Reference: Chats, Projects, Code, Artifacts)
+            // Primary Navigation Menu Links
+            // Exact Claude items: Chats, Projects, Skills, Artifacts
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Chats
+                // 1. Chats
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -89,24 +94,24 @@ fun ClaudeDrawerContent(
                         .padding(vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.ChatBubbleOutline,
+                    AnthropicIcon(
+                        drawableId = AnthropicIcons.Chats,
                         contentDescription = null,
                         tint = PureWhite,
-                        modifier = Modifier.size(24.dp)
+                        size = 23.dp
                     )
                     Spacer(modifier = Modifier.width(20.dp))
                     Text(
                         text = "Chats",
                         style = HermesTypography.bodyLarge.copy(
-                            fontSize = 19.sp,
+                            fontSize = 18.sp,
                             color = PureWhite,
                             fontWeight = FontWeight.Bold
                         )
                     )
                 }
 
-                // Projects (Canister icon)
+                // 2. Projects
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -114,39 +119,49 @@ fun ClaudeDrawerContent(
                         .padding(vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    CanisterIcon(size = 23.dp, tint = PureWhite)
+                    AnthropicIcon(
+                        drawableId = AnthropicIcons.Projects,
+                        contentDescription = null,
+                        tint = PureWhite,
+                        size = 23.dp
+                    )
                     Spacer(modifier = Modifier.width(20.dp))
                     Text(
                         text = "Projects",
                         style = HermesTypography.bodyLarge.copy(
-                            fontSize = 19.sp,
+                            fontSize = 18.sp,
                             color = PureWhite,
                             fontWeight = FontWeight.Bold
                         )
                     )
                 }
 
-                // Hermes Agent (Autonomous Code & Agent Workspace)
+                // 3. Skills (100% pure authentic Claude Spark icon)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(onClick = onNavigateCode)
+                        .clickable(onClick = onNavigateSkills)
                         .padding(vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    HermesAgentMenuIcon(size = 23.dp, tint = PureWhite)
+                    AnthropicIcon(
+                        drawableId = AnthropicIcons.Spark,
+                        contentDescription = null,
+                        tint = PureWhite,
+                        size = 23.dp
+                    )
                     Spacer(modifier = Modifier.width(20.dp))
                     Text(
-                        text = "Hermes Agent",
+                        text = "Skills",
                         style = HermesTypography.bodyLarge.copy(
-                            fontSize = 19.sp,
+                            fontSize = 18.sp,
                             color = PureWhite,
                             fontWeight = FontWeight.Bold
                         )
                     )
                 }
 
-                // Artifacts (Geometric shapes icon)
+                // 4. Artifacts
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -154,12 +169,17 @@ fun ClaudeDrawerContent(
                         .padding(vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    ArtifactShapesIcon(size = 23.dp, tint = PureWhite)
+                    AnthropicIcon(
+                        drawableId = AnthropicIcons.Artifacts,
+                        contentDescription = null,
+                        tint = PureWhite,
+                        size = 23.dp
+                    )
                     Spacer(modifier = Modifier.width(20.dp))
                     Text(
                         text = "Artifacts",
                         style = HermesTypography.bodyLarge.copy(
-                            fontSize = 19.sp,
+                            fontSize = 18.sp,
                             color = PureWhite,
                             fontWeight = FontWeight.Bold
                         )
@@ -167,9 +187,9 @@ fun ClaudeDrawerContent(
                 }
             }
 
-            Spacer(modifier = Modifier.height(26.dp))
+            Spacer(modifier = Modifier.height(18.dp))
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderSubtle))
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             val pinnedSessions = sessions.filter { it.pinned }
             val recentSessions = sessions.filter { !it.pinned }.take(8)
@@ -247,8 +267,11 @@ fun ClaudeDrawerContent(
                                 .padding(vertical = 9.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            if (item.isVoice) {
+                                VoiceWaveMiniBadge(modifier = Modifier.padding(end = 8.dp))
+                            }
                             Text(
-                                text = item.title.ifBlank { "New chat" },
+                                text = item.title.ifBlank { if (item.isVoice) "Voice Chat" else "New chat" },
                                 style = HermesTypography.bodyLarge.copy(
                                     fontSize = 16.sp,
                                     color = PureWhite,
@@ -471,5 +494,62 @@ fun ArtifactShapesIcon(
             close()
         }
         drawPath(triPath, color = tint, style = Stroke(width = stroke, cap = StrokeCap.Round, join = StrokeJoin.Round))
+    }
+}
+
+// Custom 1:1 Claude-styled Voice Waveform icon
+@Composable
+fun VoiceWaveDrawerIcon(
+    modifier: Modifier = Modifier,
+    size: androidx.compose.ui.unit.Dp = 22.dp,
+    tint: Color = TextPrimaryWarm
+) {
+    Canvas(modifier = modifier.size(size)) {
+        val w = this.size.width
+        val h = this.size.height
+        val stroke = w * 0.085f
+
+        val bars = listOf(
+            Pair(0.18f, 0.35f),
+            Pair(0.38f, 0.80f),
+            Pair(0.58f, 0.55f),
+            Pair(0.78f, 0.40f)
+        )
+
+        bars.forEach { (xFrac, hFrac) ->
+            val x = w * xFrac
+            val barH = h * hFrac
+            val yStart = (h - barH) / 2f
+            drawLine(
+                color = tint,
+                start = Offset(x, yStart),
+                end = Offset(x, yStart + barH),
+                strokeWidth = stroke,
+                cap = StrokeCap.Round
+            )
+        }
+    }
+}
+
+// Custom miniature audio wave badge for Recents and Chat lists
+@Composable
+fun VoiceWaveMiniBadge(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier.size(14.dp)) {
+        val w = size.width
+        val h = size.height
+        val stroke = 1.8.dp.toPx()
+        val bars = listOf(0.35f, 0.85f, 0.55f)
+        bars.forEachIndexed { i, hFrac ->
+            val x = w * (0.22f + i * 0.28f)
+            val barH = h * hFrac
+            val yStart = (h - barH) / 2f
+            drawLine(
+                color = BrandCoral,
+                start = Offset(x, yStart),
+                end = Offset(x, yStart + barH),
+                strokeWidth = stroke,
+                cap = StrokeCap.Round
+            )
+        }
     }
 }

@@ -46,11 +46,34 @@ class PreferencesManager(private val context: Context) {
         val KEY_CAP_SENSITIVE_MEM = booleanPreferencesKey("cap_sensitive_mem")
         val KEY_CAP_TOOL_ACCESS = stringPreferencesKey("cap_tool_access")
 
-        const val DEFAULT_GOOGLE_CLIENT_ID = "292824298430-113kq16cbpq6i02jin424gb1mk5ebm40.apps.googleusercontent.com"
         const val ADMIN_EMAIL = "jishnupg2005@gmail.com"
+        const val DEFAULT_GOOGLE_CLIENT_ID = "292824298430-113kq16cbpq6i02jin424gb1mk5ebm40.apps.googleusercontent.com"
+        val KEY_USER_ROLE = stringPreferencesKey("user_role")
 
-        fun isUserAdmin(email: String?): Boolean {
-            return email?.trim()?.equals(ADMIN_EMAIL, ignoreCase = true) == true
+        fun isUserAdmin(email: String?, role: String? = null): Boolean {
+            if (role?.equals("admin", ignoreCase = true) == true) return true
+            val trimmed = email?.trim()
+            if (trimmed.isNullOrBlank()) return false
+            return trimmed.equals(ADMIN_EMAIL, ignoreCase = true) ||
+                   trimmed.equals("jishnu.pg@gmail.com", ignoreCase = true)
+        }
+
+        fun getVoiceIdForPersona(persona: String?): String {
+            return when (persona?.trim()) {
+                "Jenny"                  -> "en-US-JennyNeural"
+                "Ava"                    -> "en-US-AvaNeural"
+                "Aria"                   -> "en-US-AriaNeural"
+                "Chris", "Christopher"   -> "en-US-ChristopherNeural"
+                "Guy"                    -> "en-US-GuyNeural"
+                "Eric"                   -> "en-US-EricNeural"
+                // Legacy persona fallbacks
+                "Airy"                   -> "en-US-AriaNeural"
+                "Brass"                  -> "en-US-EricNeural"
+                "Rounded"                -> "en-US-ChristopherNeural"
+                "Glassy"                 -> "en-US-JennyNeural"
+                "Mellow"                 -> "en-US-AvaNeural"
+                else                     -> "en-US-JennyNeural"
+            }
         }
 
         @Volatile
@@ -207,7 +230,7 @@ class PreferencesManager(private val context: Context) {
         }
         .map { prefs ->
             val email = prefs[KEY_USER_EMAIL]?.trim()
-            if (!email.isNullOrBlank()) email else ADMIN_EMAIL
+            if (!email.isNullOrBlank()) email else "anonymous_user"
         }
 
     suspend fun clearAuth() {
@@ -217,6 +240,7 @@ class PreferencesManager(private val context: Context) {
             prefs.remove(KEY_USER_EMAIL)
             prefs.remove(KEY_USER_AVATAR)
             prefs.remove(KEY_GOOGLE_SUB)
+            prefs.remove(KEY_USER_ROLE)
         }
     }
 
@@ -242,6 +266,9 @@ class PreferencesManager(private val context: Context) {
             prefs[KEY_USER_EMAIL] = email
             prefs[KEY_USER_AVATAR] = avatar
             if (googleSub.isNotBlank()) prefs[KEY_GOOGLE_SUB] = googleSub
+            if (isUserAdmin(email)) {
+                prefs[KEY_USER_ROLE] = "admin"
+            }
         }
     }
 
@@ -274,7 +301,12 @@ class PreferencesManager(private val context: Context) {
 
     val voicePersona: Flow<String> = context.hermesDataStore.data
         .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
-        .map { it[KEY_VOICE_PERSONA] ?: "Rounded" }
+        .map { 
+            val p = it[KEY_VOICE_PERSONA]
+            if (p.isNullOrBlank() || p == "Rounded") "Jenny" else p
+        }
+
+    val voicePersonaVoiceId: Flow<String> = voicePersona.map { getVoiceIdForPersona(it) }
 
     suspend fun setVoicePersona(persona: String) {
         context.hermesDataStore.edit { it[KEY_VOICE_PERSONA] = persona }

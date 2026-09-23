@@ -1,7 +1,12 @@
 package com.example.hermes.ui.screens
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,7 +33,70 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hermes.theme.*
+import com.example.hermes.voice.PersonaDemoPlayer
 import kotlinx.coroutines.launch
+
+data class VoicePersonaItem(
+    val id: String,
+    val name: String,
+    val gender: String,
+    val characterTag: String,
+    val voiceModel: String,
+    val description: String,
+    val isRecommended: Boolean = false
+)
+
+private val VOICE_PERSONAS = listOf(
+    VoicePersonaItem(
+        id = "Jenny",
+        name = "Jenny",
+        gender = "Female",
+        characterTag = "Sweet & Calm",
+        voiceModel = "en-US-JennyNeural",
+        description = "Warm, soothing, calm, and sweet conversational voice.",
+        isRecommended = true
+    ),
+    VoicePersonaItem(
+        id = "Ava",
+        name = "Ava",
+        gender = "Female",
+        characterTag = "Articulate",
+        voiceModel = "en-US-AvaNeural",
+        description = "Crisp, poised, modern, and articulate female voice."
+    ),
+    VoicePersonaItem(
+        id = "Aria",
+        name = "Aria",
+        gender = "Female",
+        characterTag = "Expressive",
+        voiceModel = "en-US-AriaNeural",
+        description = "Bright, lively, expressive, and natural conversational cadence."
+    ),
+    VoicePersonaItem(
+        id = "Chris",
+        name = "Chris",
+        gender = "Male",
+        characterTag = "Sophisticated",
+        voiceModel = "en-US-ChristopherNeural",
+        description = "Distinguished, cultured, calm, and thoughtful male voice."
+    ),
+    VoicePersonaItem(
+        id = "Guy",
+        name = "Guy",
+        gender = "Male",
+        characterTag = "Casual & Warm",
+        voiceModel = "en-US-GuyNeural",
+        description = "Engaging, casual, warm, and natural conversational companion."
+    ),
+    VoicePersonaItem(
+        id = "Eric",
+        name = "Eric",
+        gender = "Male",
+        characterTag = "Authoritative",
+        voiceModel = "en-US-EricNeural",
+        description = "Authoritative, resonant, commanding, and deep tone."
+    )
+)
 
 @Composable
 fun VoiceSettingsScreen(
@@ -38,20 +106,39 @@ fun VoiceSettingsScreen(
     val coroutineScope = rememberCoroutineScope()
     val prefs = remember { com.example.hermes.data.PreferencesManager.getInstance(context) }
 
-    val personas = listOf("Glassy", "Airy", "Mellow", "Rounded", "Brass")
-    val savedPersona by prefs.voicePersona.collectAsState(initial = "Glassy")
-    val savedLanguage by prefs.voiceLanguage.collectAsState(initial = "English (United Kingdom)")
+    val savedPersona by prefs.voicePersona.collectAsState(initial = "Jenny")
+    val savedLanguage by prefs.voiceLanguage.collectAsState(initial = "English (United States)")
     val savedPace by prefs.voicePace.collectAsState(initial = "Normal")
     val savedVoiceMode by prefs.voiceMode.collectAsState(initial = "hugging_voice")
 
-    val selectedIndex = personas.indexOf(savedPersona).let { if (it >= 0) it else 0 }
+    val selectedIndex = VOICE_PERSONAS.indexOfFirst {
+        it.id.equals(savedPersona, ignoreCase = true)
+    }.let { if (it >= 0) it else 0 }
 
     var showLanguageMenu by remember { mutableStateOf(false) }
     var showPaceMenu by remember { mutableStateOf(false) }
 
+    // ── Demo Playback ────────────────────────────────────────────────────────
+    var isPlayingDemo by remember { mutableStateOf(false) }
+
+    // Cancel demo when screen leaves composition
+    DisposableEffect(Unit) {
+        onDispose { PersonaDemoPlayer.cancel() }
+    }
+
+    // Auto-play demo whenever persona changes (debounce: only after a swipe settles)
+    LaunchedEffect(selectedIndex) {
+        isPlayingDemo = true
+        val persona = VOICE_PERSONAS[selectedIndex]
+        PersonaDemoPlayer.playDemo(context, persona.voiceModel)
+        // Show "playing" indicator for ~7 seconds then clear
+        kotlinx.coroutines.delay(7_200)
+        isPlayingDemo = false
+    }
+
     val languages = listOf(
-        "English (United Kingdom)",
         "English (United States)",
+        "English (United Kingdom)",
         "English (Australia)",
         "French (France)",
         "German (Germany)",
@@ -99,19 +186,8 @@ fun VoiceSettingsScreen(
                 .padding(innerPadding),
             contentPadding = PaddingValues(bottom = 36.dp)
         ) {
-            // ── Persona Section Label ─────────────────────────────────────────────
-            item {
-                Text(
-                    text = "VOICE PERSONA",
-                    style = HermesTypography.labelSmall.copy(
-                        fontSize = 11.sp,
-                        color = TextMuted,
-                        fontWeight = FontWeight.Medium,
-                        letterSpacing = 0.8.sp
-                    ),
-                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 12.dp)
-                )
-            }
+            // ── Carousel top spacing ──────────────────────────────────────────────
+            item { Spacer(modifier = Modifier.height(16.dp)) }
 
             // ── Persona Carousel ──────────────────────────────────────────────────
             item {
@@ -125,9 +201,9 @@ fun VoiceSettingsScreen(
                                 onHorizontalDrag = { _, dragAmount -> totalDrag += dragAmount },
                                 onDragEnd = {
                                     if (totalDrag > 50 && selectedIndex > 0) {
-                                        coroutineScope.launch { prefs.setVoicePersona(personas[selectedIndex - 1]) }
-                                    } else if (totalDrag < -50 && selectedIndex < personas.size - 1) {
-                                        coroutineScope.launch { prefs.setVoicePersona(personas[selectedIndex + 1]) }
+                                        coroutineScope.launch { prefs.setVoicePersona(VOICE_PERSONAS[selectedIndex - 1].id) }
+                                    } else if (totalDrag < -50 && selectedIndex < VOICE_PERSONAS.size - 1) {
+                                        coroutineScope.launch { prefs.setVoicePersona(VOICE_PERSONAS[selectedIndex + 1].id) }
                                     }
                                 }
                             )
@@ -138,11 +214,12 @@ fun VoiceSettingsScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(180.dp),
+                            .height(210.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         // Left peeking card
                         if (selectedIndex > 0) {
+                            val leftPersona = VOICE_PERSONAS[selectedIndex - 1]
                             val alpha by animateFloatAsState(
                                 targetValue = 0.45f, animationSpec = tween(200), label = "leftAlpha"
                             )
@@ -151,33 +228,52 @@ fun VoiceSettingsScreen(
                                     .align(Alignment.CenterStart)
                                     .padding(start = 16.dp)
                                     .width(110.dp)
-                                    .height(140.dp)
+                                    .height(145.dp)
                                     .alpha(alpha)
                                     .clip(RoundedCornerShape(24.dp))
                                     .background(Color(0xFF1C1B19))
                                     .border(1.dp, BorderSubtle, RoundedCornerShape(24.dp))
-                                    .clickable { coroutineScope.launch { prefs.setVoicePersona(personas[selectedIndex - 1]) } },
+                                    .clickable { coroutineScope.launch { prefs.setVoicePersona(leftPersona.id) } },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = personas[selectedIndex - 1],
-                                    style = HermesTypography.bodyLarge.copy(
-                                        fontSize = 16.sp,
-                                        color = TextSubtle,
-                                        textAlign = TextAlign.Center
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center,
+                                    modifier = Modifier.padding(8.dp)
+                                ) {
+                                    Text(
+                                        text = leftPersona.name,
+                                        style = HermesTypography.bodyLarge.copy(
+                                            fontSize = 16.sp,
+                                            color = TextSubtle,
+                                            textAlign = TextAlign.Center
+                                        )
                                     )
-                                )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = leftPersona.gender.uppercase(),
+                                        style = HermesTypography.labelSmall.copy(
+                                            fontSize = 9.sp,
+                                            color = TextMuted
+                                        )
+                                    )
+                                }
                             }
                         }
 
                         // Center active card
+                        val activePersona = VOICE_PERSONAS[selectedIndex]
                         Box(
                             modifier = Modifier
-                                .width(160.dp)
-                                .height(160.dp)
+                                .width(180.dp)
+                                .height(195.dp)
                                 .clip(RoundedCornerShape(28.dp))
                                 .background(Color(0xFF222120))
-                                .border(1.dp, Color(0xFF3A3835), RoundedCornerShape(28.dp)),
+                                .border(
+                                    1.dp,
+                                    if (isPlayingDemo) BrandCoral.copy(alpha = 0.45f) else Color(0xFF3A3835),
+                                    RoundedCornerShape(28.dp)
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(
@@ -185,9 +281,9 @@ fun VoiceSettingsScreen(
                                 verticalArrangement = Arrangement.Center
                             ) {
                                 Text(
-                                    text = personas[selectedIndex],
+                                    text = activePersona.name,
                                     style = HermesTypography.displayLarge.copy(
-                                        fontSize = 24.sp,
+                                        fontSize = 28.sp,
                                         color = TextPrimaryWarm,
                                         fontFamily = AnthropicSerif,
                                         fontWeight = FontWeight.Normal,
@@ -195,27 +291,73 @@ fun VoiceSettingsScreen(
                                     )
                                 )
                                 Spacer(modifier = Modifier.height(6.dp))
-                                Box(
-                                    modifier = Modifier
-                                        .clip(CircleShape)
-                                        .background(BrandCoral.copy(alpha = 0.15f))
-                                        .border(1.dp, BrandCoral.copy(alpha = 0.35f), CircleShape)
-                                        .padding(horizontal = 10.dp, vertical = 2.dp)
-                                ) {
-                                    Text(
-                                        text = "Active",
-                                        style = HermesTypography.labelSmall.copy(
-                                            fontSize = 10.sp,
-                                            color = BrandCoral,
-                                            fontWeight = FontWeight.Medium
-                                        )
+                                Text(
+                                    text = activePersona.gender,
+                                    style = HermesTypography.labelSmall.copy(
+                                        fontSize = 11.sp,
+                                        color = TextMuted,
+                                        fontWeight = FontWeight.Normal,
+                                        letterSpacing = 0.3.sp
                                     )
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                // ── Animated equalizer bars (visible while demo plays) ──
+                                val waveAlpha by animateFloatAsState(
+                                    targetValue = if (isPlayingDemo) 1f else 0f,
+                                    animationSpec = tween(400),
+                                    label = "waveAlpha"
+                                )
+                                val infiniteTransition = rememberInfiniteTransition(label = "wave")
+                                val barHeights = listOf(
+                                    infiniteTransition.animateFloat(
+                                        initialValue = 4f, targetValue = 16f,
+                                        animationSpec = infiniteRepeatable(tween<Float>(380, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+                                        label = "b0"
+                                    ),
+                                    infiniteTransition.animateFloat(
+                                        initialValue = 10f, targetValue = 22f,
+                                        animationSpec = infiniteRepeatable(tween<Float>(500, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+                                        label = "b1"
+                                    ),
+                                    infiniteTransition.animateFloat(
+                                        initialValue = 6f, targetValue = 20f,
+                                        animationSpec = infiniteRepeatable(tween<Float>(420, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+                                        label = "b2"
+                                    ),
+                                    infiniteTransition.animateFloat(
+                                        initialValue = 12f, targetValue = 24f,
+                                        animationSpec = infiniteRepeatable(tween<Float>(460, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+                                        label = "b3"
+                                    ),
+                                    infiniteTransition.animateFloat(
+                                        initialValue = 4f, targetValue = 14f,
+                                        animationSpec = infiniteRepeatable(tween<Float>(340, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+                                        label = "b4"
+                                    ),
+                                )
+                                Row(
+                                    modifier = Modifier
+                                        .height(26.dp)
+                                        .alpha(waveAlpha),
+                                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    barHeights.forEach { heightState ->
+                                        Box(
+                                            modifier = Modifier
+                                                .width(3.dp)
+                                                .height(heightState.value.dp)
+                                                .clip(RoundedCornerShape(2.dp))
+                                                .background(BrandCoral.copy(alpha = 0.85f))
+                                        )
+                                    }
                                 }
                             }
                         }
 
                         // Right peeking card
-                        if (selectedIndex < personas.size - 1) {
+                        if (selectedIndex < VOICE_PERSONAS.size - 1) {
+                            val rightPersona = VOICE_PERSONAS[selectedIndex + 1]
                             val alpha by animateFloatAsState(
                                 targetValue = 0.45f, animationSpec = tween(200), label = "rightAlpha"
                             )
@@ -224,34 +366,48 @@ fun VoiceSettingsScreen(
                                     .align(Alignment.CenterEnd)
                                     .padding(end = 16.dp)
                                     .width(110.dp)
-                                    .height(140.dp)
+                                    .height(145.dp)
                                     .alpha(alpha)
                                     .clip(RoundedCornerShape(24.dp))
                                     .background(Color(0xFF1C1B19))
                                     .border(1.dp, BorderSubtle, RoundedCornerShape(24.dp))
-                                    .clickable { coroutineScope.launch { prefs.setVoicePersona(personas[selectedIndex + 1]) } },
+                                    .clickable { coroutineScope.launch { prefs.setVoicePersona(rightPersona.id) } },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = personas[selectedIndex + 1],
-                                    style = HermesTypography.bodyLarge.copy(
-                                        fontSize = 16.sp,
-                                        color = TextSubtle,
-                                        textAlign = TextAlign.Center
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center,
+                                    modifier = Modifier.padding(8.dp)
+                                ) {
+                                    Text(
+                                        text = rightPersona.name,
+                                        style = HermesTypography.bodyLarge.copy(
+                                            fontSize = 16.sp,
+                                            color = TextSubtle,
+                                            textAlign = TextAlign.Center
+                                        )
                                     )
-                                )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = rightPersona.gender.uppercase(),
+                                        style = HermesTypography.labelSmall.copy(
+                                            fontSize = 9.sp,
+                                            color = TextMuted
+                                        )
+                                    )
+                                }
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(18.dp))
 
                     // Dot indicators
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(7.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        personas.forEachIndexed { idx, _ ->
+                        VOICE_PERSONAS.forEachIndexed { idx, p ->
                             val isSelected = idx == selectedIndex
                             val dotSize by animateDpAsState(
                                 targetValue = if (isSelected) 7.dp else 4.5.dp,
@@ -269,15 +425,14 @@ fun VoiceSettingsScreen(
                                     .alpha(dotAlpha)
                                     .clip(CircleShape)
                                     .background(TextPrimaryWarm)
-                                    .clickable { coroutineScope.launch { prefs.setVoicePersona(personas[idx]) } }
+                                    .clickable { coroutineScope.launch { prefs.setVoicePersona(p.id) } }
                             )
                         }
                     }
 
                     Spacer(modifier = Modifier.height(10.dp))
-                    // Swipe hint
                     Text(
-                        text = "Swipe to change voice",
+                        text = "Swipe to switch AI voice persona",
                         style = HermesTypography.labelSmall.copy(
                             fontSize = 12.sp,
                             color = TextMuted
@@ -286,7 +441,9 @@ fun VoiceSettingsScreen(
                 }
             }
 
+
             item { Spacer(modifier = Modifier.height(28.dp)) }
+
 
             // ── Settings Section Label ──────────────────────────────────────────
             item {

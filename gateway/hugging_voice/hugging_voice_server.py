@@ -83,23 +83,19 @@ async def execute_hermes_action(
             return {"status": "error", "error": str(e), "summary": f"Could not schedule background task: {e}"}
 
     try:
-        from gateway import agent_executor
         clean_obj = objective.strip()
+        from hermes_core.runtime.agent_runtime import AgentRuntime
+        from hermes_core.runtime.models import ExecutionContext
 
-        if clean_obj.startswith("bash:") or clean_obj.startswith("run:"):
-            cmd = clean_obj.split(":", 1)[1].strip()
-            out = await agent_executor.execute_tool_call("bash", {"command": cmd}, chat_id)
-            return {"status": "completed", "result": out, "summary": out[:300]}
-
-        q: asyncio.Queue = asyncio.Queue()
-        res, _ = await agent_executor.run_autonomous_agent(
-            chat_id=chat_id,
-            prompt=clean_obj,
-            messages=[{"role": "user", "content": clean_obj}],
-            model="hermes-agent",
-            msg_id=f"msg_{uuid.uuid4().hex[:8]}",
-            queue=q,
+        ctx = ExecutionContext(
+            user_id="voice_user",
+            session_id=chat_id,
+            project_id="voice_session",
+            is_admin=True,
         )
+        runtime = AgentRuntime.get_instance()
+        turn_result = await runtime.execute_turn(clean_obj, ctx)
+        res = turn_result.get("response", "")
         return {
             "status": "completed",
             "result": res,
@@ -245,9 +241,10 @@ class HuggingVoiceSession:
 
         # Barge-in: user began speaking while assistant was talking or synthesizing
         if is_speech_active and self.is_speaking:
-            logger.info("Hugging Voice barge-in: user voice detected during speech output.")
-            self.interrupt()
-            await self.send_json(create_speech_started_event(0))
+            if self.vad._consecutive_speech_ms >= 350:
+                logger.info("Hugging Voice barge-in: sustained user voice detected during speech output.")
+                self.interrupt()
+                await self.send_json(create_speech_started_event(0))
             return
 
         if is_speech_active and not self.is_speaking:

@@ -12,11 +12,12 @@ val SurfacePill = Color(0xFF2A2926)
 val HairlineDivider = Color(0xFF302F2C)
 val BorderSubtle = Color(0xFF282724)
 
-// Typography & Content Colors
-val TextPrimaryWarm = Color(0xFFFFFFFF) // Pure pitch white (Claude exact typography)
-val TextMuted = Color(0xFFFFFFFF)
-val TextSubtle = Color(0xFFFFFFFF)
-val TextPlaceholder = Color(0xFFFFFFFF)
+// Typography & Content Colors (Authentic Claude Semantic Hierarchy)
+val TextPrimaryWarm = Color(0xFFF5F2EB)     // Warm ivory white for headings & primary messages
+val TextSecondaryMuted = Color(0xFFB5B0A6)  // Muted warm stone for subtitles & secondary labels
+val TextMuted = Color(0xFF8E887E)           // Dim stone for metadata, counters, timestamps
+val TextSubtle = Color(0xFF6B665E)          // Subtle gray for tertiary hints & borders
+val TextPlaceholder = Color(0xFF55514B)     // Dark subtle for input placeholders
 val TextInk = Color(0xFF141413)
 
 // Brand & Accent Colors

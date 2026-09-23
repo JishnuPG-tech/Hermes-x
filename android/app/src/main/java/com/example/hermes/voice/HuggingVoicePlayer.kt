@@ -40,6 +40,8 @@ class HuggingVoicePlayer(
     @Volatile
     private var isReleased = false
 
+    private val isTurnDone = java.util.concurrent.atomic.AtomicBoolean(false)
+
     fun start(scope: CoroutineScope) {
         if (isReleased) return
 
@@ -51,36 +53,45 @@ class HuggingVoicePlayer(
 
             while (isActive && !isReleased) {
                 try {
-                    val chunk = pcmQueue.take()
-                    if (chunk.isEmpty()) continue
+                    val chunk = pcmQueue.poll(40, java.util.concurrent.TimeUnit.MILLISECONDS)
+                    if (chunk != null && chunk.isNotEmpty()) {
+                        if (!isPlayingActive) {
+                            isPlayingActive = true
+                            onPlaybackStarted()
+                        }
 
-                    if (!isPlayingActive) {
-                        isPlayingActive = true
-                        onPlaybackStarted()
-                    }
+                        if (localTrack.playState != AudioTrack.PLAYSTATE_PLAYING) {
+                            try {
+                                localTrack.play()
+                            } catch (e: Exception) {
+                                Log.w(TAG, "AudioTrack play exception: ${e.message}")
+                            }
+                        }
 
-                    if (localTrack.playState != AudioTrack.PLAYSTATE_PLAYING) {
-                        try {
-                            localTrack.play()
-                        } catch (e: Exception) {
-                            Log.w(TAG, "AudioTrack play exception: ${e.message}")
+                        var offset = 0
+                        while (offset < chunk.size && isActive && isPlayingActive) {
+                            val written = localTrack.write(chunk, offset, chunk.size - offset, AudioTrack.WRITE_BLOCKING)
+                            if (written <= 0) {
+                                break
+                            }
+                            offset += written
+                        }
+                    } else {
+                        // Queue is empty. Check if this turn's audio generation has completed from the server
+                        if (isTurnDone.get() && pcmQueue.isEmpty() && isPlayingActive) {
+                            // Give hardware buffer a brief moment to drain to loudspeaker
+                            try {
+                                Thread.sleep(120)
+                            } catch (_: InterruptedException) {
+                                break
+                            }
+                            if (isTurnDone.get() && pcmQueue.isEmpty()) {
+                                isPlayingActive = false
+                                isTurnDone.set(false)
+                                onPlaybackCompleted()
+                            }
                         }
                     }
-
-                    var offset = 0
-                    while (offset < chunk.size && isActive && isPlayingActive) {
-                        val written = localTrack.write(chunk, offset, chunk.size - offset, AudioTrack.WRITE_BLOCKING)
-                        if (written <= 0) {
-                            break
-                        }
-                        offset += written
-                    }
-
-                    if (pcmQueue.isEmpty() && isPlayingActive) {
-                        isPlayingActive = false
-                        onPlaybackCompleted()
-                    }
-
                 } catch (e: InterruptedException) {
                     break
                 } catch (e: Exception) {
@@ -119,6 +130,7 @@ class HuggingVoicePlayer(
             )
 
             audioTrack?.play()
+            audioTrack?.setVolume(1.0f)
             Log.i(TAG, "Initialized Hugging Voice AudioTrack at ${sampleRate}Hz, buffer size=$bufferSize")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to initialize AudioTrack: ${e.message}", e)
@@ -130,7 +142,19 @@ class HuggingVoicePlayer(
      */
     fun enqueue(pcmBytes: ByteArray) {
         if (isReleased || pcmBytes.isEmpty()) return
+        isTurnDone.set(false)
+        if (!isPlayingActive) {
+            isPlayingActive = true
+            onPlaybackStarted()
+        }
         pcmQueue.offer(pcmBytes)
+    }
+
+    /**
+     * Signal that the current assistant turn audio stream from the server has ended.
+     */
+    fun markTurnAudioDone() {
+        isTurnDone.set(true)
     }
 
     /**
@@ -139,6 +163,7 @@ class HuggingVoicePlayer(
      */
     fun stopAndFlush() {
         try {
+            isTurnDone.set(false)
             pcmQueue.clear()
             isPlayingActive = false
 

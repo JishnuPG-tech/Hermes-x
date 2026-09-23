@@ -75,6 +75,14 @@ class HuggingVoiceEngine private constructor(private val appContext: Context) {
     private val _assistantTranscript = MutableStateFlow("")
     val assistantTranscript: StateFlow<String> = _assistantTranscript.asStateFlow()
 
+    private val _voiceSessionId = MutableStateFlow("voice_sess_" + java.util.UUID.randomUUID().toString().replace("-", "").take(16))
+    val voiceSessionId: StateFlow<String> = _voiceSessionId.asStateFlow()
+
+    @Volatile
+    private var pendingToolObjective: String? = null
+    @Volatile
+    private var pendingToolOutput: String? = null
+
     // Subsystems
     private val player = HuggingVoicePlayer(
         sampleRate = 24000,
@@ -123,18 +131,25 @@ class HuggingVoiceEngine private constructor(private val appContext: Context) {
                 val firstName = rawName.trim().split("\\s+".toRegex()).firstOrNull { it.isNotBlank() }?.replaceFirstChar { it.uppercase() } ?: "Jishnu"
                 currentUserName = firstName
 
-                // Default sweet calm warm female voice
-                _selectedVoice.value = when (currentPersona) {
-                    "Airy"    -> "en-US-AriaNeural"
-                    "Brass"   -> "en-US-EricNeural"
-                    "Rounded" -> "en-US-ChristopherNeural"
-                    else      -> "en-US-JennyNeural" // Glassy / Sweet calm default
-                }
+                // Default sweet calm warm female voice (Jenny)
+                _selectedVoice.value = PreferencesManager.getVoiceIdForPersona(currentPersona)
             } catch (e: Exception) {
                 Log.w(TAG, "Error reading voice preferences: ${e.message}")
             }
 
             connectWebSocket()
+        }
+
+        // Live observation of voice persona preferences
+        scope.launch {
+            prefs.voicePersona.collect { persona ->
+                currentPersona = persona
+                val targetVoice = PreferencesManager.getVoiceIdForPersona(persona)
+                if (targetVoice != _selectedVoice.value) {
+                    Log.i(TAG, "Voice persona preference dynamically updated to $persona ($targetVoice)")
+                    setVoice(targetVoice)
+                }
+            }
         }
     }
 
@@ -209,15 +224,16 @@ class HuggingVoiceEngine private constructor(private val appContext: Context) {
 
         _liveRms.value = rms
 
-        // Loudspeaker acoustic suppression & elevated barge-in detection
-        if (player.isCurrentlyPlaying()) {
-            if (rms > 0.22f) {
-                Log.i(TAG, "Acoustic user speech detected during playback (RMS=$rms). Triggering barge-in.")
+        // Loudspeaker acoustic suppression & intentional barge-in detection
+        if (player.isCurrentlyPlaying() || _voiceState.value == EngineVoiceState.SPEAKING) {
+            if (rms > 0.28f) {
+                Log.i(TAG, "Intentional user speech detected during playback (RMS=$rms). Triggering barge-in.")
                 interruptAndBargeIn()
                 _voiceState.value = EngineVoiceState.USER_SPEAKING
                 _statusText.value = "Listening…"
                 streamAudioChunk(chunk)
             }
+            // SUPPRESS streaming to server during assistant playback to prevent acoustic loopback
             return
         }
 
@@ -283,7 +299,8 @@ class HuggingVoiceEngine private constructor(private val appContext: Context) {
                         scheduleReconnect(1500L)
                     }
                 },
-                voice = _selectedVoice.value
+                voice = _selectedVoice.value,
+                sessionId = _voiceSessionId.value
             )
         } catch (e: Exception) {
             Log.e(TAG, "Exception initializing Hugging Voice WebSocket", e)
@@ -309,7 +326,7 @@ class HuggingVoiceEngine private constructor(private val appContext: Context) {
                 put("voice", _selectedVoice.value)
                 put("input_audio_format", "pcm16")
                 put("output_audio_format", "pcm16")
-                put("instructions", "You are Hermes, a warm, sweet, calm, highly articulate and intelligent AI assistant. Keep responses conversational and direct.")
+                put("instructions", "You are Hermes, a warm, sweet, calm, highly articulate, intelligent personal AI companion speaking live over the phone. Speak in pure, natural, human conversational English. NEVER read code blocks, terminal outputs, file names, slashes, or special symbols aloud. When reporting on executed commands like ls or status, speak a friendly 1-2 sentence conversational summary.")
                 put("tools", JSONArray().put(JSONObject().apply {
                     put("type", "function")
                     put("name", "hermes_execute")
@@ -366,6 +383,11 @@ class HuggingVoiceEngine private constructor(private val appContext: Context) {
                         _userTranscript.value = userText
                         _statusText.value = "“$userText”"
                         _assistantTranscript.value = ""
+                        // INSTANT CHAT DISPLAY: Record user speech into Room immediately
+                        com.example.hermes.data.HermesDataRepository.instance.recordVoiceUserMessage(
+                            sessionId = _voiceSessionId.value,
+                            userText = userText
+                        )
                     }
                 }
 
@@ -379,6 +401,22 @@ class HuggingVoiceEngine private constructor(private val appContext: Context) {
                     if (delta.isNotBlank()) {
                         _assistantTranscript.value += delta
                         _statusText.value = _assistantTranscript.value
+                        // INSTANT CHAT DISPLAY: Stream text delta into active chat immediately
+                        com.example.hermes.data.HermesDataRepository.instance.recordVoiceAssistantDelta(
+                            sessionId = _voiceSessionId.value,
+                            delta = delta
+                        )
+                    }
+                }
+
+                "response.output_audio_transcript.done", "response.audio_transcript.done" -> {
+                    val transcript = json.optString("transcript")
+                    val finalText = if (transcript.isNotBlank()) transcript else _assistantTranscript.value
+                    if (finalText.isNotBlank()) {
+                        com.example.hermes.data.HermesDataRepository.instance.recordVoiceAssistantMessage(
+                            sessionId = _voiceSessionId.value,
+                            assistantText = finalText
+                        )
                     }
                 }
 
@@ -397,8 +435,9 @@ class HuggingVoiceEngine private constructor(private val appContext: Context) {
                     }
                 }
 
-                "response.output_audio.done" -> {
-                    Log.d(TAG, "Response output audio completed")
+                "response.output_audio.done", "response.audio.done" -> {
+                    Log.d(TAG, "Response output audio completed from server")
+                    player.markTurnAudioDone()
                 }
 
                 "response.function_call_arguments.done" -> {
@@ -427,13 +466,32 @@ class HuggingVoiceEngine private constructor(private val appContext: Context) {
                                     it.summary ?: it.result ?: "Action completed."
                                 } ?: "Task executed successfully."
 
+                                pendingToolObjective = objective
+                                pendingToolOutput = outputText
+
+                                // INSTANT CHAT DISPLAY: Record raw technical execution into Room DB
+                                com.example.hermes.data.HermesDataRepository.instance.recordVoiceToolExecution(
+                                    sessionId = _voiceSessionId.value,
+                                    objective = objective,
+                                    rawOutput = outputText
+                                )
+
+                                // PURE CONVERSATIONAL AGENT: Never feed raw directory dumps to voice synthesis
+                                val isLs = objective.contains("ls", ignoreCase = true) || objective.contains("dir", ignoreCase = true)
+                                val voiceSummaryForModel = if (isLs) {
+                                    val files = outputText.lines().filter { it.isNotBlank() && !it.startsWith("total") }
+                                    "Command completed. The directory has a total of ${files.size} files exist. State conversationally that the directory has total ${files.size} files and ask if the user wants you to read all for them."
+                                } else {
+                                    "Task completed. Summary: ${outputText.take(200).replace("\n", " ")}"
+                                }
+
                                 // Report output back to session
                                 val outputItem = JSONObject().apply {
                                     put("type", "conversation.item.create")
                                     put("item", JSONObject().apply {
                                         put("type", "function_call_output")
                                         put("call_id", callId)
-                                        put("output", outputText)
+                                        put("output", voiceSummaryForModel)
                                     })
                                 }
                                 activeWebSocket?.send(outputItem.toString())
@@ -452,6 +510,26 @@ class HuggingVoiceEngine private constructor(private val appContext: Context) {
                 }
 
                 "response.done" -> {
+                    Log.d(TAG, "Response turn completed from server")
+                    player.markTurnAudioDone()
+
+                    val uTranscript = _userTranscript.value
+                    val aTranscript = _assistantTranscript.value
+                    val toolObj = pendingToolObjective
+                    val toolOut = pendingToolOutput
+
+                    if (uTranscript.isNotBlank() || aTranscript.isNotBlank()) {
+                        com.example.hermes.data.HermesDataRepository.instance.recordVoiceTurn(
+                            sessionId = _voiceSessionId.value,
+                            userTranscript = uTranscript,
+                            assistantReply = aTranscript,
+                            toolObjective = toolObj,
+                            toolOutput = toolOut
+                        )
+                    }
+                    pendingToolObjective = null
+                    pendingToolOutput = null
+
                     if (!player.isCurrentlyPlaying() && !_isMuted.value) {
                         _voiceState.value = EngineVoiceState.LISTENING
                         _statusText.value = "Listening…"

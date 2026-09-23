@@ -26,7 +26,10 @@ data class SessionEntity(
     val updatedAt: Long = System.currentTimeMillis(),
 
     @ColumnInfo(name = "user_id")
-    val userId: String = "guest"
+    val userId: String = "guest",
+
+    @ColumnInfo(name = "session_type")
+    val sessionType: String = if (id.startsWith("voice_") || id.contains("voice")) "voice" else "chat"
 )
 
 @Entity(

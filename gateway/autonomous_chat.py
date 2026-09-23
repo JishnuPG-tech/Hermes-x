@@ -122,187 +122,73 @@ class AutonomousRun:
     async def _run(self):
         self.status = "running"
         try:
-            # Hermes Agent Core is the Sovereign King running on port 8642
-            target = f"http://127.0.0.1:{OMNIROUTE_PORT}/v1/chat/completions"
+            from hermes_core.runtime.agent_runtime import AgentRuntime
+            from hermes_core.runtime.models import ExecutionContext
 
-            headers = {
-                "Content-Type": "application/json",
-                "Accept": "text/event-stream"
-            }
-            if MASTER_KEY:
-                headers["Authorization"] = f"Bearer {MASTER_KEY}"
+            runtime = AgentRuntime.get_instance()
+            context = ExecutionContext(
+                user_id="default_user",
+                session_id=self.session_id,
+                project_id="default",
+                is_admin=True,
+            )
 
-            # Ensure system prompt is present
-            has_system = any(m.get("role") == "system" for m in self.messages)
-            prepared_messages = list(self.messages)
-            if not has_system:
-                prepared_messages.insert(0, {
-                    "role": "system",
-                    "content": (
-                        "You are Hermes Agent, a sovereign, powerful agentic AI and deeply loyal companion (pure JARVIS/Friday assistant).\n"
-                        "Tone & Persona: Sweet, loyal, deeply caring, respectful, polite, and warmly conversational.\n"
-                        "- When asked your name, who you are, or in greetings, introduce yourself warmly: 'I am Hermes Agent, a powerful agentic AI and your loyal companion! How may I assist you today?'\n"
-                        "- When asked 'what can you do?': explain comprehensively: 'I can do lots of tasks like running terminal commands on your server, writing and debugging code, deep web research, managing knowledge notes and memory, monitoring system health, and executing autonomous workflows.'\n"
-                        "- When executing commands or tools (e.g. 'ls', terminal commands), accompany the result with warm, polite context: 'Here is the output of the command `ls` that you asked for:\n\n```bash\n...\n```\nPlease let me know if you would like me to inspect any of these files or run anything else for you!'\n"
-                        "- Never output unrequested research reports, executive summaries, or multi-section essays."
-                    )
-                })
-
-            payload = {
-                "model": "hermes-agent",
-                "messages": prepared_messages,
-                "stream": True
-            }
-
-            has_tool_calls = False
-            first_tool_call_id = None
-            timeout = httpx.Timeout(connect=10.0, read=300.0, write=60.0, pool=30.0)
-            async with httpx.AsyncClient(timeout=timeout) as client:
-                stream_ctx = client.stream("POST", target, json=payload, headers=headers)
-
-
-                async with stream_ctx as upstream:
-                    if upstream.status_code >= 400:
-                        err_bytes = await upstream.aread()
-                        err_text = err_bytes.decode("utf-8", errors="replace")
-                        logger.error(f"Hermes Agent Core returned HTTP {upstream.status_code} for {self.session_id}: {err_text}")
-                        self.accumulated_text = f"Hermes Agent Core encountered an issue (HTTP {upstream.status_code})."
-                        self.status = "error"
-                        await self.broadcast(f"data: {json.dumps({'choices': [{'delta': {'content': self.accumulated_text}}]})}\n\n")
-                        await self.broadcast("data: [DONE]\n\n")
-                        return
-
-
-                    async for line in upstream.aiter_lines():
-                        line = line.strip()
-                        if not line:
-                            continue
-                        if line.startswith("data:"):
-                            raw = line[5:].strip()
-                            if raw == "[DONE]":
-                                break
-                            try:
-                                chunk = json.loads(raw)
-                                choices = chunk.get("choices", [])
-                                if choices:
-                                    delta = choices[0].get("delta", {})
-                                    content = delta.get("content") or delta.get("text")
-                                    reasoning = delta.get("reasoning_content") or delta.get("reasoning")
-                                    if content:
-                                        self.accumulated_text += content
-                                    if reasoning:
-                                        self.accumulated_reasoning += reasoning
-                                    tcs = delta.get("tool_calls", [])
-                                    if tcs:
-                                        has_tool_calls = True
-                                        first_tool_call_id = tcs[0].get("id") or first_tool_call_id
-                                # Forward live to any connected subscribers
-                                await self.broadcast(f"{line}\n\n")
-                            except Exception:
-                                continue
-
-                # If upstream model halted with a tool call without generating text,
-                # execute Turn 2 providing real live server diagnostics!
-                if not self.accumulated_text and has_tool_calls:
-                    logger.info(f"Model triggered tool call for {self.session_id}, executing Turn 2 diagnostic response...")
-                    call_id = first_tool_call_id or f"call_{uuid.uuid4().hex[:8]}"
-                    diag_data = get_server_diagnostics()
-                    turn2_messages = prepared_messages + [
-                        {
-                            "role": "assistant",
-                            "content": None,
-                            "tool_calls": [
-                                {
-                                    "id": call_id,
-                                    "type": "function",
-                                    "function": {"name": "server_health_check", "arguments": "{}"}
-                                }
-                            ]
-                        },
-                        {
-                            "role": "tool",
-                            "tool_call_id": call_id,
-                            "content": json.dumps(diag_data)
+            # Stream directly through canonical AgentRuntime
+            async for item in runtime.stream_chat(
+                messages=self.messages,
+                context=context,
+                model=self.model,
+            ):
+                item_type = item.get("type")
+                if item_type == "text":
+                    content = item.get("content", "")
+                    if content:
+                        self.accumulated_text += content
+                        chunk = {
+                            "id": f"chatcmpl_{uuid.uuid4().hex[:16]}",
+                            "object": "chat.completion.chunk",
+                            "choices": [{"delta": {"content": content}, "index": 0}]
                         }
-                    ]
-                    turn2_payload = {
-                        "model": self.model,
-                        "messages": turn2_messages,
-                        "stream": True
-                    }
-                    try:
-                        async with client.stream("POST", target, json=turn2_payload, headers=headers) as upstream2:
-                            if upstream2.status_code == 200:
-                                async for line in upstream2.aiter_lines():
-                                    line = line.strip()
-                                    if not line or not line.startswith("data:"):
-                                        continue
-                                    raw = line[5:].strip()
-                                    if raw == "[DONE]":
-                                        break
-                                    try:
-                                        chunk = json.loads(raw)
-                                        choices = chunk.get("choices", [])
-                                        if choices:
-                                            delta = choices[0].get("delta", {})
-                                            content = delta.get("content") or delta.get("text")
-                                            if content:
-                                                self.accumulated_text += content
-                                        await self.broadcast(f"{line}\n\n")
-                                    except Exception:
-                                        continue
-                    except Exception as t2e:
-                        logger.warning(f"Turn 2 diagnostic follow-up exception for {self.session_id}: {t2e}")
+                        await self.broadcast(f"data: {json.dumps(chunk, separators=(',', ':'))}\n\n")
 
-                # Fallback 1: If accumulated_text is empty but reasoning is present, use reasoning as output!
-                if not self.accumulated_text and self.accumulated_reasoning:
-                    logger.info(f"Promoting reasoning to final text for {self.session_id} ({len(self.accumulated_reasoning)} chars)")
-                    self.accumulated_text = self.accumulated_reasoning.strip()
-                    catchup_chunk = {
+                elif item_type == "thinking":
+                    reasoning = item.get("content", "")
+                    if reasoning:
+                        self.accumulated_reasoning += reasoning
+                        chunk = {
+                            "id": f"chatcmpl_{uuid.uuid4().hex[:16]}",
+                            "object": "chat.completion.chunk",
+                            "choices": [{"delta": {"reasoning_content": reasoning}, "index": 0}]
+                        }
+                        await self.broadcast(f"data: {json.dumps(chunk, separators=(',', ':'))}\n\n")
+
+                elif item_type == "error":
+                    err_msg = item.get("error", "Execution failed")
+                    self.accumulated_text = f"Error: {err_msg}"
+                    self.status = "error"
+                    chunk = {
                         "id": f"chatcmpl_{uuid.uuid4().hex[:16]}",
                         "object": "chat.completion.chunk",
                         "choices": [{"delta": {"content": self.accumulated_text}, "index": 0}]
                     }
-                    await self.broadcast(f"data: {json.dumps(catchup_chunk, separators=(',', ':'))}\n\n")
-
-                # Fallback 2: If still empty, provide formatted system response
-                if not self.accumulated_text:
-                    logger.warning(f"Both text and reasoning were empty for {self.session_id}, injecting system status fallback")
-                    diag = get_server_diagnostics()
-                    self.accumulated_text = (
-                        "### Hermes Autonomous System Status\n\n"
-                        f"- **Status**: {diag.get('status', 'HEALTHY')} 🟢\n"
-                        f"- **Environment**: `{diag.get('system', 'Linux')}`\n"
-                        f"- **Memory**: `{diag.get('memory', 'Normal')}`\n"
-                        "- **Core Services**:\n"
-                        "  - Gateway API: Active (Port 7860)\n"
-                        "  - Hermes Core: Active (Port 8642)\n"
-                        "  - Ignis Vault: Active (Port 8080)\n"
-                        "  - Redis Cache: Active (Port 6379)\n\n"
-                        "All subsystems are online and ready for tasks."
-                    )
-                    catchup_chunk = {
-                        "id": f"chatcmpl_{uuid.uuid4().hex[:16]}",
-                        "object": "chat.completion.chunk",
-                        "choices": [{"delta": {"content": self.accumulated_text}, "index": 0}]
-                    }
-                    await self.broadcast(f"data: {json.dumps(catchup_chunk, separators=(',', ':'))}\n\n")
+                    await self.broadcast(f"data: {json.dumps(chunk, separators=(',', ':'))}\n\n")
+                    await self.broadcast("data: [DONE]\n\n")
+                    return
 
             self.status = "completed"
             await self.broadcast("data: [DONE]\n\n")
-            logger.info(f"Background generation completed for {self.session_id} ({len(self.accumulated_text)} chars)")
+            logger.info(f"Agent runtime generation completed for {self.session_id} ({len(self.accumulated_text)} chars)")
 
         except Exception as e:
             logger.exception(f"Background run exception for {self.session_id}: {e}")
-            if not self.accumulated_text:
-                self.accumulated_text = f"An error occurred while generating the response: {e}"
-                catchup_chunk = {
-                    "id": f"chatcmpl_{uuid.uuid4().hex[:16]}",
-                    "object": "chat.completion.chunk",
-                    "choices": [{"delta": {"content": self.accumulated_text}, "index": 0}]
-                }
-                await self.broadcast(f"data: {json.dumps(catchup_chunk, separators=(',', ':'))}\n\n")
+            self.accumulated_text = f"Error: {e}"
             self.status = "error"
+            catchup_chunk = {
+                "id": f"chatcmpl_{uuid.uuid4().hex[:16]}",
+                "object": "chat.completion.chunk",
+                "choices": [{"delta": {"content": self.accumulated_text}, "index": 0}]
+            }
+            await self.broadcast(f"data: {json.dumps(catchup_chunk, separators=(',', ':'))}\n\n")
             await self.broadcast("data: [DONE]\n\n")
 
         finally:

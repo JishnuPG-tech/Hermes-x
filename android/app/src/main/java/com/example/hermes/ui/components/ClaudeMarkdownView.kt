@@ -15,10 +15,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hermes.theme.*
@@ -48,6 +51,55 @@ fun parseInlineMarkdown(text: String): AnnotatedString {
         val len = text.length
 
         while (i < len) {
+            // Check markdown link: [label](url)
+            if (text[i] == '[') {
+                val endLabel = text.indexOf(']', i + 1)
+                if (endLabel != -1 && endLabel + 1 < len && text[endLabel + 1] == '(') {
+                    val endUrl = text.indexOf(')', endLabel + 2)
+                    if (endUrl != -1) {
+                        val label = text.substring(i + 1, endLabel)
+                        val url = text.substring(endLabel + 2, endUrl).trim()
+                        val linkStyles = TextLinkStyles(
+                            style = SpanStyle(
+                                color = BrandCoral,
+                                textDecoration = TextDecoration.Underline,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        )
+                        pushLink(LinkAnnotation.Url(url = url, styles = linkStyles))
+                        append(if (label.isNotBlank()) label else url)
+                        pop()
+                        i = endUrl + 1
+                        continue
+                    }
+                }
+            }
+
+            // Check bare auto-links: http:// or https://
+            if (i + 7 < len && (text.startsWith("http://", i) || text.startsWith("https://", i))) {
+                var endUrl = i
+                while (endUrl < len && !text[endUrl].isWhitespace() && text[endUrl] !in listOf(')', ']', '>', '"', '\'')) {
+                    endUrl++
+                }
+                var rawUrl = text.substring(i, endUrl)
+                while (rawUrl.endsWith(".") || rawUrl.endsWith(",") || rawUrl.endsWith(";")) {
+                    rawUrl = rawUrl.dropLast(1)
+                    endUrl--
+                }
+                val linkStyles = TextLinkStyles(
+                    style = SpanStyle(
+                        color = BrandCoral,
+                        textDecoration = TextDecoration.Underline,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                )
+                pushLink(LinkAnnotation.Url(url = rawUrl, styles = linkStyles))
+                append(rawUrl)
+                pop()
+                i = endUrl
+                continue
+            }
+
             // Check inline code: `code`
             if (text[i] == '`') {
                 val end = text.indexOf('`', i + 1)

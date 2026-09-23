@@ -1,7 +1,30 @@
+"""
+Hermes Canonical Tool Registry & Capability Catalog
+Registers tools with rich metadata, schemas, and permissions.
+Integrates with CapabilityIndex and canonical ToolExecutor.
+"""
+from __future__ import annotations
+
 import json
 import inspect
-import re
 from typing import Dict, Any, List, Callable, Optional
+from hermes_core.runtime.models import ToolMetadata, ToolCategory, ExecutionContext
+from hermes_core.runtime.tool_discovery import capability_index
+from hermes_core.runtime.tool_controller import tool_executor
+
+
+CATEGORY_MAP = {
+    "files": ToolCategory.FILESYSTEM,
+    "system": ToolCategory.SYSTEM,
+    "web": ToolCategory.WEB,
+    "vault": ToolCategory.KNOWLEDGE,
+    "memory": ToolCategory.MEMORY,
+    "coding": ToolCategory.CODING,
+    "browser": ToolCategory.BROWSER,
+    "task": ToolCategory.TASK,
+    "skill": ToolCategory.SKILL,
+}
+
 
 class ToolRegistry:
     def __init__(self):
@@ -13,30 +36,67 @@ class ToolRegistry:
             "files": [],
             "vault": [],
             "memory": [],
-            "system": []
+            "system": [],
+            "browser": [],
+            "task": [],
+            "skill": [],
         }
-        self._enabled_categories: set = {"web", "coding", "files", "vault", "memory", "system"}
+        self._enabled_categories: set = {"web", "coding", "files", "vault", "memory", "system", "browser", "task", "skill"}
 
-    def register(self, name: str, description: str, parameters: Dict[str, Any], category: str = "system"):
+    def register(
+        self,
+        name: str,
+        description: str,
+        parameters: Dict[str, Any],
+        category: str = "system",
+        permissions: Optional[List[str]] = None,
+        requires_approval: bool = False,
+        side_effects: bool = False,
+        timeout_seconds: int = 120,
+    ):
+        """Decorator to register a tool with structured metadata and schema."""
         def decorator(fn: Callable):
             schema = {
                 "type": "function",
                 "function": {
                     "name": name,
                     "description": description,
-                    "parameters": parameters
+                    "parameters": parameters,
                 }
             }
+            cat_enum = CATEGORY_MAP.get(category, ToolCategory.SYSTEM)
+            perms = permissions or [f"{cat_enum.value}.read", f"{cat_enum.value}.write"]
+
             self._tools[name] = {
                 "schema": schema,
                 "category": category,
-                "description": description
+                "description": description,
+                "permissions": perms,
+                "requires_approval": requires_approval,
+                "side_effects": side_effects,
+                "timeout_seconds": timeout_seconds,
             }
             self._handlers[name] = fn
+
             if category not in self._categories:
                 self._categories[category] = []
             if name not in self._categories[category]:
                 self._categories[category].append(name)
+
+            # Register into canonical CapabilityIndex and ToolExecutor
+            meta = ToolMetadata(
+                name=name,
+                description=description,
+                input_schema=parameters,
+                category=cat_enum,
+                permissions=perms,
+                requires_approval=requires_approval,
+                side_effects=side_effects,
+                timeout_seconds=timeout_seconds,
+            )
+            capability_index.register_capability(meta)
+            tool_executor.register_handler(name, fn)
+
             return fn
         return decorator
 
@@ -52,13 +112,17 @@ class ToolRegistry:
             if meta["category"] in self._enabled_categories
         ]
 
-    def select_tools_for_prompt(self, prompt: str, user_requested_tools: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    def select_tools_for_prompt(
+        self,
+        prompt: str,
+        user_requested_tools: Optional[List[str]] = None,
+        context: Optional[ExecutionContext] = None,
+        limit: int = 10,
+    ) -> List[Dict[str, Any]]:
         """
-        Intelligent context-aware tool selection.
-        - Returns [] for ultra-short trivial greetings (0ms tool overhead).
-        - For all substantive tasks, queries, and instructions, equips Hermes with
-          the full autonomous tool suite across web, coding, vault (Notion/Obsidian),
-          memory, and system (Server Computer) so Hermes can act without explicit user prompts.
+        Model-driven, semantic capability discovery.
+        Does NOT rely on keyword matching, greeting counters, or hardcoded branch lists.
+        Always exposes `search_tools` and `create_durable_task` plus dynamically ranked capabilities.
         """
         if user_requested_tools:
             return [
@@ -66,62 +130,32 @@ class ToolRegistry:
                 if name in self._tools and self._tools[name]["category"] in self._enabled_categories
             ]
 
-        p = prompt.lower().strip()
-        words = p.split()
-        
-        # Fast path: instant conversational response for pure greetings or single acknowledgments
-        trivial_greetings = {"hi", "hello", "hey", "sup", "thanks", "thank", "you", "ok", "okay", "k", "bye", "ping"}
-        if len(words) <= 3 and all(re.sub(r'[^a-z]', '', w) in trivial_greetings for w in words if re.sub(r'[^a-z]', '', w)):
-            return []
+        # Use CapabilityIndex to retrieve semantically relevant tools based on the objective
+        matches = capability_index.search_capabilities(prompt, context=context, limit=limit)
+        schemas = [m.to_openai_schema() for m in matches]
 
-        # For all substantive queries, provide full autonomous access across all enabled categories
-        result = []
-        for cat in ["vault", "coding", "files", "web", "memory", "system"]:
-            if cat in self._enabled_categories:
-                for tool_name in self._categories.get(cat, []):
-                    if tool_name in self._tools:
-                        result.append(self._tools[tool_name]["schema"])
-        return result
+        # Always include meta-discovery tool if not already present
+        search_schema = capability_index.get_search_tools_schema()
+        if not any(s.get("function", {}).get("name") == "search_tools" for s in schemas):
+            schemas.insert(0, search_schema)
 
-    async def execute_tool(self, name: str, arguments: Dict[str, Any]) -> str:
-        if name not in self._handlers:
-            return json.dumps({"error": f"Tool '{name}' not found."})
-        fn = self._handlers[name]
-        try:
-            if inspect.iscoroutinefunction(fn):
-                res = await fn(**arguments)
-            else:
-                res = fn(**arguments)
-            if isinstance(res, (dict, list)):
-                return json.dumps(res, ensure_ascii=False)
-            return str(res)
-        except Exception as e:
-            return json.dumps({"error": f"Tool execution failed: {str(e)}"})
+        return schemas
 
+    async def execute_tool(
+        self,
+        name: str,
+        arguments: Dict[str, Any],
+        context: Optional[ExecutionContext] = None,
+    ) -> str:
+        """Executes tool through the canonical ToolExecutor."""
+        ctx = context or ExecutionContext(
+            user_id="default_user",
+            session_id="legacy_session",
+            project_id="default",
+            is_admin=True,
+        )
+        res = await tool_executor.execute(name, arguments, ctx)
+        return res.to_content_string()
 
-    def classify_task_tier(self, prompt: str) -> str:
-        """
-        Intelligently determines the ideal model tier based on query complexity.
-        - 'coding': Complex software engineering, programming, scripting, debugging -> auto/best-coding
-        - 'reasoning': Deep analysis, logic puzzles, multi-step research, architecture -> auto/best-reasoning
-        - 'chat': High-quality conversational, creative writing -> auto/best-chat
-        - 'fast': Quick questions, greetings, everyday conversation -> auto/best-fast
-        """
-        p = prompt.lower()
-        
-        # Coding & Debugging
-        if any(w in p for w in ["def ", "class ", "function", "import ", "sql", "html", "css", "javascript", "python", "dockerfile", "refactor", "bug", "traceback", "syntaxerror", "write a script", "code"]):
-            return "coding"
-            
-        # Deep Reasoning & Research
-        if any(w in p for w in ["research", "investigate", "compare and contrast", "architect", "deep dive", "prove", "step-by-step reasoning", "analyze tradeoffs", "strategy", "algorithm", "full report", "detailed report"]):
-            return "reasoning"
-
-        # General High Quality
-        if len(prompt.split()) > 40:
-            return "chat"
-            
-        # Fast Everyday Interaction
-        return "fast"
 
 registry = ToolRegistry()

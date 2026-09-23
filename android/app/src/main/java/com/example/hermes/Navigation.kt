@@ -122,23 +122,39 @@ fun MainNavigation(
                     },
                     onNavigateChats = {
                         scope.launch { drawerState.close() }
-                        backStack.add(NavChats)
+                        backStack.add(NavChats(filterType = "all"))
+                    },
+                    onNavigateVoiceChats = {
+                        scope.launch { drawerState.close() }
+                        backStack.add(NavChats(filterType = "voice"))
                     },
                     onNavigateProjects = {
                         scope.launch { drawerState.close() }
                         backStack.add(NavProjects)
                     },
-                    onNavigateCode = {
+                    onNavigateTasks = {
                         scope.launch { drawerState.close() }
-                        backStack.add(NavCode)
+                        backStack.add(NavTasks)
+                    },
+                    onNavigateAgents = {
+                        scope.launch { drawerState.close() }
+                        backStack.add(NavAgents)
+                    },
+                    onNavigateSkills = {
+                        scope.launch { drawerState.close() }
+                        backStack.add(NavSkills)
+                    },
+                    onNavigateKnowledge = {
+                        scope.launch { drawerState.close() }
+                        backStack.add(NavKnowledge)
                     },
                     onNavigateArtifacts = {
                         scope.launch { drawerState.close() }
                         backStack.add(NavArtifacts)
                     },
-                    onNavigateTasks = {
+                    onNavigateActivity = {
                         scope.launch { drawerState.close() }
-                        backStack.add(NavTasks)
+                        backStack.add(NavActivity)
                     },
                     onNavigateSettings = {
                         scope.launch { drawerState.close() }
@@ -222,17 +238,22 @@ fun MainNavigation(
                 }
                 entry<NavVoice> {
                     VoiceScreen(
-                        onClose = {
+                        onClose = { voiceSessId ->
                             backStack.removeLastOrNull()
-                            chatViewModel.clearMessages()
-                            backStack.add(NavChat(prompt = null, fromVoice = true))
+                            if (!voiceSessId.isNullOrBlank()) {
+                                backStack.add(NavChat(sessionId = voiceSessId, fromVoice = true))
+                            } else {
+                                chatViewModel.clearMessages()
+                                backStack.add(NavChat(prompt = null, fromVoice = true))
+                            }
                         },
                         onOpenVoiceSettings = { backStack.add(NavVoiceSettings) }
                     )
                 }
-                entry<NavChats> {
+                entry<NavChats> { key ->
                     ScreenTransitionWrapper {
                         ChatsScreen(
+                            initialFilter = key.filterType,
                             onOpenDrawer = { scope.launch { drawerState.open() } },
                             onNavigateChat = { sessionId ->
                                 backStack.add(NavChat(sessionId = sessionId))
@@ -240,7 +261,8 @@ fun MainNavigation(
                             onNewChat = {
                                 chatViewModel.clearMessages()
                                 backStack.add(NavChat(prompt = null))
-                            }
+                            },
+                            chatViewModel = chatViewModel
                         )
                     }
                 }
@@ -288,8 +310,41 @@ fun MainNavigation(
                     ScreenTransitionWrapper {
                         TasksScreen(
                             onOpenDrawer = { scope.launch { drawerState.open() } },
+                            onBack = { backStack.removeLastOrNull() },
                             onNavigateChat = { prompt -> backStack.add(NavChat(prompt = prompt)) },
                             onNavigateConfig = { backStack.add(NavConnectors) }
+                        )
+                    }
+                }
+                entry<NavSkills> {
+                    ScreenTransitionWrapper {
+                        SkillsScreen(
+                            onBack = { backStack.removeLastOrNull() },
+                            chatViewModel = chatViewModel
+                        )
+                    }
+                }
+                entry<NavAgents> {
+                    ScreenTransitionWrapper {
+                        AgentsScreen(
+                            onBack = { backStack.removeLastOrNull() },
+                            chatViewModel = chatViewModel
+                        )
+                    }
+                }
+                entry<NavKnowledge> {
+                    ScreenTransitionWrapper {
+                        KnowledgeScreen(
+                            onBack = { backStack.removeLastOrNull() },
+                            chatViewModel = chatViewModel
+                        )
+                    }
+                }
+                entry<NavActivity> {
+                    ScreenTransitionWrapper {
+                        ActivityScreen(
+                            onBack = { backStack.removeLastOrNull() },
+                            chatViewModel = chatViewModel
                         )
                     }
                 }
@@ -299,6 +354,9 @@ fun MainNavigation(
                             onOpenDrawer = { scope.launch { drawerState.open() } },
                             onNavigateProfile = { backStack.add(NavProfile) },
                             onNavigateBilling = { backStack.add(NavBilling) },
+                            onNavigateTasks = { backStack.add(NavTasks) },
+                            onNavigateAgents = { backStack.add(NavAgents) },
+                            onNavigateKnowledge = { backStack.add(NavKnowledge) },
                             onNavigateCapabilities = { backStack.add(NavCapabilities) },
                             onNavigateConnectors = { backStack.add(NavConnectors) },
                             onNavigatePermissions = { backStack.add(NavPermissions) },

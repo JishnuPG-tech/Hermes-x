@@ -32,7 +32,6 @@ _UNSUPPORTED_PREFIXES = (
     "/api/oauth",
     "/api/plugins",
     "/api/dashboard/",
-    "/api/skills",
     "/api/tools/",
     "/api/providers/oauth",
     "/api/messaging/",

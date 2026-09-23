@@ -140,18 +140,22 @@ class VoiceEngine private constructor(private val appContext: Context) {
                 val firstName = rawName.trim().split("\\s+".toRegex()).firstOrNull { it.isNotBlank() }?.replaceFirstChar { it.uppercase() } ?: "Jishnu"
                 currentUserName = firstName
 
-                _selectedVoice.value = when (currentPersona) {
-                    "Airy"   -> "en-US-AriaNeural"
-                    "Mellow" -> "en-US-GuyNeural"
-                    "Glassy" -> "en-US-JennyNeural"
-                    "Brass"  -> "en-US-EricNeural"
-                    else     -> "en-US-ChristopherNeural"
-                }
+                _selectedVoice.value = com.example.hermes.data.PreferencesManager.getVoiceIdForPersona(currentPersona)
             } catch (e: Exception) {
                 Log.w(TAG, "Error reading voice preferences: ${e.message}")
             }
 
             connectWebSocket()
+        }
+
+        scope.launch {
+            prefs.voicePersona.collect { persona ->
+                currentPersona = persona
+                val targetVoice = com.example.hermes.data.PreferencesManager.getVoiceIdForPersona(persona)
+                if (targetVoice != _selectedVoice.value) {
+                    setVoice(targetVoice)
+                }
+            }
         }
     }
 

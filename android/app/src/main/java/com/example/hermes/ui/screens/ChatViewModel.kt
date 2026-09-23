@@ -42,6 +42,24 @@ class ChatViewModel(
     val tasks: StateFlow<List<TaskDto>> = repository.tasks
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val skills: StateFlow<List<SkillItemDto>> = repository.skills
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val agents: StateFlow<List<AgentRoleDto>> = repository.agents
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val knowledgeSummary: StateFlow<KnowledgeSummaryResponseDto?> = repository.knowledgeSummary
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val activityEvents: StateFlow<List<ActivityEventDto>> = repository.activityEvents
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun fetchSkills(sessionId: String = "global") = repository.fetchSkills(sessionId)
+    suspend fun toggleSkill(skillName: String, active: Boolean, sessionId: String = "global") = repository.toggleSkill(skillName, active, sessionId)
+    fun fetchAgents() = repository.fetchAgents()
+    fun fetchKnowledgeSummary() = repository.fetchKnowledgeSummary()
+    fun fetchActivity() = repository.fetchActivity()
+
     val webSearchEnabled = kotlinx.coroutines.flow.MutableStateFlow(true)
     val memoryEnabled = kotlinx.coroutines.flow.MutableStateFlow(true)
     val selectedProject = kotlinx.coroutines.flow.MutableStateFlow<ProjectDto?>(null)

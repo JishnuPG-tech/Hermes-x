@@ -156,3 +156,73 @@ async def save_knowledge_note(
 )
 def get_obsidian_uri(file_path: str, vault_name: Optional[str] = None) -> str:
     return _router.obsidian.get_obsidian_uri(file_path)
+
+
+@registry.register(
+    name="notion_search",
+    description="Search Notion workspace for pages, databases, and structured project notes.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "The search term or topic to find in Notion"}
+        },
+        "required": ["query"],
+    },
+    category="vault",
+)
+async def notion_search(query: str) -> str:
+    return await search_knowledge(query=query, sources=["notion"], limit=8)
+
+
+@registry.register(
+    name="notion_read_page",
+    description="Read full content of a Notion page by its ID.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "page_id": {"type": "string", "description": "The ID of the Notion page to read"}
+        },
+        "required": ["page_id"],
+    },
+    category="vault",
+)
+async def notion_read_page(page_id: str) -> str:
+    return await read_knowledge_note(source="notion", source_id=page_id)
+
+
+@registry.register(
+    name="notion_create_page",
+    description="Create a new note or document in Notion.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "title": {"type": "string", "description": "Title of the note"},
+            "content": {"type": "string", "description": "Markdown body content"},
+            "parent_id": {"type": "string", "description": "Optional parent page or database ID"},
+        },
+        "required": ["title", "content"],
+    },
+    category="vault",
+    side_effects=True,
+)
+async def notion_create_page(title: str, content: str, parent_id: Optional[str] = None) -> str:
+    return await save_knowledge_note(title=title, content=content, destination="notion", parent_id=parent_id)
+
+
+@registry.register(
+    name="knowledge_search",
+    description="Unified cross-system knowledge search across all connected sources.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "Search term"},
+            "sources": {"type": "string", "description": "Comma separated sources e.g. 'notion,obsidian'"},
+        },
+        "required": ["query"],
+    },
+    category="vault",
+)
+async def knowledge_search(query: str, sources: str = "notion,obsidian") -> str:
+    src_list = [s.strip() for s in sources.split(",") if s.strip()]
+    return await search_knowledge(query=query, sources=src_list, limit=6)
+

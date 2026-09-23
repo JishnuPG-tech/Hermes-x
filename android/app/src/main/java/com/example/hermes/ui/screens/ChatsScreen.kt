@@ -32,16 +32,28 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.text.style.TextOverflow
 import com.example.hermes.data.FtsSearchResultDto
+import com.example.hermes.ui.components.VoiceWaveMiniBadge
 
 @Composable
 fun ChatsScreen(
+    initialFilter: String = "all",
     onOpenDrawer: () -> Unit,
     onNavigateChat: (String?) -> Unit,
     onNewChat: () -> Unit,
     chatViewModel: ChatViewModel = viewModel()
 ) {
     var searchQuery by remember { mutableStateOf("") }
+    var selectedFilter by remember(initialFilter) {
+        mutableStateOf(
+            when (initialFilter.lowercase()) {
+                "voice" -> "voice"
+                "chat", "chats" -> "chat"
+                else -> "all"
+            }
+        )
+    }
     val sessions by chatViewModel.sessions.collectAsStateWithLifecycle()
     val ftsResults by chatViewModel.ftsSearchResults.collectAsStateWithLifecycle()
 
@@ -174,16 +186,61 @@ fun ChatsScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            val filteredSessions = sessions.filter {
+            // Segmented Filter Tabs: All | Chats | Voice
+            val totalCount = sessions.size
+            val voiceCount = sessions.count { it.isVoice }
+            val normalCount = totalCount - voiceCount
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterTabPill(
+                    label = "All",
+                    count = totalCount,
+                    isSelected = selectedFilter == "all",
+                    onClick = { selectedFilter = "all" }
+                )
+                FilterTabPill(
+                    label = "Chats",
+                    count = normalCount,
+                    isSelected = selectedFilter == "chat",
+                    onClick = { selectedFilter = "chat" }
+                )
+                FilterTabPill(
+                    label = "Voice",
+                    count = voiceCount,
+                    isSelected = selectedFilter == "voice",
+                    onClick = { selectedFilter = "voice" },
+                    hasVoiceIcon = true
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            val typeFilteredSessions = when (selectedFilter) {
+                "voice" -> sessions.filter { it.isVoice }
+                "chat" -> sessions.filter { !it.isVoice }
+                else -> sessions
+            }
+
+            val filteredSessions = typeFilteredSessions.filter {
                 it.title.contains(searchQuery, ignoreCase = true)
             }
 
             val isSearchActive = searchQuery.isNotBlank()
             val noResults = isSearchActive && filteredSessions.isEmpty() && ftsResults.isEmpty()
 
-            if (sessions.isEmpty() && !isSearchActive) {
+            if (typeFilteredSessions.isEmpty() && !isSearchActive) {
+                val emptyMessage = when (selectedFilter) {
+                    "voice" -> "No voice conversations yet. Start a voice chat with Hermes."
+                    "chat" -> "No text conversations yet. Start a new chat."
+                    else -> "No conversations yet. Start a new chat."
+                }
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -191,7 +248,7 @@ fun ChatsScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No conversations yet. Start a new chat.",
+                        text = emptyMessage,
                         style = HermesTypography.bodyLarge.copy(fontSize = 15.sp, color = TextSubtle)
                     )
                 }
@@ -241,19 +298,34 @@ fun ChatsScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = session.title.ifBlank { "Untitled" },
-                                    style = HermesTypography.titleMedium.copy(
-                                        fontSize = 17.sp,
-                                        color = TextPrimaryWarm,
-                                        fontWeight = FontWeight.Normal
-                                    ),
-                                    maxLines = 1
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    if (session.isVoice) {
+                                        VoiceWaveMiniBadge(modifier = Modifier.padding(end = 7.dp))
+                                    }
+                                    Text(
+                                        text = session.title.ifBlank { if (session.isVoice) "Voice conversation" else "Untitled" },
+                                        style = HermesTypography.titleMedium.copy(
+                                            fontSize = 17.sp,
+                                            color = TextPrimaryWarm,
+                                            fontWeight = FontWeight.Normal
+                                        ),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f, fill = false)
+                                    )
+                                }
                                 Spacer(modifier = Modifier.height(3.dp))
                                 val timeStr = formatEpochTime(session.updated_at)
+                                val subText = if (session.isVoice) {
+                                    "Voice · $timeStr · ${session.message_count} messages"
+                                } else {
+                                    "$timeStr · ${session.message_count} messages"
+                                }
                                 Text(
-                                    text = "$timeStr · ${session.message_count} messages",
+                                    text = subText,
                                     style = HermesTypography.bodyMedium.copy(
                                         fontSize = 13.5.sp,
                                         color = TextSubtle
@@ -392,3 +464,51 @@ private fun formatEpochTime(epochSeconds: Double): String {
         }
     }
 }
+
+@Composable
+private fun FilterTabPill(
+    label: String,
+    count: Int,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    hasVoiceIcon: Boolean = false
+) {
+    val bg = if (isSelected) Color(0xFF2B2824) else Color(0xFF181715)
+    val borderCol = if (isSelected) BrandCoral else BorderSubtle
+    val textCol = if (isSelected) PureWhite else TextMuted
+    val countCol = if (isSelected) BrandCoral else TextSubtle
+
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(bg)
+            .border(1.dp, borderCol, RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (hasVoiceIcon) {
+            VoiceWaveMiniBadge(modifier = Modifier.padding(end = 6.dp))
+        }
+        Text(
+            text = label,
+            style = HermesTypography.bodyMedium.copy(
+                fontSize = 13.5.sp,
+                color = textCol,
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+            )
+        )
+        if (count > 0) {
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "$count",
+                style = HermesTypography.labelSmall.copy(
+                    fontSize = 11.5.sp,
+                    color = countCol,
+                    fontWeight = FontWeight.Bold
+                )
+            )
+        }
+    }
+}
+

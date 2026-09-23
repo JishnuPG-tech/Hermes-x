@@ -1,6 +1,7 @@
 import asyncio
 import os
 import signal
+from typing import Optional
 from hermes_core.tools.registry import registry
 
 @registry.register(
@@ -114,3 +115,56 @@ async def python_exec(code: str) -> str:
         return out_str or "[Executed successfully with no stdout]"
     except Exception as e:
         return f"[Python Error]: {str(e)}"
+
+
+@registry.register(
+    name="bash",
+    description="Execute a bash shell command on the server in a controlled environment. Returns stdout, stderr, and exit code.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "command": {"type": "string", "description": "The shell command line string to execute."},
+            "cwd": {"type": "string", "description": "Optional working directory path."},
+            "working_directory": {"type": "string", "description": "Optional working directory path."},
+            "timeout_seconds": {"type": "integer", "description": "Maximum runtime in seconds (default: 120)."},
+        },
+        "required": ["command"],
+    },
+    category="coding",
+    side_effects=True,
+    timeout_seconds=120,
+)
+async def bash(
+    command: str,
+    cwd: Optional[str] = None,
+    working_directory: Optional[str] = None,
+    timeout_seconds: int = 120,
+) -> str:
+    target_cwd = cwd or working_directory
+    try:
+        # If /bin/bash exists, invoke bash_exec, else run subprocess shell
+        if os.path.exists("/bin/bash"):
+            return await bash_exec(command=command, working_directory=target_cwd, timeout_seconds=timeout_seconds)
+        
+        proc = await asyncio.create_subprocess_shell(
+            command,
+            cwd=target_cwd or os.getcwd(),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=float(timeout_seconds))
+        out_str = stdout.decode("utf-8", errors="replace").strip()
+        err_str = stderr.decode("utf-8", errors="replace").strip()
+        res = f"Exit code: {proc.returncode}\n"
+        if out_str:
+            res += f"Output:\n{out_str}\n"
+        if err_str:
+            res += f"Error:\n{err_str}\n"
+        if not out_str and not err_str:
+            res += "(Command finished with no output)\n"
+        return res.strip()
+    except asyncio.TimeoutError:
+        return f"[ERROR] Command timed out after {timeout_seconds} seconds."
+    except Exception as e:
+        return f"[ERROR] Shell execution failed: {str(e)}"
+

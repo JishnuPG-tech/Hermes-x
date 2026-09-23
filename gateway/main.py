@@ -22,6 +22,7 @@ from gateway.computer_api import router as computer_router
 from gateway.voice_api import router as voice_router
 from gateway.sessions_api import router as sessions_api_router
 from gateway.autonomous_chat import router as autonomous_chat_router
+from gateway.system_surfaces_api import router as system_surfaces_router
 
 
 
@@ -457,6 +458,7 @@ async def logs_service(service: str):
 # legacy /health catch-all cannot shadow them. Keep WebUI before the legacy
 # /api/models aliases and Hermes proxy last.
 app.include_router(autonomous_chat_router)
+app.include_router(system_surfaces_router)
 app.include_router(sessions_api_router)
 app.include_router(telemetry_router)
 app.include_router(anthropic_router)

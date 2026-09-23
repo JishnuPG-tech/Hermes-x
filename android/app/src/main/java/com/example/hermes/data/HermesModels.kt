@@ -326,8 +326,14 @@ data class SessionDto(
     val updated_at: Double = 0.0,
     val pinned: Boolean = false,
     val archived: Boolean = false,
-    val project_id: String? = null
-)
+    val project_id: String? = null,
+    val session_type: String = "chat"
+) {
+    val isVoice: Boolean
+        get() = session_type.equals("voice", ignoreCase = true) ||
+                session_id.startsWith("voice_") ||
+                session_id.contains("voice", ignoreCase = true)
+}
 
 @Serializable
 data class SessionsResponse(
@@ -604,6 +610,89 @@ data class FtsSearchResultDto(
     val role: String,
     val snippet: String,
     val timestamp: Long
+)
+
+// ── System Surfaces DTOs ──────────────────────────────────────────
+
+@Serializable
+data class SkillItemDto(
+    val id: String = "",
+    val name: String = "",
+    val description: String = "",
+    val category: String = "Specialist",
+    val is_active: Boolean = false,
+    val author: String = "Hermes",
+    val version: String = "1.0.0"
+)
+
+@Serializable
+data class SkillsResponseDto(
+    val status: String = "ok",
+    val skills: List<SkillItemDto> = emptyList()
+)
+
+@Serializable
+data class SkillToggleRequestDto(
+    val skill_name: String,
+    val active: Boolean,
+    val session_id: String? = "global"
+)
+
+@Serializable
+data class AgentRoleDto(
+    val id: String = "",
+    val name: String = "",
+    val description: String = "",
+    val system_prompt: String = "",
+    val allowed_tools: List<String> = emptyList(),
+    val output_contract: String = "",
+    val status: String = "Ready",
+    val tier: String = "Specialist"
+)
+
+@Serializable
+data class AgentsResponseDto(
+    val status: String = "ok",
+    val coordinator_status: String = "Operational",
+    val max_concurrent_workers: Int = 4,
+    val agents: List<AgentRoleDto> = emptyList()
+)
+
+@Serializable
+data class KnowledgeSummarySourceDto(
+    val id: String = "",
+    val name: String = "",
+    val type: String = "",
+    val status: String = "Online",
+    val connected: Boolean = true,
+    val item_count: Int = 0,
+    val last_synced: String = "Realtime"
+)
+
+@Serializable
+data class KnowledgeSummaryResponseDto(
+    val status: String = "ok",
+    val total_sources: Int = 0,
+    val default_source: String = "notion",
+    val sources: List<KnowledgeSummarySourceDto> = emptyList()
+)
+
+@Serializable
+data class ActivityEventDto(
+    val id: String = "",
+    val title: String = "",
+    val type: String = "Task",
+    val status: String = "Completed",
+    val timestamp: Double = 0.0,
+    val worker: String = "Hermes Autonomous Agent",
+    val details: String = ""
+)
+
+@Serializable
+data class ActivityResponseDto(
+    val status: String = "ok",
+    val total: Int = 0,
+    val events: List<ActivityEventDto> = emptyList()
 )
 
 

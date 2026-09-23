@@ -32,7 +32,8 @@ import com.example.hermes.ui.components.ClaudeToggle
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TasksScreen(
-    onOpenDrawer: () -> Unit,
+    onOpenDrawer: () -> Unit = {},
+    onBack: (() -> Unit)? = null,
     onNavigateChat: (String) -> Unit,
     onNavigateConfig: () -> Unit = {},
     tasksViewModel: TasksViewModel = viewModel()
@@ -53,7 +54,7 @@ fun TasksScreen(
             .background(CanvasNearBlack)
             .safeDrawingPadding()
     ) {
-        // Top Bar: Hamburger, Serif Tasks title, Avatar
+        // Top Bar: Back / Hamburger, Serif Tasks title, Avatar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -62,8 +63,14 @@ fun TasksScreen(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onOpenDrawer) {
-                    Icon(Icons.Default.Menu, contentDescription = "Menu", tint = TextPrimaryWarm)
+                if (onBack != null) {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimaryWarm)
+                    }
+                } else {
+                    IconButton(onClick = onOpenDrawer) {
+                        Icon(Icons.Default.Menu, contentDescription = "Menu", tint = TextPrimaryWarm)
+                    }
                 }
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
