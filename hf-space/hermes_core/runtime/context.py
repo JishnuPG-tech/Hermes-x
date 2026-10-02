@@ -154,7 +154,40 @@ class ContextBuilder:
         from hermes_core.runtime.planner import ExecutionPlanner
         tools_dict["create_durable_task"] = ExecutionPlanner().get_create_task_schema()
 
-        # 3. Add base capabilities matching context permissions
+        # 3. Add explicit completion protocol. The runtime handles this meta-tool
+        # directly so completion does not depend on a provider-specific convention.
+        tools_dict["finish_task"] = {
+            "type": "function",
+            "function": {
+                "name": "finish_task",
+                "description": (
+                    "Conclude the current task after checking the original objective. "
+                    "Use completed only when the objective is achieved and important results "
+                    "are verified. Use blocked when a concrete dependency prevents completion."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "status": {
+                            "type": "string",
+                            "enum": ["completed", "blocked"],
+                        },
+                        "summary": {
+                            "type": "string",
+                            "description": "Concise truthful completion or blocker summary.",
+                        },
+                        "evidence": {
+                            "type": "object",
+                            "description": "Relevant evidence such as changed files or tests.",
+                            "additionalProperties": True,
+                        },
+                    },
+                    "required": ["status", "summary"],
+                },
+            },
+        }
+
+        # 4. Add base capabilities matching context permissions
         core_tool_names = [
             "bash",
             "bash_exec",
