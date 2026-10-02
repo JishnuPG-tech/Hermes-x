@@ -26,6 +26,8 @@ from hermes_core.runtime.tool_discovery import CapabilityIndex, capability_index
 from hermes_core.runtime.tool_controller import ToolExecutor, tool_executor
 from hermes_core.runtime.verifier import VerificationGate, verification_gate
 from hermes_core.runtime.planner import ExecutionPlanner, execution_planner
+from hermes_core.runtime.budget import ExecutionBudget
+from hermes_core.runtime.progress import ProgressTracker
 from hermes_core.runtime.agent_runtime import AgentRuntime
 from hermes_core.tools.registry import registry
 
@@ -151,6 +153,42 @@ class TestAgentRuntime(unittest.TestCase):
         # Test breaker guidance message
         breaker_msg = planner.get_loop_breaker_guidance(call_tool)
         self.assertIn("TOOL LOOP DETECTED", breaker_msg)
+
+    def test_adaptive_execution_budget(self):
+        """Budget adapts to request size while retaining a hard safety ceiling."""
+        short = ExecutionBudget.for_request([{"role": "user", "content": "What is 2+2?"}])
+        long = ExecutionBudget.for_request([{"role": "user", "content": "x" * 5000}])
+        self.assertLessEqual(short.initial_iterations, long.initial_iterations)
+        self.assertLessEqual(long.hard_ceiling, 64)
+
+    def test_progress_tracker_detects_repeated_state(self):
+        """Repeated execution state is detected independently of model wording."""
+        tracker = ProgressTracker(stall_threshold=2)
+        calls = [{"name": "read_file", "arguments": {"path": "/tmp/missing"}}]
+        failed = ToolResult(success=False, tool="read_file", error={"message": "missing"})
+        self.assertTrue(tracker.observe(1, calls, [failed], "").progressed)
+        self.assertFalse(tracker.observe(2, calls, [failed], "").progressed)
+        tracker.observe(3, calls, [failed], "")
+        self.assertTrue(tracker.stalled)
+        self.assertIn("NO EXECUTION PROGRESS", tracker.guidance())
+
+    def test_finish_task_completion_audit(self):
+        """Explicit completion requests reject unsupported success claims."""
+        valid, _ = verification_gate.audit_completion_request(
+            status="completed",
+            summary="I fixed the bug and all tests passed.",
+            tool_results=[ToolResult(success=False, tool="bash", error={"message": "test failure"})],
+            evidence={},
+        )
+        self.assertFalse(valid)
+
+        valid, _ = verification_gate.audit_completion_request(
+            status="completed",
+            summary="The requested information is provided.",
+            tool_results=[],
+            evidence={},
+        )
+        self.assertTrue(valid)
 
     def test_rbac_permission_enforcement(self):
         """Validates that non-admin context lacking declared permissions is denied execution."""
