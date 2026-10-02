@@ -86,7 +86,7 @@ class AgentRuntime:
         model: Optional[str] = None,
         system_instruction: Optional[str] = None,
         temperature: float = 0.7,
-        max_iterations: int = 8,
+        max_iterations: Optional[int] = None,
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """
         Stream an autonomous agent conversation turn.
