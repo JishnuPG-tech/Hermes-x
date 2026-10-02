@@ -142,7 +142,7 @@ class AutonomousAgentLoop:
                 ))
                 return
 
-            force_synthesis = iteration_number >= budget.force_synthesis_at and not progress.stalled
+            force_synthesis = progress.stalled or iteration_number >= (budget.hard_ceiling - 2)
             active_tools = ContextBuilder.resolve_active_tools(context, discovered_tools)
             if force_synthesis:
                 active_tools = []
