@@ -1,0 +1,14 @@
+name: hermes_ui
+publish_to: 'none'
+description: Hermes Claude-style autonomous agent UI foundation.
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

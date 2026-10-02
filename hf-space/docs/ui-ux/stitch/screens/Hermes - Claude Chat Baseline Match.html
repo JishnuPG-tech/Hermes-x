@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<title>Hermes</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Copernicus:ital,wght@0,400;0,700;1,400&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "surface": "#141413",
+            "background": "#141413",
+            "surface-card": "#1f1e1c",
+            "surface-elevated": "#2a2927",
+            "surface-dark-soft": "#242321",
+            "surface-container-lowest": "#121211",
+            "surface-terminal": "#181715",
+            "ink": "#faf9f5",
+            "on-surface": "#e5e2e0",
+            "text-secondary": "#87867f",
+            "text-muted": "#b0aea5",
+            "border-subtle": "#302f2c",
+            "hairline": "#302f2c",
+            "primary": "#d97757",
+            "primary-container": "#dc7350",
+            "tertiary": "#ffb59e",
+            "secondary-blue": "#3898ec",
+            "accent-green": "#22c55e",
+            "accent-warning": "#eab308"
+          },
+          borderRadius: {
+            "card": "16px",
+            "composer": "24px"
+          },
+          fontFamily: {
+            "serif-display": ["Newsreader", "Copernicus", "Georgia", "serif"],
+            "sans": ["Inter", "Roboto", "-apple-system", "sans-serif"],
+            "mono": ["JetBrains Mono", "monospace"]
+          }
+        }
+      }
+    };
+  </script>
+<style>
+    @layer base {
+      html, body {
+        width: 100%;
+        min-height: 100%;
+        margin: 0;
+        padding: 0;
+        background-color: #141413;
+        color: #faf9f5;
+      }
+      body {
+        overscroll-behavior-y: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .pb-safe {
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      .pt-safe {
+        padding-top: env(safe-area-inset-top, 0px);
+      }
+    }
+    ::-webkit-scrollbar {
+      display: none;
+    }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 24;
+    }
+    .material-symbols-fill {
+      font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+  </style>
+</head>
+<body class="bg-[#141413] font-sans text-on-surface flex flex-col min-h-screen selection:bg-[#d97757]/30 antialiased">
+<!-- Claude Android Status Bar & Top Bar -->
+<header class="fixed top-0 left-0 right-0 w-full z-50 bg-[#141413]/90 backdrop-blur-md pt-safe">
+<!-- Android Native Status Bar -->
+<div class="h-6 px-5 flex items-center justify-between text-[12px] font-medium text-[#faf9f5] select-none">
+<span class="tracking-tight">12:23</span>
+<div class="flex items-center gap-1.5 text-text-muted">
+<span class="text-[10px] tracking-wide font-medium">VoLTE</span>
+<span class="text-[10px] font-semibold tracking-tighter">5G</span>
+<span class="material-symbols-outlined text-[15px] leading-none">signal_cellular_alt</span>
+<span class="material-symbols-outlined text-[15px] leading-none">wifi</span>
+<div class="flex items-center gap-0.5 ml-0.5 text-[#faf9f5]">
+<span class="text-[11px] leading-none font-medium">64%</span>
+<span class="material-symbols-outlined text-[15px] leading-none rotate-90">battery_full</span>
+</div>
+</div>
+</div>
+<!-- Claude Android Top App Bar -->
+<div class="h-12 px-4 flex items-center justify-between">
+<!-- Left: Hamburger icon -->
+<button aria-label="Menu" class="w-10 h-10 flex items-center justify-center rounded-full text-[#faf9f5] hover:bg-[#1f1e1c] active:bg-[#2a2927] transition-colors">
+<span class="material-symbols-outlined text-[24px]">menu</span>
+</button>
+<!-- Center: Title -->
+<div class="flex items-center gap-1.5 cursor-pointer">
+<h1 class="font-serif-display text-[19px] tracking-normal font-normal text-[#faf9f5]">Hermes</h1>
+</div>
+<!-- Right: Claude Ghost/Ephemeral Chat Icon -->
+<button aria-label="Incognito temporary chat" class="w-10 h-10 flex items-center justify-center rounded-full text-[#b0aea5] hover:text-[#faf9f5] hover:bg-[#1f1e1c] transition-colors">
+<span class="material-symbols-outlined text-[22px]">mode_comment</span>
+</button>
+</div>
+</header>
+<!-- Feed Area -->
+<main class="flex-1 flex flex-col w-full pt-20 pb-44 px-5 max-w-2xl mx-auto space-y-5">
+<!-- User Message Bubble (Claude Android Style: right/inline calm dark bubble) -->
+<div class="flex justify-end pt-3">
+<div class="max-w-[88%] bg-[#1f1e1c] border border-[#302f2c]/50 rounded-[18px] rounded-br-[4px] px-4 py-3 space-y-1.5 shadow-sm text-[#faf9f5]">
+<p class="text-[14px] leading-[22px] font-normal tracking-normal text-[#faf9f5]">
+          Upgrade the Android client to Hermes architecture, run the verification test suite, and open a PR on GitHub.
+        </p>
+<div class="flex items-center justify-end text-[11px] text-[#87867f] select-none pt-0.5">
+<span>12:24 PM</span>
+</div>
+</div>
+</div>
+<!-- Assistant Message Section -->
+<div class="space-y-4 pt-1">
+<!-- Claude / Hermes Avatar & Name Header -->
+<div class="flex items-center gap-2.5">
+<!-- Anthropic / Hermes Coral Terracotta Starburst Icon -->
+<div class="w-6 h-6 rounded-full bg-[#d97757]/15 flex items-center justify-center flex-shrink-0">
+<svg class="w-3.5 h-3.5 text-[#d97757]" fill="currentColor" viewbox="0 0 24 24">
+<path d="M12 2L14.2 8.3L20.8 6.2L16.5 11.5L22 15L15.6 15.8L16.5 22L12 17.5L7.5 22L8.4 15.8L2 15L7.5 11.5L3.2 6.2L9.8 8.3L12 2Z"></path>
+</svg>
+</div>
+<span class="font-serif-display text-[17px] font-normal text-[#faf9f5]">Hermes</span>
+</div>
+<!-- Assistant Conversational Prose -->
+<div class="pl-0 text-[14px] leading-[23px] text-[#e5e2e0] font-normal tracking-normal">
+        I've initialized the build pipeline and delegated the test run to the QA agent. Repository context matches modern Compose M3 architecture standards.
+      </div>
+<!-- Hermes Autonomous Task Card (Claude Native Card Specs: #1f1e1c, 1px border #302f2c, 16px radius) -->
+<div class="bg-[#1f1e1c] border border-[#302f2c] rounded-card p-4 space-y-3.5 shadow-sm">
+<!-- Header: Status Pill + Task ID -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#22c55e]/15 text-[#22c55e] text-[11px] font-medium tracking-wide">
+<span class="w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse"></span>
+              RUNNING
+            </span>
+<span class="font-mono text-[12px] text-[#87867f]">#TSK-8921</span>
+</div>
+<span class="text-[12px] text-[#87867f] font-normal">Step 3 of 5 · 78%</span>
+</div>
+<!-- Task Title -->
+<div>
+<h2 class="text-[15px] font-medium text-[#faf9f5] leading-snug">Client Architecture Upgrade &amp; Verification</h2>
+<p class="text-[12px] text-[#87867f] pt-0.5">Automated branch refactor · Compose M3 standard</p>
+</div>
+<!-- Slim Blue Progress Bar (#3898ec) -->
+<div class="w-full bg-[#2a2927] rounded-full h-1 overflow-hidden">
+<div class="bg-[#3898ec] h-full rounded-full transition-all duration-300" style="width: 78%;"></div>
+</div>
+<!-- Task Step Checklist -->
+<div class="space-y-2.5 pt-1">
+<!-- Step 1 (Completed) -->
+<div class="flex items-start gap-2.5">
+<span class="material-symbols-outlined text-[16px] text-[#22c55e] mt-0.5">check_circle</span>
+<div class="flex-1 text-[13px] leading-tight">
+<span class="text-[#e5e2e0]">Inspect repository &amp; discover Gradle modules</span>
+</div>
+<span class="text-[11px] text-[#87867f] font-mono">0.8s</span>
+</div>
+<!-- Step 2 (Completed) -->
+<div class="flex items-start gap-2.5">
+<span class="material-symbols-outlined text-[16px] text-[#22c55e] mt-0.5">check_circle</span>
+<div class="flex-1 text-[13px] leading-tight">
+<span class="text-[#e5e2e0]">Refactor 9 view models into unidirectional state flows</span>
+</div>
+<span class="text-[11px] text-[#87867f] font-mono">3.4s</span>
+</div>
+<!-- Step 3 (Active Running) -->
+<div class="flex items-start gap-2.5 bg-[#242321] p-2.5 rounded-xl border border-[#302f2c]/60">
+<span class="material-symbols-outlined text-[16px] text-[#3898ec] animate-spin mt-0.5">sync</span>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<span class="text-[13px] font-medium text-[#3898ec]">Run test suite &amp; verify CI assertions</span>
+<span class="font-mono text-[11px] text-[#eab308]">58/82 passed</span>
+</div>
+<p class="text-[11px] text-[#87867f] pt-0.5 truncate">HermesEngineCoordinatorTest.kt</p>
+</div>
+</div>
+<!-- Step 4 (Pending) -->
+<div class="flex items-start gap-2.5 opacity-50">
+<span class="material-symbols-outlined text-[16px] text-[#87867f] mt-0.5">radio_button_unchecked</span>
+<div class="flex-1 text-[13px] leading-tight">
+<span class="text-[#b0aea5]">Push branch &amp; open GitHub Pull Request</span>
+</div>
+<span class="text-[11px] text-[#87867f]">Gated</span>
+</div>
+</div>
+<!-- Collapsible Terminal Block in #181715 -->
+<div class="rounded-xl bg-[#181715] border border-[#302f2c]/50 p-3 space-y-2">
+<button class="w-full flex items-center justify-between text-left focus:outline-none" id="toggleTerminalBtn">
+<div class="flex items-center gap-2 min-w-0">
+<span class="material-symbols-outlined text-[#eab308] text-[15px]">terminal</span>
+<span class="font-mono text-[11px] text-[#b0aea5] truncate">./gradlew testDebugUnitTest --continue</span>
+</div>
+<div class="flex items-center gap-1 text-[#87867f] flex-shrink-0">
+<span class="text-[11px]">Live</span>
+<span class="material-symbols-outlined text-[15px] transition-transform duration-200" id="terminalChevron">expand_less</span>
+</div>
+</button>
+<div class="font-mono text-[11px] leading-[18px] text-[#87867f] space-y-0.5 pt-0.5" id="terminalStream">
+<div>&gt; Task :core-model:testDebugUnitTest <span class="text-[#22c55e]">SUCCESS</span></div>
+<div>&gt; Task :app:testDebugUnitTest [HermesEngineCoordinatorTest] <span class="text-[#22c55e]">PASSED</span></div>
+<div class="text-[#3898ec] flex items-center gap-1.5 pt-0.5">
+<span class="w-1.5 h-1.5 rounded-full bg-[#3898ec] animate-ping"></span>
+<span>Running AgentOrchestratorSuite (14s elapsed)</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Action / Approval Gate Card (#1f1e1c, 16px radius, subtle border) -->
+<div class="bg-[#1f1e1c] border border-[#302f2c] rounded-card p-4 space-y-3.5 shadow-sm">
+<div class="flex items-start gap-3">
+<div class="w-8 h-8 rounded-full bg-[#d97757]/15 text-[#d97757] flex items-center justify-center flex-shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[18px] material-symbols-fill">shield</span>
+</div>
+<div class="flex-1 min-w-0 space-y-0.5">
+<div class="flex items-center justify-between">
+<h3 class="text-[14px] font-medium text-[#faf9f5]">Approval Required: Push to Remote GitHub</h3>
+<span class="text-[10px] uppercase font-semibold text-[#eab308] tracking-wider px-1.5 py-0.5 rounded bg-[#eab308]/10">Gate</span>
+</div>
+<p class="text-[12px] text-[#87867f] leading-normal">
+              Autonomous execution paused. Confirm code push upstream.
+            </p>
+</div>
+</div>
+<!-- Scope Destination Container -->
+<div class="bg-[#181715] border border-[#302f2c]/40 rounded-xl p-3 space-y-1">
+<div class="text-[11px] text-[#87867f] flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[13px]">fork_right</span>
+<span>Target Destination</span>
+</div>
+<div class="font-mono text-[12px] text-[#faf9f5] break-all">
+            feat/hermes-ui-upgrade <span class="text-[#d97757]">→</span> main
+          </div>
+<div class="flex items-center gap-3 text-[11px] text-[#87867f] pt-1">
+<span class="text-[#22c55e]">+482 lines</span>
+<span class="text-[#ffb4ab]">-118 lines</span>
+<span>9 modified files</span>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="flex items-center gap-2.5 pt-0.5">
+<!-- Primary White Pill Button -->
+<button class="flex-1 h-10 bg-[#ffffff] hover:bg-[#f0ede8] text-[#141413] text-[13px] font-semibold rounded-full flex items-center justify-center gap-1.5 shadow active:scale-[0.98] transition-transform" id="authorizeBtn">
+<span class="material-symbols-outlined text-[17px]">check</span>
+<span>Authorize Push</span>
+</button>
+<!-- Secondary Dark Pill Button -->
+<button class="h-10 bg-[#2a2927] hover:bg-[#353432] text-[#faf9f5] text-[13px] font-medium px-4 rounded-full flex items-center justify-center gap-1.5 active:scale-[0.98] transition-colors" id="diffBtn">
+<span class="material-symbols-outlined text-[16px] text-[#b0aea5]">difference</span>
+<span>Inspect Diff</span>
+</button>
+</div>
+<div class="hidden rounded-xl bg-[#22c55e]/15 p-2.5 text-center text-[#22c55e] text-[12px] font-medium" id="authStatusBanner">
+          ✓ Authorization granted. Remote PR #142 created.
+        </div>
+</div>
+</div>
+</main>
+<!-- Claude Android Floating Composer Dock -->
+<div class="fixed bottom-0 left-0 right-0 w-full z-40 px-4 pb-3 pointer-events-none">
+<div class="max-w-2xl mx-auto pointer-events-auto bg-[#1f1e1c] border border-[#302f2c] rounded-composer shadow-2xl p-2.5 space-y-2">
+<!-- Text Input Area -->
+<div class="px-2 pt-1 pb-0.5">
+<input class="w-full bg-transparent border-0 text-[15px] text-[#faf9f5] placeholder:text-[#87867f] focus:outline-none focus:ring-0 p-0 font-sans" placeholder="Chat with Hermes..." type="text"/>
+</div>
+<!-- Bottom Control Actions Bar -->
+<div class="flex items-center justify-between pt-0.5">
+<!-- Left Group: '+' Attach Button & Model Selector Pill -->
+<div class="flex items-center gap-1.5">
+<!-- Circular Attach Button -->
+<button aria-label="Add attachment" class="w-8 h-8 rounded-full bg-[#2a2927] hover:bg-[#353432] flex items-center justify-center text-[#b0aea5] active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[19px]">add</span>
+</button>
+<!-- Claude Android Model Pill Chip -->
+<button aria-label="Select model" class="h-8 px-3 rounded-full bg-[#2a2927] hover:bg-[#353432] flex items-center gap-1.5 text-[12px] font-medium text-[#faf9f5] active:scale-95 transition-transform">
+<span class="text-[#faf9f5]">Sonnet 5</span>
+<span class="text-[#87867f] font-normal">· Balanced</span>
+<span class="material-symbols-outlined text-[15px] text-[#87867f] ml-0.5">expand_more</span>
+</button>
+</div>
+<!-- Right Group: Mic Outline Icon & Solid White Voice Orb -->
+<div class="flex items-center gap-2">
+<!-- Mic Outline Icon Button -->
+<button aria-label="Voice dictation" class="w-8 h-8 rounded-full flex items-center justify-center text-[#b0aea5] hover:text-[#faf9f5] active:bg-[#2a2927] transition-colors">
+<span class="material-symbols-outlined text-[20px]">mic</span>
+</button>
+<!-- Voice Mode Circle Button (Anthropic white orb with waveform icon) -->
+<button aria-label="Start voice mode" class="w-8 h-8 rounded-full bg-[#ffffff] hover:bg-[#f0ede8] flex items-center justify-center text-[#141413] shadow-md active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[19px] material-symbols-fill">graphic_eq</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Android Bottom Gesture Indicator Bar -->
+<div class="w-full flex justify-center pt-2 pb-1 pointer-events-none">
+<div class="w-32 h-1 rounded-full bg-[#faf9f5]/25"></div>
+</div>
+</div>
+<script>
+    (function() {
+      const toggleTerminalBtn = document.getElementById('toggleTerminalBtn');
+      const terminalStream = document.getElementById('terminalStream');
+      const terminalChevron = document.getElementById('terminalChevron');
+      const authorizeBtn = document.getElementById('authorizeBtn');
+      const authStatusBanner = document.getElementById('authStatusBanner');
+      const diffBtn = document.getElementById('diffBtn');
+
+      if (toggleTerminalBtn && terminalStream && terminalChevron) {
+        toggleTerminalBtn.addEventListener('click', function() {
+          const isHidden = terminalStream.classList.toggle('hidden');
+          terminalChevron.textContent = isHidden ? 'expand_more' : 'expand_less';
+        });
+      }
+
+      if (authorizeBtn && authStatusBanner) {
+        authorizeBtn.addEventListener('click', function() {
+          authorizeBtn.disabled = true;
+          authorizeBtn.classList.add('opacity-50', 'cursor-not-allowed');
+          authorizeBtn.innerHTML = '<span class="material-symbols-outlined text-[16px] animate-spin">sync</span><span>Authorizing...</span>';
+          
+          setTimeout(function() {
+            authorizeBtn.parentElement.classList.add('hidden');
+            authStatusBanner.classList.remove('hidden');
+          }, 600);
+        });
+      }
+
+      if (diffBtn) {
+        diffBtn.addEventListener('click', function() {
+          diffBtn.classList.toggle('text-[#3898ec]');
+        });
+      }
+    })();
+  </script>
+</body></html>
