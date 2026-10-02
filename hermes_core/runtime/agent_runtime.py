@@ -19,7 +19,7 @@ logger = logging.getLogger("hermes.runtime.agent_runtime")
 
 UPSTREAM_URL = os.getenv("UPSTREAM_OMNIROUTE_URL", "https://jishnupg-opencode-cli.hf.space/v1").rstrip("/")
 UPSTREAM_API_KEY = os.getenv("UPSTREAM_API_KEY", os.getenv("API_KEY_SECRET", "Jishnu2005"))
-DEFAULT_MODEL = os.getenv("HERMES_DEFAULT_MODEL", "nvidia/nvidia/nemotron-3-super-120b-a12b")
+DEFAULT_MODEL = os.getenv("HERMES_DEFAULT_MODEL", "auto/smart").strip() or "auto/smart"
 
 
 class AgentRuntime:
