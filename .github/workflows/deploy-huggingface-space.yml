@@ -64,4 +64,4 @@ jobs:
       - name: Deployment summary
         run: |
           echo "Deployed hf-space/ snapshot to Jishnupg/Hermes"
-          echo "Source commit: $(git rev-parse HEAD)
+          echo "Source commit: $(git rev-parse HEAD)"
