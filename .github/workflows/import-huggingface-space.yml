@@ -46,16 +46,16 @@ jobs:
           mkdir -p hf-space
           cp -a /tmp/hf-hermes/. hf-space/
 
-          cat > hf-space/IMPORT_SOURCE.txt <<EOF
-Imported from Hugging Face Space:
-  Jishnupg/Hermes
-
-Source commit:
-  $(git -C /tmp/hf-hermes rev-parse HEAD)
-
-GitHub Actions run:
-  ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
-EOF
+          printf '%s\n' \
+            "Imported from Hugging Face Space:" \
+            "  Jishnupg/Hermes" \
+            "" \
+            "Source commit:" \
+            "  $(git -C /tmp/hf-hermes rev-parse HEAD)" \
+            "" \
+            "GitHub Actions run:" \
+            "  ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            > hf-space/IMPORT_SOURCE.txt
 
       - name: Commit and push import branch
         run: |
