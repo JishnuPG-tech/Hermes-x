@@ -59,5 +59,9 @@ class ExecutionBudget:
     def can_extend(self, current_iteration: int, has_progress: bool) -> bool:
         return has_progress and current_iteration < self.hard_ceiling
 
+    def extend_window(self, amount: int = 8) -> None:
+        """Extend the soft window after measurable progress, never past the hard ceiling."""
+        self.initial_iterations = min(self.hard_ceiling, self.initial_iterations + max(1, amount))
+
     def limit_reached(self, current_iteration: int) -> bool:
         return current_iteration >= self.hard_ceiling
