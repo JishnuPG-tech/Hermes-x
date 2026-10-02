@@ -1,9 +1,6 @@
 name: Deploy Hermes X to Hugging Face Space
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:
@@ -31,27 +28,40 @@ jobs:
           set -euo pipefail
           test -n "$HF_TOKEN" || { echo "HF_TOKEN secret is missing"; exit 1; }
 
-      - name: Push repository to Hugging Face Space
+      - name: Validate Space snapshot
+        run: |
+          set -euo pipefail
+          test -d hf-space || { echo "hf-space/ is missing. Import the Hugging Face Space first."; exit 1; }
+          test -f hf-space/README.md || { echo "hf-space/README.md is missing. Refusing deployment."; exit 1; }
+
+      - name: Prepare deployment repository
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/hermes-space
+          mkdir -p /tmp/hermes-space
+          cp -a hf-space/. /tmp/hermes-space/
+          rm -f /tmp/hermes-space/IMPORT_SOURCE.txt
+          rm -rf /tmp/hermes-space/.git
+
+          cd /tmp/hermes-space
+          git init
+          git checkout -b main
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "deploy: Hermes X Space snapshot"
+
+      - name: Push Space snapshot
+        working-directory: /tmp/hermes-space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           set -euo pipefail
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
           git remote add huggingface "https://Jishnupg:${HF_TOKEN}@huggingface.co/spaces/Jishnupg/Hermes"
-
-          # Push the complete repository state to the Space.
           git push --force huggingface "HEAD:main"
-
-          # Upload Git LFS objects when the repository uses LFS.
-          git lfs push --all huggingface || true
-
           git remote remove huggingface
 
       - name: Deployment summary
         run: |
-          echo "Deployed commit:"
-          git rev-parse HEAD
-          echo "Target: Jishnupg/Hermes"
+          echo "Deployed hf-space/ snapshot to Jishnupg/Hermes"
+          echo "Source commit: $(git rev-parse HEAD)
