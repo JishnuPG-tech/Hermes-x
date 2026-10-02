@@ -104,6 +104,40 @@ class VerificationGate:
 
         return True, None
 
+    @staticmethod
+    def audit_completion_request(
+        status: str,
+        summary: str,
+        tool_results: List[ToolResult],
+        evidence: Optional[Dict[str, Any]] = None,
+    ) -> tuple[bool, Optional[str]]:
+        """Validate the runtime's explicit finish_task completion request."""
+        status = (status or "").lower().strip()
+        summary = (summary or "").strip()
+        evidence = evidence or {}
+
+        if not summary:
+            return False, "Completion summary is empty."
+
+        if status == "blocked":
+            return True, None
+
+        if status != "completed":
+            return False, "Completion status must be 'completed' or 'blocked'."
+
+        failed_tools = [tr.tool for tr in tool_results if not tr.success]
+        if failed_tools and any(
+            phrase in summary.lower()
+            for phrase in ("all done", "completely fixed", "successfully finished", "fixed the bug", "tests passed")
+        ):
+            return False, f"Completion summary conflicts with failed tool results: {failed_tools}"
+
+        valid, reason = VerificationGate.audit_final_claim(summary, tool_results)
+        if not valid:
+            return False, reason
+
+        return True, None
+
     async def verify_action_completion(
         self,
         objective: str,
