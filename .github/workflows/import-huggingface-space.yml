@@ -1,6 +1,9 @@
 name: Import Hugging Face Space
 
 on:
+  push:
+    paths:
+      - ".github/workflows/import-huggingface-space.yml"
   workflow_dispatch:
 
 permissions:
@@ -25,7 +28,6 @@ jobs:
 
           rm -rf /tmp/hf-hermes
           git clone --depth 1 "https://Jishnupg:${HF_TOKEN}@huggingface.co/spaces/Jishnupg/Hermes" /tmp/hf-hermes
-
           rm -rf /tmp/hf-hermes/.git
 
       - name: Create import branch
@@ -39,12 +41,9 @@ jobs:
       - name: Import exact Space snapshot
         run: |
           set -euo pipefail
-
-          # Keep Hermes X history intact while placing the exact Space snapshot
-          # under a dedicated directory for inspection and controlled integration.
-          rm -rf "hf-space"
-          mkdir -p "hf-space"
-          cp -a /tmp/hf-hermes/. "hf-space/"
+          rm -rf hf-space
+          mkdir -p hf-space
+          cp -a /tmp/hf-hermes/. hf-space/
 
           cat > hf-space/IMPORT_SOURCE.txt <<EOF
 Imported from Hugging Face Space:
@@ -55,8 +54,6 @@ Source commit:
 
 GitHub Actions run:
   ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
-
-This directory is an immutable snapshot for analysis. Do not edit it manually.
 EOF
 
       - name: Commit and push import branch
@@ -68,7 +65,5 @@ EOF
 
       - name: Summary
         run: |
-          echo "Hugging Face Space snapshot imported to:"
-          echo "  hf-space/"
-          echo "Branch:"
-          git branch --show-current
+          echo "Hugging Face Space snapshot imported to hf-space/"
+          echo "Branch: $(git branch --show-current)"
