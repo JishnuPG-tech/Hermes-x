@@ -1,0 +1,57 @@
+name: Deploy Hermes X to Hugging Face Space
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-huggingface-hermes
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Hermes X
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Validate Hugging Face token
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$HF_TOKEN" || { echo "HF_TOKEN secret is missing"; exit 1; }
+
+      - name: Push repository to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git remote add huggingface "https://Jishnupg:${HF_TOKEN}@huggingface.co/spaces/Jishnupg/Hermes"
+
+          # Push the complete repository state to the Space.
+          git push --force huggingface "HEAD:main"
+
+          # Upload Git LFS objects when the repository uses LFS.
+          git lfs push --all huggingface || true
+
+          git remote remove huggingface
+
+      - name: Deployment summary
+        run: |
+          echo "Deployed commit:"
+          git rev-parse HEAD
+          echo "Target: Jishnupg/Hermes"
