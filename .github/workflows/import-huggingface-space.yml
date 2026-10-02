@@ -1,0 +1,74 @@
+name: Import Hugging Face Space
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import-space:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Hermes X
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Clone Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$HF_TOKEN" || { echo "HF_TOKEN secret is missing"; exit 1; }
+
+          rm -rf /tmp/hf-hermes
+          git clone --depth 1 "https://Jishnupg:${HF_TOKEN}@huggingface.co/spaces/Jishnupg/Hermes" /tmp/hf-hermes
+
+          rm -rf /tmp/hf-hermes/.git
+
+      - name: Create import branch
+        run: |
+          set -euo pipefail
+          BRANCH="import/huggingface-hermes-${GITHUB_RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$BRANCH"
+
+      - name: Import exact Space snapshot
+        run: |
+          set -euo pipefail
+
+          # Keep Hermes X history intact while placing the exact Space snapshot
+          # under a dedicated directory for inspection and controlled integration.
+          rm -rf "hf-space"
+          mkdir -p "hf-space"
+          cp -a /tmp/hf-hermes/. "hf-space/"
+
+          cat > hf-space/IMPORT_SOURCE.txt <<EOF
+Imported from Hugging Face Space:
+  Jishnupg/Hermes
+
+Source commit:
+  $(git -C /tmp/hf-hermes rev-parse HEAD)
+
+GitHub Actions run:
+  ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+
+This directory is an immutable snapshot for analysis. Do not edit it manually.
+EOF
+
+      - name: Commit and push import branch
+        run: |
+          set -euo pipefail
+          git add hf-space
+          git commit -m "import: snapshot Hugging Face Hermes Space"
+          git push --set-upstream origin HEAD
+
+      - name: Summary
+        run: |
+          echo "Hugging Face Space snapshot imported to:"
+          echo "  hf-space/"
+          echo "Branch:"
+          git branch --show-current
