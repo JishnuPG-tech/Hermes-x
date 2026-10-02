@@ -1,6 +1,12 @@
 name: Deploy Hermes X to Hugging Face Space
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "hf-space/**"
+      - ".github/workflows/deploy-huggingface-space.yml"
   workflow_dispatch:
 
 permissions:
@@ -16,52 +22,29 @@ jobs:
 
     steps:
       - name: Checkout Hermes X
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
-          fetch-depth: 0
+          fetch-depth: 1
           lfs: true
-
-      - name: Validate Hugging Face token
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          set -euo pipefail
-          test -n "$HF_TOKEN" || { echo "HF_TOKEN secret is missing"; exit 1; }
 
       - name: Validate Space snapshot
         run: |
           set -euo pipefail
           test -d hf-space || { echo "hf-space/ is missing. Import the Hugging Face Space first."; exit 1; }
           test -f hf-space/README.md || { echo "hf-space/README.md is missing. Refusing deployment."; exit 1; }
+          grep -q '^sdk: docker' hf-space/README.md || { echo "Space README does not declare sdk: docker."; exit 1; }
 
-      - name: Prepare deployment repository
-        run: |
-          set -euo pipefail
-          rm -rf /tmp/hermes-space
-          mkdir -p /tmp/hermes-space
-          cp -a hf-space/. /tmp/hermes-space/
-          rm -f /tmp/hermes-space/IMPORT_SOURCE.txt
-          rm -rf /tmp/hermes-space/.git
-
-          cd /tmp/hermes-space
-          git init
-          git checkout -b main
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "deploy: Hermes X Space snapshot"
-
-      - name: Push Space snapshot
-        working-directory: /tmp/hermes-space
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          set -euo pipefail
-          git remote add huggingface "https://Jishnupg:${HF_TOKEN}@huggingface.co/spaces/Jishnupg/Hermes"
-          git push --force huggingface "HEAD:main"
-          git remote remove huggingface
+      - name: Sync Space snapshot to Hugging Face
+        uses: huggingface/hub-sync@v0.3.0
+        with:
+          github_repo_id: ${{ github.repository }}
+          huggingface_repo_id: Jishnupg/Hermes
+          hf_token: ${{ secrets.HF_TOKEN }}
+          repo_type: space
+          space_sdk: docker
+          subdirectory: hf-space
 
       - name: Deployment summary
         run: |
-          echo "Deployed hf-space/ snapshot to Jishnupg/Hermes"
-          echo "Source commit: $(git rev-parse HEAD)"
+          echo "Synced hf-space/ to Hugging Face Space Jishnupg/Hermes"
+          echo "Source commit: ${GITHUB_SHA}"
