@@ -28,6 +28,8 @@ from hermes_core.runtime.models import (
     ToolResult,
 )
 from hermes_core.runtime.planner import ExecutionPlanner
+from hermes_core.runtime.budget import ExecutionBudget
+from hermes_core.runtime.progress import ProgressTracker
 from hermes_core.runtime.tool_controller import tool_executor
 from hermes_core.runtime.tool_discovery import capability_index
 from hermes_core.runtime.verifier import verification_gate
@@ -42,13 +44,13 @@ class AutonomousAgentLoop:
         self,
         upstream_url: str,
         api_key: str,
-        max_iterations: int = 8,
+        max_iterations: Optional[int] = None,
         timeout_seconds: float = 120.0,
         event_bus: Optional[RuntimeEventBus] = None,
     ):
         self.upstream_url = upstream_url.rstrip("/")
         self.api_key = api_key
-        self.max_iterations = max(1, min(max_iterations, 16))
+        self.requested_max_iterations = max_iterations
         self.timeout_seconds = timeout_seconds
         self.event_bus = event_bus or RuntimeEventBus.get_instance()
         self.planner = ExecutionPlanner()
@@ -67,6 +69,9 @@ class AutonomousAgentLoop:
         """
         start_time = time.time()
         session_id = context.session_id
+        budget = ExecutionBudget.for_request(messages, self.requested_max_iterations)
+        progress = ProgressTracker()
+        emitted_budget_notices = set()
 
         # 1. Emit agent.started event
         await self.event_bus.emit(AgentEvent(
@@ -104,7 +109,26 @@ class AutonomousAgentLoop:
         client_timeout = httpx.Timeout(connect=8.0, read=self.timeout_seconds, write=30.0, pool=30.0)
 
         # 3. Iterative Agent Loop
-        for iteration in range(self.max_iterations):
+        for iteration in range(budget.hard_ceiling):
+            iteration_number = iteration + 1
+            if iteration_number >= budget.warning_at and "warning" not in emitted_budget_notices:
+                emitted_budget_notices.add("warning")
+                active_messages.append({
+                    "role": "system",
+                    "content": (
+                        f"[SYSTEM NOTICE: EXECUTION BUDGET] Soft budget reached ({budget.initial_iterations}). "
+                        "Continue only if meaningful progress is still required. Verify and finish when satisfied."
+                    ),
+                })
+            if iteration_number >= budget.wrapup_at and "wrapup" not in emitted_budget_notices:
+                emitted_budget_notices.add("wrapup")
+                active_messages.append({
+                    "role": "system",
+                    "content": (
+                        "[SYSTEM NOTICE: WRAP UP] Reassess the original objective. Complete essential remaining work, "
+                        "verify it, and use finish_task. Avoid nonessential exploration."
+                    ),
+                })
             # Check total wall-clock timeout
             if (time.time() - start_time) > self.timeout_seconds:
                 err_msg = f"Task exceeded maximum execution time of {self.timeout_seconds}s."
@@ -118,25 +142,28 @@ class AutonomousAgentLoop:
                 ))
                 return
 
+            force_synthesis = progress.stalled or iteration_number >= (budget.hard_ceiling - 2)
             active_tools = ContextBuilder.resolve_active_tools(context, discovered_tools)
-
-            # Ensure we route to valid OmniRoute identifiers
-            model_aliases = {
-                "hermes-agent": "auto/smart",
-                "Hermes Turbo": "auto/best-fast",
-                "Hermes Smart": "auto/smart",
-                "Hermes Reasoning": "auto/best-reasoning",
-                "Hermes Coding": "auto/best-coding"
-            }
-            mapped_model = model_aliases.get(model_name, model_name)
+            if force_synthesis:
+                active_tools = []
+                if "synthesis" not in emitted_budget_notices:
+                    emitted_budget_notices.add("synthesis")
+                    active_messages.append({
+                        "role": "system",
+                        "content": (
+                            "[SYSTEM NOTICE: FINAL SYNTHESIS] Do not call tools. "
+                            "Produce the best truthful final response from verified work so far. "
+                            "Clearly state anything incomplete or unverified."
+                        ),
+                    })
 
             req_payload = {
-                "model": mapped_model,
+                "model": model_name,
                 "messages": active_messages,
                 "temperature": temperature,
                 "stream": True,
                 "tools": active_tools,
-                "tool_choice": "auto",
+                "tool_choice": "none" if force_synthesis else "auto",
             }
 
             accumulated_text = ""
@@ -266,6 +293,40 @@ class AutonomousAgentLoop:
                         "arguments": t_args,
                     }
 
+                    # Runtime completion protocol. The runtime handles this meta-tool directly.
+                    if t_name == "finish_task":
+                        status = str(t_args.get("status", "completed")).lower()
+                        summary = str(t_args.get("summary", "")).strip()
+                        evidence = t_args.get("evidence", {})
+                        if status not in {"completed", "blocked"}:
+                            status = "blocked"
+                        valid, reason = verification_gate.audit_completion_request(
+                            status=status,
+                            summary=summary,
+                            tool_results=executed_tool_results,
+                            evidence=evidence,
+                        )
+                        if valid:
+                            final_status = "success" if status == "completed" else "blocked"
+                            await self.event_bus.emit(AgentEvent(
+                                type="agent.completed" if status == "completed" else "agent.failed",
+                                status=final_status,
+                                user_id=context.user_id,
+                                session_id=session_id,
+                                project_id=context.project_id,
+                                task_id=context.task_id,
+                                metadata={"iterations": iteration_number, "total_tools_executed": len(executed_tool_results),
+                                          "completion_protocol": True, "evidence": evidence},
+                            ))
+                            yield {"type": "text", "content": summary}
+                            yield {"type": "done", "iterations": iteration_number, "status": final_status}
+                            return
+                        active_messages.append({
+                            "role": "system",
+                            "content": f"[SYSTEM NOTICE: COMPLETION REJECTED] {reason} Continue with evidence or report a truthful blocked status.",
+                        })
+                        continue
+
                     # Meta-tool handle: search_tools updates discovered capabilities
                     if t_name == "search_tools":
                         s_res = await tool_executor.execute(t_name, t_args, context, tool_call_id=call_id)
@@ -365,6 +426,31 @@ class AutonomousAgentLoop:
                         "error": res.error,
                     }
 
+                progress_snapshot = progress.observe(
+                    iteration=iteration_number,
+                    tool_calls=parsed_tool_calls,
+                    tool_results=round_tool_results,
+                    assistant_text=accumulated_text,
+                )
+                if progress.stalled:
+                    active_messages.append({"role": "system", "content": progress.guidance()})
+                    if "stall" not in emitted_budget_notices:
+                        emitted_budget_notices.add("stall")
+                        yield {"type": "warning", "warning": progress.guidance(), "iteration": iteration_number}
+                    if progress.stall_count >= progress.stall_threshold + 1:
+                        blocked_msg = (
+                            "Execution stopped because the agent repeated the same execution state without measurable progress. "
+                            "Completed work was preserved, but the remaining objective was not verified."
+                        )
+                        yield {"type": "error", "error": blocked_msg, "status": "stalled"}
+                        await self.event_bus.emit(AgentEvent(
+                            type="agent.failed", status="stalled", user_id=context.user_id, session_id=session_id,
+                            metadata={"iterations": iteration_number, "stall_count": progress.stall_count},
+                        ))
+                        return
+                if progress_snapshot.progressed and iteration_number >= budget.initial_iterations:
+                    budget.extend_window(8)
+
                 # If any tool failed, inject structured re-planning prompt into context
                 failed_tools = [r for r in round_tool_results if not r.success]
                 if failed_tools:
@@ -377,24 +463,22 @@ class AutonomousAgentLoop:
                 # Loop continues to next iteration so model reasons over observation
                 continue
 
-            # Case B: Model did not issue tool calls -> It produced a direct answer or final synthesis
+            # Case B: Model did not issue tool calls -> final synthesis or direct answer.
             if accumulated_text:
-                # Truthfulness & Verification Audit
                 valid, reason = verification_gate.audit_final_claim(accumulated_text, executed_tool_results)
-                if not valid:
-                    logger.warning(f"Verification claim audit warning: {reason}")
-
-                await self.event_bus.emit(AgentEvent(
-                    type="agent.completed",
-                    status="success",
-                    user_id=context.user_id,
-                    session_id=session_id,
-                    project_id=context.project_id,
-                    task_id=context.task_id,
-                    metadata={"iterations": iteration + 1, "total_tools_executed": len(executed_tool_results)},
-                ))
-                yield {"type": "done", "iterations": iteration + 1}
-                return
+                if valid:
+                    await self.event_bus.emit(AgentEvent(
+                        type="agent.completed", status="success", user_id=context.user_id, session_id=session_id,
+                        project_id=context.project_id, task_id=context.task_id,
+                        metadata={"iterations": iteration_number, "total_tools_executed": len(executed_tool_results)},
+                    ))
+                    yield {"type": "done", "iterations": iteration_number, "status": "success"}
+                    return
+                active_messages.append({
+                    "role": "system",
+                    "content": f"[SYSTEM NOTICE: FINAL RESPONSE REJECTED] {reason} Do not claim unverified completion. Continue with evidence, then use finish_task.",
+                })
+                continue
 
             # If empty and no tool calls, report truthful error rather than fake diagnostics
             if not accumulated_text and not parsed_tool_calls:
@@ -409,13 +493,17 @@ class AutonomousAgentLoop:
                 ))
                 return
 
-        # Exceeded max iterations
-        timeout_msg = f"Task reached maximum allowed iterations ({self.max_iterations}) without concluding."
-        yield {"type": "error", "error": timeout_msg}
+        # Hard safety ceiling reached. Never pretend the task completed.
+        timeout_msg = (
+            f"Execution safety ceiling reached ({budget.hard_ceiling} iterations). "
+            "The task was not verified as complete."
+        )
+        yield {
+            "type": "error", "error": timeout_msg, "status": "budget_exhausted",
+            "iterations": budget.hard_ceiling, "tools_executed": len(executed_tool_results),
+        }
         await self.event_bus.emit(AgentEvent(
-            type="agent.failed",
-            status="max_iterations",
-            user_id=context.user_id,
-            session_id=session_id,
-            metadata={"error": timeout_msg},
+            type="agent.failed", status="budget_exhausted", user_id=context.user_id, session_id=session_id,
+            metadata={"error": timeout_msg, "iterations": budget.hard_ceiling,
+                      "total_tools_executed": len(executed_tool_results)},
         ))
