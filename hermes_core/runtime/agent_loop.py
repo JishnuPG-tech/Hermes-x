@@ -449,7 +449,7 @@ class AutonomousAgentLoop:
                         ))
                         return
                 if progress_snapshot.progressed and iteration_number >= budget.initial_iterations:
-                    budget.initial_iterations = min(budget.hard_ceiling, budget.initial_iterations + 8)
+                    budget.extend_window(8)
 
                 # If any tool failed, inject structured re-planning prompt into context
                 failed_tools = [r for r in round_tool_results if not r.success]
