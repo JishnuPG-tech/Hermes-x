@@ -28,6 +28,8 @@ jobs:
 
           rm -rf /tmp/hf-hermes
           git clone --depth 1 "https://Jishnupg:${HF_TOKEN}@huggingface.co/spaces/Jishnupg/Hermes" /tmp/hf-hermes
+          HF_SOURCE_COMMIT="$(git -C /tmp/hf-hermes rev-parse HEAD)"
+          echo "HF_SOURCE_COMMIT=$HF_SOURCE_COMMIT" >> "$GITHUB_ENV"
           rm -rf /tmp/hf-hermes/.git
           test -f /tmp/hf-hermes/README.md || { echo "README.md not found in the Space clone"; exit 1; }
 
@@ -51,7 +53,7 @@ jobs:
             "  Jishnupg/Hermes" \
             "" \
             "Source commit:" \
-            "  $(git -C /tmp/hf-hermes rev-parse HEAD)" \
+            "  ${HF_SOURCE_COMMIT}" \
             "" \
             "GitHub Actions run:" \
             "  ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
