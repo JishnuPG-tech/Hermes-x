@@ -45,7 +45,7 @@ class AutonomousAgentLoop:
         upstream_url: str,
         api_key: str,
         max_iterations: Optional[int] = None,
-        timeout_seconds: float = 120.0,
+        timeout_seconds: Optional[float] = None,
         event_bus: Optional[RuntimeEventBus] = None,
     ):
         self.upstream_url = upstream_url.rstrip("/")
@@ -67,7 +67,7 @@ class AutonomousAgentLoop:
         Executes the autonomous agent turn yielding streaming events:
         {"type": "thinking" | "text" | "tool_call" | "tool_result" | "error" | "done", ...}
         """
-        start_time = time.time()
+        start_time = time.monotonic()
         session_id = context.session_id
         budget = ExecutionBudget.for_request(messages, self.requested_max_iterations)
         progress = ProgressTracker()
@@ -106,7 +106,8 @@ class AutonomousAgentLoop:
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
 
-        client_timeout = httpx.Timeout(connect=8.0, read=self.timeout_seconds, write=30.0, pool=30.0)
+        execution_deadline = self.timeout_seconds if self.timeout_seconds and self.timeout_seconds > 0 else None
+        client_timeout = httpx.Timeout(connect=8.0, read=execution_deadline, write=30.0, pool=30.0)
 
         # 3. Iterative Agent Loop
         for iteration in range(budget.hard_ceiling):
@@ -129,9 +130,12 @@ class AutonomousAgentLoop:
                         "verify it, and use finish_task. Avoid nonessential exploration."
                     ),
                 })
-            # Check total wall-clock timeout
-            if (time.time() - start_time) > self.timeout_seconds:
-                err_msg = f"Task exceeded maximum execution time of {self.timeout_seconds}s."
+            # Optional deployment-wide wall-clock deadline.
+            # Disabled by default for autonomous/background execution. This removes
+            # the old 120-second task lifetime limit while preserving an explicit
+            # opt-in deadline through the constructor.
+            if execution_deadline is not None and (time.monotonic() - start_time) > execution_deadline:
+                err_msg = f"Task exceeded configured maximum execution time of {execution_deadline}s."
                 yield {"type": "error", "error": err_msg}
                 await self.event_bus.emit(AgentEvent(
                     type="agent.failed",
