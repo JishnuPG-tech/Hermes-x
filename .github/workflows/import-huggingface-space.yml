@@ -68,4 +68,4 @@ EOF
         run: |
           echo "Hugging Face Space snapshot imported to hf-space/"
           echo "Branch: $(git branch --show-current)"
-          echo "This branch is intentionally separate from main for review before integration."
+          echo "Workflow registration refresh: 2026-10-02"
