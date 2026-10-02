@@ -1,0 +1,46 @@
+# Hugging Face Xet Storage — route binary files through Xet instead of git pack
+# https://huggingface.co/docs/hub/xet/using-xet-storage#git
+
+# Images
+*.jpg  filter=xet diff=xet merge=xet -text
+*.jpeg filter=xet diff=xet merge=xet -text
+*.png  filter=xet diff=xet merge=xet -text
+*.gif  filter=xet diff=xet merge=xet -text
+*.webp filter=xet diff=xet merge=xet -text
+*.bmp  filter=xet diff=xet merge=xet -text
+*.ico  filter=xet diff=xet merge=xet -text
+*.svg  filter=xet diff=xet merge=xet -text
+# Fonts
+*.ttf  filter=xet diff=xet merge=xet -text
+*.otf  filter=xet diff=xet merge=xet -text
+*.woff filter=xet diff=xet merge=xet -text
+*.woff2 filter=xet diff=xet merge=xet -text
+# Audio / Video
+*.mp3  filter=xet diff=xet merge=xet -text
+*.mp4  filter=xet diff=xet merge=xet -text
+*.wav  filter=xet diff=xet merge=xet -text
+*.ogg  filter=xet diff=xet merge=xet -text
+*.webm filter=xet diff=xet merge=xet -text
+# Archives / Large binaries
+*.zip  filter=xet diff=xet merge=xet -text
+*.tar  filter=xet diff=xet merge=xet -text
+*.gz   filter=xet diff=xet merge=xet -text
+*.apk  filter=xet diff=xet merge=xet -text
+*.aar  filter=xet diff=xet merge=xet -text
+*.jar  filter=xet diff=xet merge=xet -text
+*.so   filter=xet diff=xet merge=xet -text
+*.dylib filter=xet diff=xet merge=xet -text
+*.dll  filter=xet diff=xet merge=xet -text
+# Model weights / data
+*.bin  filter=xet diff=xet merge=xet -text
+*.pt   filter=xet diff=xet merge=xet -text
+*.onnx filter=xet diff=xet merge=xet -text
+*.safetensors filter=xet diff=xet merge=xet -text
+*.pkl  filter=xet diff=xet merge=xet -text
+*.npy  filter=xet diff=xet merge=xet -text
+*.npz  filter=xet diff=xet merge=xet -text
+*.h5   filter=xet diff=xet merge=xet -text
+*.jpg filter=lfs diff=lfs merge=lfs -text
+*.ttf filter=lfs diff=lfs merge=lfs -text
+*.otf filter=lfs diff=lfs merge=lfs -text
+*.png filter=lfs diff=lfs merge=lfs -text

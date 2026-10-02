@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Capabilities - Claude Settings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<style data-purpose="custom-typography">
+    .font-serif-claude {
+      font-family: 'Newsreader', Georgia, serif;
+    }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+  </style>
+<style data-purpose="switch-and-elements">
+    /* Custom Android-styled material toggle switches */
+    .switch-track-active {
+      background-color: #3b82f6;
+    }
+    .switch-track-disabled {
+      background-color: #2b394a;
+    }
+    .switch-thumb-disabled {
+      background-color: #63758b;
+    }
+    /* Scrollbar suppression */
+    ::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+</head>
+<body class="bg-[#141413] text-[#faf9f5] flex justify-center min-h-screen select-none antialiased">
+<!-- Mobile Device Screen Container -->
+<main class="w-full max-w-[430px] h-screen bg-[#141413] flex flex-col justify-between overflow-hidden relative shadow-2xl">
+<!-- BEGIN: TopSection -->
+<div class="w-full flex flex-col flex-shrink-0">
+<!-- BEGIN: AndroidStatusBar -->
+<div class="h-11 px-5 pt-3 flex items-center justify-between text-xs text-[#d1d0cb] font-medium tracking-tight">
+<!-- Status Bar Time -->
+<span class="text-[14px] font-semibold tracking-normal text-[#e6e5df] pl-1">12:23</span>
+<!-- Status Bar System Icons -->
+<div class="flex items-center space-x-1.5 text-[11px]">
+<!-- Network transfer speed & signal status -->
+<div class="flex items-center space-x-1 mr-1">
+<svg class="w-3.5 h-3.5 text-[#e6e5df]" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24">
+<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+</svg>
+<span class="text-[9px] leading-tight font-semibold">1.00<br/>KB/S</span>
+</div>
+<span class="text-[10px] font-bold tracking-tight border border-[#9a9993] rounded-[2px] px-0.5 leading-none py-0.2">Vo</span>
+<span class="text-[10px] font-bold tracking-tight border border-[#9a9993] rounded-[2px] px-0.5 leading-none py-0.2">LTE</span>
+<!-- 5G & Bars Icon -->
+<div class="flex items-center space-x-0.5">
+<span class="text-[10px] font-bold">5G</span>
+<svg class="w-3.5 h-3.5 fill-current" viewbox="0 0 24 24">
+<path d="M2 20h2v-4H2v4zm4 0h2v-8H6v8zm4 0h2v-12h-2v12zm4 0h2V4h-2v16z"></path>
+</svg>
+</div>
+<!-- Battery Percentage & Icon -->
+<div class="flex items-center space-x-1 pl-0.5">
+<div class="w-5 h-2.5 border border-[#e6e5df] rounded-[3px] p-0.5 flex items-center">
+<div class="w-3 h-full bg-[#e6e5df] rounded-[1px]"></div>
+</div>
+<span class="text-[12px] font-medium ml-0.5">63%</span>
+</div>
+</div>
+</div>
+<!-- END: AndroidStatusBar -->
+<!-- BEGIN: NavigationHeader -->
+<header class="h-14 px-4 flex items-center justify-between relative mt-1">
+<!-- Back Button -->
+<button aria-label="Go back" class="p-2 -ml-2 text-[#faf9f5] active:opacity-60 transition-opacity" type="button">
+<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" viewbox="0 0 24 24">
+<line x1="19" x2="5" y1="12" y2="12"></line>
+<polyline points="12 19 5 12 12 5"></polyline>
+</svg>
+</button>
+<!-- Centered Serif Title -->
+<h1 class="absolute left-1/2 -translate-x-1/2 text-[23px] font-serif-claude font-medium tracking-normal text-[#faf9f5]">
+          Capabilities
+        </h1>
+<!-- Empty slot for balance -->
+<div class="w-6"></div>
+</header>
+<!-- END: NavigationHeader -->
+</div>
+<!-- END: TopSection -->
+<!-- BEGIN: SettingsContent -->
+<div class="flex-1 overflow-y-auto px-3.5 pt-1">
+<!-- Main Capabilities Container Card -->
+<section class="bg-[#1f1e1d] rounded-2xl overflow-hidden border border-[#272625] flex flex-col">
+<!-- Row 1: Web search -->
+<div class="flex items-start px-4 py-4.5 gap-3.5">
+<!-- Leading Icon -->
+<div class="text-[#f5f4ef] pt-1 flex-shrink-0">
+<svg class="w-5 h-5 text-[#f5f4ef]" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewbox="0 0 24 24">
+<circle cx="12" cy="12" r="10"></circle>
+<line x1="2" x2="22" y1="12" y2="12"></line>
+<path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+</svg>
+</div>
+<!-- Content Info -->
+<div class="flex-1 pr-2">
+<h2 class="text-[17px] font-medium leading-snug text-[#faf9f5]">Web search</h2>
+<p class="text-[14px] leading-[20px] text-[#a4a29a] mt-1 font-normal">
+              Claude will automatically search the web when it determines it needs current information
+            </p>
+</div>
+<!-- Active Toggle Switch -->
+<div class="pt-1 flex-shrink-0">
+<div class="w-12 h-6 bg-[#3b82f6] rounded-full relative p-0.5 flex items-center cursor-pointer transition-colors duration-200">
+<div class="w-5 h-5 bg-white rounded-full shadow-md transform translate-x-6 transition-transform duration-200"></div>
+</div>
+</div>
+</div>
+<div class="h-[1px] bg-[#292826] w-full"></div>
+<!-- Row 2: Artifacts (Disabled / Dependency State) -->
+<div class="flex items-start px-4 py-4.5 gap-3.5">
+<!-- Leading Icon -->
+<div class="text-[#71706b] pt-1 flex-shrink-0">
+<svg class="w-5 h-5 text-[#71706b]" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewbox="0 0 24 24">
+<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+<polyline points="14 2 14 8 20 8"></polyline>
+<path d="m9.5 14.5 2.5-1.5 2.5 1.5-1-2.8 2.2-1.7h-2.7L12 7.5l-1 2.5H8.3l2.2 1.7z" stroke-width="1.4"></path>
+</svg>
+</div>
+<!-- Content Info (Dimmed text) -->
+<div class="flex-1 pr-2">
+<h2 class="text-[17px] font-medium leading-snug text-[#73726c]">Artifacts</h2>
+<p class="text-[14px] leading-[20px] text-[#73726c] mt-0.5 font-normal">
+              Required by code execution
+            </p>
+</div>
+<!-- Muted / Disabled Toggle Switch -->
+<div class="pt-1 flex-shrink-0 opacity-80">
+<div class="w-12 h-6 bg-[#26374a] rounded-full relative p-0.5 flex items-center">
+<div class="w-5 h-5 bg-[#596d85] rounded-full shadow-md transform translate-x-6"></div>
+</div>
+</div>
+</div>
+<div class="h-[1px] bg-[#292826] w-full"></div>
+<!-- Row 3: Inline visualizations -->
+<div class="flex items-start px-4 py-4.5 gap-3.5">
+<!-- Leading Icon -->
+<div class="text-[#f5f4ef] pt-1 flex-shrink-0">
+<svg class="w-5 h-5 text-[#f5f4ef]" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewbox="0 0 24 24">
+<line x1="18" x2="18" y1="20" y2="10"></line>
+<line x1="12" x2="12" y1="20" y2="4"></line>
+<line x1="6" x2="6" y1="20" y2="14"></line>
+</svg>
+</div>
+<!-- Content Info -->
+<div class="flex-1 pr-2">
+<div class="flex items-center gap-2">
+<h2 class="text-[17px] font-medium leading-snug text-[#faf9f5]">Inline visualizations</h2>
+<!-- BETA badge -->
+<span class="text-[10px] tracking-wider font-semibold px-1.5 py-0.5 bg-[#2a2927] border border-[#383734] text-[#a4a29a] rounded">
+                BETA
+              </span>
+</div>
+<p class="text-[14px] leading-[20px] text-[#a4a29a] mt-1 font-normal">
+              Allow Claude to generate interactive visualizations, charts, and diagrams directly in the conversation.
+            </p>
+</div>
+<!-- Active Toggle Switch -->
+<div class="pt-1 flex-shrink-0">
+<div class="w-12 h-6 bg-[#3b82f6] rounded-full relative p-0.5 flex items-center cursor-pointer transition-colors duration-200">
+<div class="w-5 h-5 bg-white rounded-full shadow-md transform translate-x-6 transition-transform duration-200"></div>
+</div>
+</div>
+</div>
+<div class="h-[1px] bg-[#292826] w-full"></div>
+<!-- Row 4: Code execution and file creation -->
+<div class="flex items-start px-4 py-4.5 gap-3.5">
+<!-- Leading Icon -->
+<div class="text-[#f5f4ef] pt-1 flex-shrink-0">
+<svg class="w-5 h-5 text-[#f5f4ef]" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewbox="0 0 24 24">
+<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+<polyline points="14 2 14 8 20 8"></polyline>
+<polyline points="10 13 8 15 10 17"></polyline>
+<polyline points="14 13 16 15 14 17"></polyline>
+</svg>
+</div>
+<!-- Content Info -->
+<div class="flex-1 pr-2">
+<h2 class="text-[17px] font-medium leading-snug text-[#faf9f5]">Code execution and file creation</h2>
+<p class="text-[14px] leading-[20px] text-[#a4a29a] mt-1 font-normal">
+              Allow Claude to execute code and create and edit docs, spreadsheets, presentations, PDFs, and data reports.
+            </p>
+</div>
+<!-- Active Toggle Switch -->
+<div class="pt-1 flex-shrink-0">
+<div class="w-12 h-6 bg-[#3b82f6] rounded-full relative p-0.5 flex items-center cursor-pointer transition-colors duration-200">
+<div class="w-5 h-5 bg-white rounded-full shadow-md transform translate-x-6 transition-transform duration-200"></div>
+</div>
+</div>
+</div>
+<div class="h-[1px] bg-[#292826] w-full"></div>
+<!-- Partially visible Row 5 (peeked scroll item) -->
+<div class="flex items-start px-4 py-3 gap-3.5 opacity-60">
+<div class="pt-1 flex-shrink-0">
+<svg class="w-5 h-5 text-[#f5f4ef]" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewbox="0 0 24 24">
+<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+</svg>
+</div>
+<div class="flex-1 pr-2">
+<h2 class="text-[17px] font-medium leading-snug text-[#faf9f5]">Switch models when a...</h2>
+</div>
+</div>
+</section>
+</div>
+<!-- END: SettingsContent -->
+<!-- BEGIN: AndroidNavigationBar -->
+<footer class="h-12 w-full flex items-center justify-around px-8 flex-shrink-0 bg-[#141413]">
+<!-- Recents / Menu (Three Horizontal Lines) -->
+<div class="p-2 opacity-50 hover:opacity-100 cursor-pointer">
+<svg class="w-4 h-4 text-[#d1d0cb]" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2" viewbox="0 0 24 24">
+<line x1="3" x2="21" y1="6" y2="6"></line>
+<line x1="3" x2="21" y1="12" y2="12"></line>
+<line x1="3" x2="21" y1="18" y2="18"></line>
+</svg>
+</div>
+<!-- Home (Square) -->
+<div class="p-2 opacity-50 hover:opacity-100 cursor-pointer">
+<svg class="w-3.5 h-3.5 text-[#d1d0cb]" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24">
+<rect height="18" rx="2" ry="2" width="18" x="3" y="3"></rect>
+</svg>
+</div>
+<!-- Back (Chevron / Triangle) -->
+<div class="p-2 opacity-50 hover:opacity-100 cursor-pointer">
+<svg class="w-4 h-4 text-[#d1d0cb]" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24">
+<polyline points="15 18 9 12 15 6"></polyline>
+</svg>
+</div>
+</footer>
+<!-- END: AndroidNavigationBar -->
+</main>
+</body></html>

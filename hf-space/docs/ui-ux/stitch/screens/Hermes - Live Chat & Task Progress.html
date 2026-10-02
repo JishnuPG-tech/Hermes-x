@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><title>Hermes</title><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Copernicus:ital,wght@0,400;0,700;1,400&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100%;min-height:100%;margin:0;padding:0;}body{overscroll-behavior-y:none;-webkit-tap-highlight-color:transparent;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "primary-fixed-dim": "#ffb59d", "on-background": "#e5e2e0", "surface-dark-soft": "#232220", "tertiary-container": "#d87656", "surface-container-lowest": "#0e0e0d", "on-surface-variant": "#dcc1b8", "on-primary-fixed": "#390b00", "on-tertiary": "#5c1902", "outline": "#a48b84", "primary": "#ffb59d", "surface-card": "#1f1e1c", "on-primary-fixed-variant": "#7e2c0e", "error-container": "#93000a", "surface": "#131312", "secondary-fixed": "#d1e4ff", "surface-container-high": "#2a2a29", "outline-variant": "#56423c", "surface-dim": "#131312", "on-error": "#690005", "hairline": "#302f2c", "inverse-surface": "#e5e2e0", "on-surface": "#e5e2e0", "surface-tint": "#ffb59d", "tertiary-fixed": "#ffdbd0", "tertiary": "#ffb59e", "accent-warning": "#eab308", "surface-container": "#20201e", "on-primary-container": "#521400", "secondary-fixed-dim": "#9dcaff", "accent-green": "#22c55e", "secondary": "#9dcaff", "on-error-container": "#ffdad6", "text-secondary": "#8e8b82", "tertiary-fixed-dim": "#ffb59e", "inverse-primary": "#9d4324", "surface-variant": "#353533", "on-tertiary-fixed-variant": "#7a2f15", "secondary-container": "#3495e9", "inverse-on-surface": "#31302f", "text-muted": "#b0aea5", "surface-elevated": "#2a2927", "surface-container-low": "#1c1c1a", "on-tertiary-fixed": "#390b00", "on-secondary-fixed-variant": "#00497c", "surface-bright": "#3a3938", "surface-container-highest": "#353533", "accent-blue-soft": "rgba(56, 152, 236, 0.15)", "accent-danger": "#e2726e", "primary-container": "#dc7350", "on-secondary-container": "#002b4c", "ink": "#faf9f5", "on-primary": "#5d1800", "on-tertiary-container": "#521400", "on-secondary-fixed": "#001d35", "on-secondary": "#003257", "primary-fixed": "#ffdbd0", "error": "#ffb4ab", "background": "#131312" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "margin": "1rem", "gutter": "1rem", "space-sm": "0.5rem", "space-lg": "1.5rem", "space-xl": "2rem", "space-md": "1rem", "space-xs": "0.25rem" }, fontFamily: { "caption-sans": ["Inter, Roboto, sans-serif"], "display-title": ["Copernicus, Georgia, serif"], "label-md": ["Inter"], "label-sm": ["Inter"], "code": ["JetBrains Mono, monospace"], "headline-serif": ["Newsreader"], "body-sm": ["Inter"], "body-sans": ["Inter, Roboto, sans-serif"], "title-sans": ["Inter, Roboto, sans-serif"], "title-serif": ["Copernicus, Georgia, serif"] }, fontSize: { "caption-sans": ["12px", { "lineHeight": "16px", "fontWeight": "400" }], "display-title": ["28px", { "lineHeight": "36px", "fontWeight": "400" }], "label-md": ["13px", { "lineHeight": "18px", "fontWeight": "500" }], "label-sm": ["11px", { "lineHeight": "14px", "fontWeight": "600" }], "code": ["13px", { "lineHeight": "20px", "fontWeight": "400" }], "headline-serif": ["20px", { "lineHeight": "28px", "fontWeight": "400" }], "body-sm": ["13px", { "lineHeight": "20px", "fontWeight": "400" }], "body-sans": ["14px", { "lineHeight": "22px", "fontWeight": "400" }], "title-sans": ["16px", { "lineHeight": "24px", "fontWeight": "500" }], "title-serif": ["20px", { "fontWeight": "400" }] } } } };</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-sans text-body-sans text-on-surface flex flex-col min-h-screen selection:bg-primary-container selection:text-ink antialiased"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-6 px-margin flex items-center justify-between text-caption-sans font-caption-sans text-text-muted select-none"><span class="tracking-tight font-medium text-ink">12:24</span><div class="flex items-center gap-space-xs"><span class="text-[10px] tracking-wide font-medium">VoLTE</span><span class="text-[10px] font-semibold tracking-tighter">5G</span><span class="material-symbols-outlined text-[14px] leading-none">signal_cellular_alt</span><span class="material-symbols-outlined text-[14px] leading-none">wifi</span><div class="flex items-center gap-0.5 ml-0.5"><span class="text-[11px] leading-none font-medium">63%</span><span class="material-symbols-outlined text-[16px] leading-none rotate-90">battery_charging_60</span></div></div></div><div class="h-14 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><button aria-label="Open drawer" class="min-w-[44px] min-h-[44px] flex items-center justify-center -ml-space-sm rounded-full text-text-muted hover:text-ink hover:bg-surface-elevated active:bg-surface-dark-soft transition-colors"><span class="material-symbols-outlined text-[24px]">menu</span></button><h1 class="font-title-serif text-title-serif tracking-tight text-ink">Chat</h1></div><div class="flex items-center gap-space-xs"><button aria-label="New conversation" class="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full text-text-muted hover:text-ink hover:bg-surface-elevated transition-colors"><span class="material-symbols-outlined text-[20px]">edit_square</span></button><button aria-label="Account profile" class="min-w-[44px] min-h-[44px] flex items-center justify-center"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></button></div></div></header><main class="flex-1 flex flex-col relative w-full pt-20 pb-20 px-margin bg-surface max-w-3xl mx-auto"><div class="flex flex-col w-full space-y-4 pb-28">
+<!-- Claude Model & Context Meta Header Strip -->
+<div class="flex items-center justify-between px-1 py-1 text-on-surface">
+<div class="flex items-center space-x-2 min-w-0">
+<div class="flex items-center space-x-1.5 bg-surface-card px-2.5 py-1 rounded-full text-label-sm font-label-sm text-text-muted">
+<span class="w-2 h-2 rounded-full bg-accent-green animate-pulse"></span>
+<span class="text-ink font-medium">Hermes · Autonomous Agent</span>
+</div>
+<div class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full bg-surface-dark-soft text-caption-sans font-caption-sans text-secondary truncate">
+<span class="material-symbols-outlined text-[14px]">bolt</span>
+<span class="truncate">Sonnet 5 (OmniRoute)</span>
+</div>
+</div>
+<div class="flex items-center space-x-1 flex-shrink-0">
+<button aria-label="Session settings" class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:text-ink active:bg-surface-elevated transition-colors">
+<span class="material-symbols-outlined text-[18px]">visibility_off</span>
+</button>
+<button aria-label="Task telemetry" class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:text-ink active:bg-surface-elevated transition-colors">
+<span class="material-symbols-outlined text-[18px]">more_horiz</span>
+</button>
+</div>
+</div>
+<!-- Agent Persona Atmosphere Scrim -->
+<div class="relative overflow-hidden rounded-2xl bg-surface-card p-4 shadow-sm">
+<div class="absolute -right-8 -top-8 w-36 h-36 bg-tertiary-container/10 rounded-full blur-2xl pointer-events-none"></div>
+<div class="flex items-start justify-between relative z-10">
+<div class="space-y-1">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-primary-container text-[18px]" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<span class="font-title-serif text-title-serif text-ink tracking-tight">Active Workspace Session</span>
+</div>
+<p class="font-body-sm text-body-sm text-text-secondary leading-relaxed">
+          Target repository <span class="font-code text-code text-on-surface bg-surface-dark-soft px-1.5 py-0.5 rounded">JishnuPG-tech/Hermes-x</span> with active safe execution policy.
+        </p>
+</div>
+<div class="flex flex-col items-end">
+<span class="font-caption-sans text-caption-sans text-text-muted">Agent Latency</span>
+<span class="font-code text-code text-primary-fixed-dim font-medium">42ms · L1</span>
+</div>
+</div>
+</div>
+<!-- User Prompt Message Bubble -->
+<div class="flex justify-end pt-2">
+<div class="max-w-[88%] bg-surface-dark-soft rounded-2xl rounded-tr-sm p-4 space-y-2 shadow-sm text-ink">
+<p class="font-body-sans text-body-sans leading-relaxed text-ink selection:bg-primary selection:text-on-primary">
+        Upgrade the Android client to Hermes architecture, run the verification test suite, and open a PR on GitHub.
+      </p>
+<div class="flex items-center justify-end space-x-2 text-caption-sans font-caption-sans text-text-muted pt-1">
+<span>12:24 PM</span>
+<span class="material-symbols-outlined text-[14px] text-secondary">done_all</span>
+</div>
+</div>
+</div>
+<!-- Assistant Conversational Message -->
+<div class="flex flex-col space-y-3 pt-1">
+<!-- Thought / Agent Voice Header -->
+<div class="flex items-center space-x-2">
+<div class="w-6 h-6 rounded-full bg-primary-container/20 flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-primary-fixed-dim text-[15px]" style="font-variation-settings: 'FILL' 1;">spark</span>
+</div>
+<span class="font-title-serif text-headline-serif text-ink tracking-tight">Hermes</span>
+<span class="font-caption-sans text-caption-sans text-text-muted">now</span>
+</div>
+<!-- Calm Editorial Exposition -->
+<div class="bg-surface-card rounded-2xl p-4 space-y-3">
+<p class="font-body-sans text-body-sans text-on-surface leading-relaxed">
+        I’ve initialized the build pipeline and delegated the test run to the QA agent. Repository context matches modern Compose M3 architecture standards. Here is the active autonomous execution status:
+      </p>
+</div>
+<!-- Autonomous Task Execution Card (Elevated Claude-Style #1f1e1c with layered depth) -->
+<div class="bg-surface-card rounded-2xl p-4 space-y-4 shadow-md relative overflow-hidden">
+<!-- Top Task Bar -->
+<div class="flex items-start justify-between gap-3">
+<div class="space-y-1 min-w-0">
+<div class="flex items-center space-x-2 flex-wrap gap-y-1">
+<span class="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-accent-green/15 text-accent-green font-label-sm text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-accent-green animate-ping"></span>
+<span class="tracking-wide">RUNNING</span>
+</span>
+<span class="font-label-md text-label-md text-ink font-semibold truncate">Task #104: Client Architecture Upgrade</span>
+</div>
+<div class="flex items-center space-x-2 text-caption-sans font-caption-sans text-text-muted pt-0.5">
+<span class="flex items-center space-x-1">
+<span class="material-symbols-outlined text-[13px] text-text-secondary">group_work</span>
+<span>QA &amp; Backend Agent</span>
+</span>
+<span>•</span>
+<span class="font-code text-code text-on-surface-variant">cp-8419-verified</span>
+</div>
+</div>
+<div class="flex-shrink-0 bg-surface-dark-soft px-2 py-1 rounded-lg text-right">
+<span class="font-code text-caption-sans text-secondary block">72%</span>
+<span class="font-caption-sans text-[10px] text-text-muted uppercase tracking-wider">Progress</span>
+</div>
+</div>
+<!-- Linear Execution Progress Meter -->
+<div class="w-full bg-surface-container rounded-full h-1.5 overflow-hidden">
+<div class="bg-secondary-container h-full rounded-full transition-all duration-500" style="width: 72%;"></div>
+</div>
+<!-- Multi-step Visual Timeline -->
+<div class="space-y-3 pt-1">
+<!-- Step 1: Completed -->
+<div class="flex items-start space-x-3">
+<div class="w-6 h-6 rounded-full bg-accent-green/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-accent-green text-[15px]">check</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<p class="font-label-md text-label-md text-ink truncate">Inspect repository &amp; docs</p>
+<span class="font-caption-sans text-caption-sans text-text-muted">0.8s</span>
+</div>
+<p class="font-caption-sans text-caption-sans text-text-secondary">Discovered 14 gradle modules, target SDK 35</p>
+</div>
+</div>
+<!-- Step 2: Completed -->
+<div class="flex items-start space-x-3">
+<div class="w-6 h-6 rounded-full bg-accent-green/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-accent-green text-[15px]">check</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<p class="font-label-md text-label-md text-ink truncate">Assemble Compose primitives &amp; state machines</p>
+<span class="font-caption-sans text-caption-sans text-text-muted">3.4s</span>
+</div>
+<p class="font-caption-sans text-caption-sans text-text-secondary">Refactored 9 files into declarative unidirectional state flows</p>
+</div>
+</div>
+<!-- Step 3: Active Running -->
+<div class="flex items-start space-x-3 bg-surface-dark-soft/70 p-2.5 rounded-xl">
+<div class="w-6 h-6 rounded-full bg-secondary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-secondary text-[16px] animate-spin">sync</span>
+</div>
+<div class="flex-1 min-w-0 space-y-1">
+<div class="flex items-center justify-between">
+<p class="font-label-md text-label-md text-secondary font-medium truncate">Run test suite &amp; CI verification</p>
+<span class="font-code text-caption-sans text-accent-warning">58/82 passed</span>
+</div>
+<p class="font-caption-sans text-caption-sans text-on-surface">Unit tests running: HermesEngineViewModelTest.kt</p>
+<div class="w-full bg-surface-container-high rounded-full h-1 overflow-hidden mt-1">
+<div class="bg-secondary h-full rounded-full animate-pulse" style="width: 70%;"></div>
+</div>
+</div>
+</div>
+<!-- Step 4: Pending Step -->
+<div class="flex items-start space-x-3 opacity-60">
+<div class="w-6 h-6 rounded-full bg-surface-elevated flex items-center justify-center flex-shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-text-muted text-[14px]">lock_clock</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<p class="font-label-md text-label-md text-on-surface truncate">Push branch &amp; create GitHub PR</p>
+<span class="font-caption-sans text-caption-sans text-text-muted">Awaiting gated check</span>
+</div>
+<p class="font-caption-sans text-caption-sans text-text-secondary">Requires manual approval before git push to remote</p>
+</div>
+</div>
+</div>
+<!-- Collapsible Live Tool Activity Terminal Strip -->
+<div class="rounded-xl bg-surface-container-lowest p-3 space-y-2">
+<button class="w-full flex items-center justify-between text-left focus:outline-none" id="toggleTerminalBtn">
+<div class="flex items-center space-x-2 min-w-0">
+<span class="material-symbols-outlined text-accent-warning text-[16px]">terminal</span>
+<span class="font-code text-code text-on-surface truncate">./gradlew testDebugUnitTest --continue</span>
+</div>
+<div class="flex items-center space-x-1 flex-shrink-0 text-text-muted">
+<span class="font-caption-sans text-caption-sans">Live TTY</span>
+<span class="material-symbols-outlined text-[16px] transition-transform duration-200" id="terminalChevron">expand_less</span>
+</div>
+</button>
+<div class="font-code text-[11px] leading-[18px] text-text-muted space-y-0.5 pt-1 overflow-x-auto" id="terminalStream">
+<div class="text-text-secondary">&gt; Task :app:compileDebugKotlin UP-TO-DATE</div>
+<div class="text-text-secondary">&gt; Task :core-model:testDebugUnitTest SUCCESS (42 tests in 1.4s)</div>
+<div class="text-ink font-medium">&gt; Task :app:testDebugUnitTest [HermesEngineCoordinatorTest &gt; stateEmission()] PASSED</div>
+<div class="text-secondary flex items-center space-x-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary animate-ping"></span>
+<span>Running AgentOrchestratorIntegrationSuite (14s elapsed)</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Security & Approval Gate Card (Claude Dark Elevated Protective Tone) -->
+<div class="bg-surface-card rounded-2xl p-4 space-y-3.5 shadow-md">
+<div class="flex items-start space-x-3">
+<div class="w-8 h-8 rounded-full bg-tertiary-container/20 flex items-center justify-center flex-shrink-0 text-primary">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">security</span>
+</div>
+<div class="space-y-1 min-w-0 flex-1">
+<div class="flex items-center justify-between">
+<h3 class="font-title-serif text-title-serif text-ink tracking-tight">Approval Required: Push to Remote GitHub</h3>
+<span class="px-2 py-0.5 rounded-full bg-accent-warning/15 text-accent-warning font-label-sm text-label-sm">SafeGate</span>
+</div>
+<p class="font-body-sm text-body-sm text-text-secondary leading-snug">
+            Autonomous execution is paused. Confirming permission to publish code to production tracking upstream.
+          </p>
+</div>
+</div>
+<!-- Scope Container -->
+<div class="bg-surface-dark-soft rounded-xl p-3 space-y-1.5">
+<div class="flex items-center space-x-2 text-caption-sans font-caption-sans text-text-muted">
+<span class="material-symbols-outlined text-[14px]">fork_right</span>
+<span>Target Destination</span>
+</div>
+<div class="font-code text-code text-ink break-all">
+          feat/hermes-ui-upgrade <span class="text-primary-container">→</span> JishnuPG-tech/Hermes-x (main)
+        </div>
+<div class="flex items-center space-x-4 pt-1 text-caption-sans font-caption-sans text-text-muted">
+<span>+482 lines</span>
+<span>-118 lines</span>
+<span>9 modified files</span>
+</div>
+</div>
+<!-- Action Decision Controls -->
+<div class="flex items-center gap-2 pt-1">
+<button class="flex-1 min-h-[44px] bg-ink hover:bg-white text-surface-container-lowest font-label-md text-label-md font-semibold py-2.5 px-4 rounded-full flex items-center justify-center space-x-2 shadow-sm active:scale-[0.98] transition-all" id="authorizeBtn">
+<span class="material-symbols-outlined text-[18px]">verified_user</span>
+<span>Authorize Push</span>
+</button>
+<button class="min-h-[44px] bg-surface-dark-soft hover:bg-surface-elevated text-ink font-label-md text-label-md py-2.5 px-4 rounded-full flex items-center justify-center space-x-1.5 active:scale-[0.98] transition-colors" id="diffBtn">
+<span class="material-symbols-outlined text-[18px] text-text-muted">difference</span>
+<span>Inspect Diff</span>
+</button>
+</div>
+<div class="hidden rounded-xl bg-accent-green/10 p-2.5 text-center text-accent-green font-label-sm text-label-sm" id="authStatusBanner">
+        Push authorization granted. Remote PR opened: #142
+      </div>
+</div>
+</div>
+<!-- Bottom Floating Claude Mobile Composer Dock (Fixed relative above app nav) -->
+<div class="fixed bottom-16 left-0 right-0 max-w-3xl mx-auto px-margin z-40 pointer-events-none">
+<div class="pointer-events-auto bg-surface-elevated/95 backdrop-blur-xl rounded-2xl p-2.5 space-y-2 shadow-2xl">
+<!-- Text Input Area -->
+<div class="flex items-center px-2 py-1">
+<input class="w-full bg-transparent text-ink placeholder:text-text-secondary font-body-sans text-body-sans focus:outline-none" placeholder="Message Hermes or use @ for files, diffs, agents..." type="text"/>
+</div>
+<!-- Bottom Control Actions Bar -->
+<div class="flex items-center justify-between pt-1">
+<!-- Left Action Controls -->
+<div class="flex items-center space-x-1.5">
+<!-- Add Attachment / Tools Button -->
+<button aria-label="Add context" class="w-9 h-9 rounded-full bg-surface-dark-soft flex items-center justify-center text-text-muted hover:text-ink active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[20px]">add</span>
+</button>
+<!-- Model Selector Pill Button -->
+<button aria-label="Select Model" class="flex items-center space-x-1.5 bg-surface-dark-soft hover:bg-surface-variant px-3 py-1.5 rounded-full text-label-sm font-label-sm text-ink transition-colors">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+<span class="font-medium">Sonnet 5</span>
+<span class="text-text-muted font-normal">• Balanced</span>
+<span class="material-symbols-outlined text-[16px] text-text-muted">expand_more</span>
+</button>
+</div>
+<!-- Right Voice & Input Actions -->
+<div class="flex items-center space-x-1.5">
+<!-- Voice Dictation Icon -->
+<button aria-label="Dictate message" class="w-9 h-9 rounded-full flex items-center justify-center text-text-muted hover:text-ink active:bg-surface-dark-soft transition-colors">
+<span class="material-symbols-outlined text-[22px]">mic</span>
+</button>
+<!-- Live Voice Mode Orb Pill -->
+<button aria-label="Start live voice session" class="w-9 h-9 rounded-full bg-ink text-surface-container-lowest flex items-center justify-center shadow-md active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">graphic_eq</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+  (function() {
+    const toggleTerminalBtn = document.getElementById('toggleTerminalBtn');
+    const terminalStream = document.getElementById('terminalStream');
+    const terminalChevron = document.getElementById('terminalChevron');
+    const authorizeBtn = document.getElementById('authorizeBtn');
+    const authStatusBanner = document.getElementById('authStatusBanner');
+    const diffBtn = document.getElementById('diffBtn');
+
+    if (toggleTerminalBtn && terminalStream && terminalChevron) {
+      toggleTerminalBtn.addEventListener('click', function() {
+        const isHidden = terminalStream.classList.toggle('hidden');
+        terminalChevron.textContent = isHidden ? 'expand_more' : 'expand_less';
+      });
+    }
+
+    if (authorizeBtn && authStatusBanner) {
+      authorizeBtn.addEventListener('click', function() {
+        authorizeBtn.disabled = true;
+        authorizeBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        authorizeBtn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">sync</span><span>Authorizing...</span>';
+        
+        setTimeout(function() {
+          authorizeBtn.parentElement.classList.add('hidden');
+          authStatusBanner.classList.remove('hidden');
+        }, 800);
+      });
+    }
+
+    if (diffBtn) {
+      diffBtn.addEventListener('click', function() {
+        diffBtn.classList.toggle('text-secondary');
+      });
+    }
+  })();
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/85 backdrop-blur-xl shadow-[0_-1px_12px_rgba(0,0,0,0.12)]" data-active-classes="text-primary font-medium"><div class="flex justify-around items-center h-14 px-space-md"><a aria-current="page" class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] transition-colors text-primary font-medium" data-path="chat" href="#"><span class="material-symbols-outlined text-[22px]">forum</span><span class="font-label-sm text-label-sm mt-0.5">Chat</span></a><a class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-text-muted hover:text-ink transition-colors" data-path="tasks" href="#"><span class="material-symbols-outlined text-[22px]">precision_manufacturing</span><span class="font-label-sm text-label-sm mt-0.5">Tasks</span></a><a class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-text-muted hover:text-ink transition-colors" data-path="artifacts" href="#"><span class="material-symbols-outlined text-[22px]">history_edu</span><span class="font-label-sm text-label-sm mt-0.5">Artifacts</span></a><a class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] text-text-muted hover:text-ink transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[22px]">tune</span><span class="font-label-sm text-label-sm mt-0.5">Config</span></a></div><div class="w-full flex justify-center pb-2 pt-1 pointer-events-none"><div class="w-32 h-1 rounded-full bg-on-surface/30"></div></div></nav></body></html>

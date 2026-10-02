@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+
+<html class="h-full bg-[#141413]" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Hermes Android - Active Chat &amp; Execution Sheet</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400;1,6..72,500&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            hermes: {
+              terracotta: '#d97757',
+              bg: '#141413',
+              surface: '#1f1e1c',
+              bubble: '#242321',
+              border: '#2e2c29',
+              muted: '#8c8a85'
+            }
+          },
+          fontFamily: {
+            serif: ['Newsreader', 'Georgia', 'serif'],
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+<!-- BEGIN: Custom Styles -->
+<style data-purpose="animations">
+    @keyframes subtle-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(0.96); }
+    }
+    .animate-hermes-pulse {
+      animation: subtle-pulse 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes spin-slow {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .animate-spin-slow {
+      animation: spin-slow 8s linear infinite;
+    }
+  </style>
+<style data-purpose="sheet-masking">
+    .bottom-sheet-shadow {
+      box-shadow: 0 -12px 36px rgba(0, 0, 0, 0.75), 0 -1px 0 rgba(255, 255, 255, 0.07);
+    }
+    .text-fade-shimmer {
+      background: linear-gradient(90deg, #f5f5f4 0%, #8c8a85 80%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+  </style>
+<!-- END: Custom Styles -->
+</head>
+<body class="h-full w-full bg-[#141413] text-[#f4f3ee] font-sans antialiased overflow-hidden flex flex-col justify-between select-none">
+<!-- BEGIN: Android System Status Bar -->
+<header class="w-full pt-2 px-5 pb-1 flex justify-between items-center text-xs tracking-tight text-[#c8c6be] z-50 select-none" data-purpose="android-status-bar">
+<!-- Clock Time -->
+<div class="font-medium text-[13px] tracking-normal">3:59</div>
+<!-- Status Icons Cluster -->
+<div class="flex items-center space-x-2 text-[11px]">
+<span class="flex items-center gap-0.5 text-[10px]">
+<span class="font-semibold text-[10px]">14.0</span>
+<span class="text-[9px] text-[#9b9992]">KB/S</span>
+</span>
+<span class="flex items-center text-[9px] font-semibold tracking-tighter px-0.5 border border-[#8c8a85] rounded-[2px] leading-tight">Vo<br/>LTE</span>
+<!-- 5G icon -->
+<span class="font-bold text-[10px] tracking-tight text-[#e5e4de]">5G</span>
+<!-- Signal bars -->
+<svg class="w-3.5 h-3.5 fill-current" viewbox="0 0 24 24">
+<path d="M2 22h20V2L2 22z" fill-opacity="0.25"></path>
+<path d="M2 22h15V7L2 22z"></path>
+</svg>
+<!-- Battery Indicator with percentage -->
+<div class="flex items-center gap-1">
+<span class="text-[11px] font-medium">51%</span>
+<div class="w-2.5 h-4 border border-[#c8c6be] rounded-[2px] p-[1px] relative flex flex-col justify-end">
+<div class="w-full bg-[#c8c6be] h-[51%] rounded-[1px]"></div>
+<div class="absolute -top-[2px] left-[2px] right-[2px] h-[1.5px] bg-[#c8c6be] rounded-t-[1px]"></div>
+</div>
+</div>
+</div>
+</header>
+<!-- END: Android System Status Bar -->
+<!-- BEGIN: Main Screen Content & Chat Area -->
+<main class="flex-1 w-full overflow-hidden flex flex-col relative">
+<!-- BEGIN: Chat App Top Bar -->
+<section class="w-full px-4 pt-1 pb-3 flex items-center justify-between border-b border-[#21201e]" data-purpose="chat-action-bar">
+<!-- Left Drawer Hamburger Toggle -->
+<button aria-label="Open sidebar drawer" class="p-1.5 -ml-1 text-[#d8d6cf] active:opacity-60 transition">
+<svg class="w-6 h-6 stroke-[#e4e2dc]" fill="none" stroke-linecap="round" stroke-width="2" viewbox="0 0 24 24">
+<line x1="4" x2="20" y1="7" y2="7"></line>
+<line x1="4" x2="20" y1="12" y2="12"></line>
+<line x1="4" x2="20" y1="17" y2="17"></line>
+</svg>
+</button>
+<!-- Center & Right Status / Artifacts indicator -->
+<div class="flex items-center gap-2">
+<div class="flex items-center gap-1.5 bg-[#232220] border border-[#32312d] rounded-full px-3 py-1 text-xs font-medium text-[#e4e3dd]">
+<span class="w-2 h-2 rounded-full bg-[#d97757]"></span>
+<span>6 Artifacts</span>
+</div>
+<!-- Stream Action Icons (Muted feedback strip) -->
+<div class="flex items-center gap-1 text-[#8f8d86] ml-1">
+<button class="p-1 hover:text-[#d97757] transition" title="Copy response">
+<svg class="w-4 h-4 fill-none stroke-current" stroke-width="1.8" viewbox="0 0 24 24">
+<rect height="13" rx="2" ry="2" width="13" x="9" y="9"></rect>
+<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+</svg>
+</button>
+<button class="p-1 hover:text-[#d97757] transition" title="Play audio">
+<svg class="w-4 h-4 fill-none stroke-current" stroke-width="1.8" viewbox="0 0 24 24">
+<polygon points="5 3 19 12 5 21 5 3"></polygon>
+</svg>
+</button>
+<button class="p-1 hover:text-[#d97757] transition" title="Thumbs up">
+<svg class="w-4 h-4 fill-none stroke-current" stroke-width="1.8" viewbox="0 0 24 24">
+<path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
+</svg>
+</button>
+<button class="p-1 hover:text-[#d97757] transition" title="Thumbs down">
+<svg class="w-4 h-4 fill-none stroke-current" stroke-width="1.8" viewbox="0 0 24 24">
+<path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"></path>
+</svg>
+</button>
+</div>
+</div>
+</section>
+<!-- END: Chat App Top Bar -->
+<!-- BEGIN: Chat Thread Content View -->
+<div class="flex-1 px-4 pt-3 overflow-y-auto space-y-4" data-purpose="chat-messages-scroll">
+<!-- Previous context snippet / user prompt pill -->
+<div class="flex justify-end">
+<div class="max-w-[88%] bg-[#242321] text-[#ecebe6] rounded-2xl rounded-tr-md px-4 py-3 text-[14.5px] leading-relaxed tracking-normal border border-[#2e2d29]">
+          Ok now how to implement the animation you have provided in my android apk can you write the design.md file for this
+        </div>
+</div>
+<!-- In-line File Activity Hook -->
+<div class="flex items-center gap-2 pl-1 pt-1 text-[#b5b3ab] text-sm group cursor-pointer">
+<svg class="w-4 h-4 stroke-[#8c8a85]" fill="none" stroke-width="2" viewbox="0 0 24 24">
+<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+<polyline points="14 2 14 8 20 8"></polyline>
+<line x1="12" x2="12" y1="18" y2="12"></line>
+<line x1="9" x2="15" y1="15" y2="15"></line>
+</svg>
+<span class="font-normal text-[#cfcdc5] text-[14px]">Creating file</span>
+<span class="text-[#7e7c75] text-xs font-semibold">&gt;</span>
+</div>
+<!-- Active in-progress spinner row in chat stream -->
+<div class="flex items-center gap-2.5 pl-1 pt-0.5">
+<!-- Official Hermes Agent Logo as Active Stream Indicator -->
+<div class="w-5 h-5 flex-shrink-0 animate-hermes-pulse flex items-center justify-center">
+<img alt="Hermes Agent Active Indicator" class="w-full h-full object-contain filter drop-shadow-[0_0_6px_rgba(217,119,87,0.35)]" src="https://lh3.googleusercontent.com/aida/AEtjO1X91c0knfGrsDaEZMzrrDdaO8hIKH2N52uqlZsmJVVqUOqTs109m5Mmoaypx-lxqO30623_Pig-cdxAxdsnnPoB0e8HUxutM2mMU9bI28XD3-_p0Pd-mZIfHk72Dv7NZAmI-6DcMSrY7e_tu5XfDpsgaoAJXV8k1QX-hHGdVhlg4Zwj4ELG1eT9-PUgUtHeK6_LIud13MlSWMiPeI1A8vxFaiwSv4KpYk5V2XDxnGqOiuUfKJCpRK0VPAE"/>
+</div>
+<span class="font-serif italic text-[17px] text-[#eae8e1] tracking-wide">Still working on it...</span>
+</div>
+</div>
+<!-- END: Chat Thread Content View -->
+<!-- BEGIN: Slide-up Summary Bottom Sheet Preview (Overlay) -->
+<section class="absolute left-0 right-0 bottom-0 bg-[#1b1a18] rounded-t-[28px] border-t border-[#31302c] bottom-sheet-shadow pt-2.5 pb-2 px-5 z-40 transition-transform duration-300" data-purpose="slide-up-summary-sheet">
+<!-- Sheet Pull / Drag Handle -->
+<div class="w-10 h-1 bg-[#474541] rounded-full mx-auto mb-2 opacity-80"></div>
+<!-- Sheet Header: Close Button & Centered Title -->
+<div class="flex items-center justify-between relative py-1 mb-3">
+<button aria-label="Close summary sheet" class="w-7 h-7 flex items-center justify-center rounded-full text-[#a8a69e] hover:text-white hover:bg-[#2a2825] transition">
+<svg class="w-4 h-4 stroke-current" fill="none" stroke-width="2.2" viewbox="0 0 24 24">
+<line x1="18" x2="6" y1="6" y2="18"></line>
+<line x1="6" x2="18" y1="6" y2="18"></line>
+</svg>
+</button>
+<h2 class="absolute left-1/2 -translate-x-1/2 text-lg font-serif font-medium tracking-normal text-[#f4f3ee]">
+          Summary
+        </h2>
+<div class="w-7"></div> <!-- Spacer balance for absolute centering -->
+</div>
+<!-- Execution Timeline Steps Container -->
+<div class="pl-1 pr-2 pb-3 space-y-4 relative font-serif">
+<!-- Step 1: Finished step -->
+<div class="flex items-start gap-3 relative">
+<!-- Timeline Marker Column -->
+<div class="flex flex-col items-center pt-1.5 flex-shrink-0">
+<span class="w-2 h-2 rounded-full bg-[#52504a]"></span>
+<span class="w-[1.5px] h-10 bg-[#383632] my-0.5"></span>
+</div>
+<div class="text-[15.5px] leading-snug text-[#dedcd5] font-serif pr-2">
+            Drafting an Android animation implementation guide with code examples.
+          </div>
+</div>
+<!-- Step 2: Intermediate File action step -->
+<div class="flex items-center gap-3 relative">
+<!-- Timeline Marker Column -->
+<div class="flex flex-col items-center flex-shrink-0 w-2">
+<svg class="w-3.5 h-3.5 stroke-[#8c8a85] -ml-[3px]" fill="none" stroke-width="2" viewbox="0 0 24 24">
+<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+<polyline points="14 2 14 8 20 8"></polyline>
+</svg>
+<span class="w-[1.5px] h-5 bg-[#d97757] opacity-60 my-0.5"></span>
+</div>
+<div class="text-[17px] font-serif font-medium tracking-tight text-[#f1efe9] pl-1">
+            Creating file
+          </div>
+</div>
+<!-- Step 3: Active step with terracotta pulsing state and Hermes Agent logo -->
+<div class="flex items-center gap-3 pt-0.5">
+<!-- Terracotta dot with Hermes accent glow -->
+<div class="w-2.5 h-2.5 rounded-full bg-[#d97757] shadow-[0_0_8px_#d97757] flex-shrink-0"></div>
+<div class="flex items-center gap-2 pl-0.5">
+<span class="font-serif font-medium text-[17px] text-[#fbfaf6]">Thinking</span>
+<!-- Official Hermes logo spinning gently next to active Thinking step -->
+<div class="w-4 h-4 flex-shrink-0 animate-spin-slow opacity-90">
+<img alt="Hermes Logo Active" class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1X91c0knfGrsDaEZMzrrDdaO8hIKH2N52uqlZsmJVVqUOqTs109m5Mmoaypx-lxqO30623_Pig-cdxAxdsnnPoB0e8HUxutM2mMU9bI28XD3-_p0Pd-mZIfHk72Dv7NZAmI-6DcMSrY7e_tu5XfDpsgaoAJXV8k1QX-hHGdVhlg4Zwj4ELG1eT9-PUgUtHeK6_LIud13MlSWMiPeI1A8vxFaiwSv4KpYk5V2XDxnGqOiuUfKJCpRK0VPAE"/>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- END: Slide-up Summary Bottom Sheet Preview -->
+</main>
+<!-- END: Main Screen Content & Chat Area -->
+<!-- BEGIN: Bottom Composer Dock & Navigation Area -->
+<footer class="w-full bg-[#141413] px-3 pt-2 pb-1 z-50" data-purpose="docked-composer">
+<!-- Input Box Pill Container -->
+<div class="w-full bg-[#201f1d] border border-[#302e2a] rounded-[26px] px-4 py-2.5 flex flex-col gap-2">
+<!-- Input Placeholder Text -->
+<div class="text-[#7c7a73] text-[15px] font-sans pl-1">
+        Reply to Claude...
+      </div>
+<!-- Controls Row: Plus button, Model selector chip, and Streaming Stop Square -->
+<div class="flex items-center justify-between pt-0.5">
+<div class="flex items-center gap-2">
+<!-- Add Attachment / Context Button -->
+<button aria-label="Add attachment" class="w-8 h-8 rounded-full bg-[#2a2926] hover:bg-[#34322e] text-[#d6d4cd] flex items-center justify-center transition">
+<svg class="w-4 h-4 stroke-current" fill="none" stroke-width="2.5" viewbox="0 0 24 24">
+<line x1="12" x2="12" y1="5" y2="19"></line>
+<line x1="5" x2="19" y1="12" y2="12"></line>
+</svg>
+</button>
+<!-- Model Chip: Sonnet 5 Low -->
+<div class="h-8 px-3.5 rounded-full bg-[#2a2926] border border-[#373531] flex items-center gap-1.5 text-xs text-[#eae8e1] font-medium cursor-pointer active:scale-95 transition">
+<span class="text-[#d97757] font-serif font-bold text-sm">✦</span>
+<span>Sonnet 5</span>
+<span class="text-[#8e8c85] font-normal">Low</span>
+</div>
+</div>
+<!-- Stop In-Flight Streaming Button (Square within rounded container) -->
+<button aria-label="Stop generating response" class="w-8 h-8 rounded-xl bg-[#2d2b27] border border-[#403e39] flex items-center justify-center text-[#dedcd5] active:bg-[#3d3a35] transition shadow-sm">
+<!-- Stop Square glyph -->
+<span class="w-2.5 h-2.5 rounded-[2px] bg-[#d97757]"></span>
+</button>
+</div>
+</div>
+<!-- BEGIN: Android System Navigation Bar (3-Button Layout) -->
+<nav class="w-full h-10 flex items-center justify-around text-[#7f7d75] pt-1" data-purpose="android-system-navbar">
+<!-- Recents Button (Three vertical lines) -->
+<button aria-label="Recent apps" class="p-2 active:text-white">
+<svg class="w-4 h-4 stroke-current" fill="none" stroke-width="2" viewbox="0 0 24 24">
+<line x1="6" x2="6" y1="5" y2="19"></line>
+<line x1="12" x2="12" y1="5" y2="19"></line>
+<line x1="18" x2="18" y1="5" y2="19"></line>
+</svg>
+</button>
+<!-- Home Button (Circle) -->
+<button aria-label="Home" class="p-2 active:text-white">
+<div class="w-3.5 h-3.5 rounded-full border-2 border-current"></div>
+</button>
+<!-- Back Button (Left Triangle) -->
+<button aria-label="Back" class="p-2 active:text-white">
+<svg class="w-4 h-4 fill-none stroke-current" stroke-width="2" viewbox="0 0 24 24">
+<polygon fill="currentColor" points="15 18 9 12 15 6"></polygon>
+</svg>
+</button>
+</nav>
+<!-- END: Android System Navigation Bar -->
+</footer>
+<!-- END: Bottom Composer Dock & Navigation Area -->
+</body></html>

@@ -1,0 +1,293 @@
+package com.example.hermes.ui.screens
+
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.hermes.theme.*
+import com.example.hermes.ui.components.*
+
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+
+@Composable
+fun VoiceScreen(
+    onClose: (String?) -> Unit = {},
+    onOpenVoiceSettings: () -> Unit = {},
+    voiceViewModel: VoiceViewModel = viewModel()
+) {
+    val voiceState by voiceViewModel.voiceState.collectAsStateWithLifecycle()
+    val captionText by voiceViewModel.statusText.collectAsStateWithLifecycle()
+    val isMuted by voiceViewModel.isMuted.collectAsStateWithLifecycle()
+    val selectedModel by voiceViewModel.selectedModel.collectAsStateWithLifecycle()
+    val activeSessionId by voiceViewModel.currentSessionId.collectAsStateWithLifecycle()
+    var showModelSheet by remember { mutableStateOf(false) }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            voiceViewModel.startListening()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (androidx.core.content.ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.RECORD_AUDIO
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    // Rhythmic breathing pulse for starburst avatar
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 0.98f,
+        targetValue = 1.15f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "scale"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(CanvasNearBlack)
+            .safeDrawingPadding()
+    ) {
+        // Top Bar: Time, Active Mic status pill, and Circular Settings button
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Left: Green Mic Active Capsule
+            Row(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(Color(0xFF1B261D))
+                    .border(1.dp, Color(0xFF2E4432), CircleShape)
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .background(AccentGreen)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Live",
+                    style = HermesTypography.labelSmall.copy(color = AccentGreen, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                )
+            }
+
+            // Right: Circular Settings Button (12-01-09)
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF201F1D))
+                    .border(1.dp, BorderSubtle, CircleShape)
+                    .clickable(onClick = onOpenVoiceSettings),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Settings,
+                    contentDescription = "Voice Settings",
+                    tint = TextMuted,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+
+        // Center Content: Starburst Mark + Realtime Serif Caption
+        Column(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .offset(y = (-30).dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            val dotColor = when (voiceState) {
+                VoiceState.SPEAKING -> com.example.hermes.theme.BrandCoral
+                VoiceState.LISTENING -> AccentGreen
+                VoiceState.THINKING -> AccentWarning
+                VoiceState.MUTED -> DestructiveRed
+                else -> com.example.hermes.theme.BrandCoral
+            }
+
+            Box(
+                modifier = Modifier
+                    .scale(if (voiceState == VoiceState.SPEAKING) pulseScale else 1.0f)
+                    .clickable {
+                        if (voiceState == VoiceState.SPEAKING) {
+                            voiceViewModel.interruptAndBargeIn()
+                        } else if (voiceState == VoiceState.LISTENING) {
+                            voiceViewModel.startListening()
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                HermesThinkingDot(
+                    size = if (voiceState == VoiceState.CONNECTING || voiceState == VoiceState.THINKING) 56.dp else 52.dp,
+                    color = dotColor
+                )
+            }
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            Text(
+                text = captionText,
+                style = HermesTypography.displayLarge.copy(
+                    fontSize = 26.sp,
+                    color = TextPrimaryWarm,
+                    lineHeight = 34.sp,
+                    fontWeight = FontWeight.Normal
+                ),
+                modifier = Modifier.padding(horizontal = 32.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+
+        // Bottom Control HUD
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Elevated Microphone Center Button
+            Box(
+                modifier = Modifier
+                    .size(66.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF1C1B19))
+                    .border(1.dp, BorderSubtle, CircleShape)
+                    .clickable {
+                        voiceViewModel.toggleMute()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isMuted) Icons.Default.MicOff else Icons.Default.Mic,
+                    contentDescription = "Toggle Microphone",
+                    tint = if (isMuted) DestructiveRed else TextPrimaryWarm,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Bottom Horizontal Bar: [+] , [Sonnet ⬍] , [Hang Up ✕]
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Add Context (+)
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF1F1E1C))
+                        .border(1.dp, BorderSubtle, CircleShape)
+                        .clickable { /* Add context */ },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Add context",
+                        tint = TextPrimaryWarm,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                // Model Switcher Pill: e.g. "Hermes Smart ⬍"
+                Row(
+                    modifier = Modifier
+                        .height(48.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF201F1D))
+                        .border(1.dp, BorderSubtle, CircleShape)
+                        .clickable { showModelSheet = true }
+                        .padding(horizontal = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = selectedModel,
+                        style = HermesTypography.titleLarge.copy(
+                            fontSize = 15.sp,
+                            color = TextPrimaryWarm,
+                            fontWeight = FontWeight.Medium
+                        )
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Icon(
+                        imageVector = Icons.Default.UnfoldMore,
+                        contentDescription = null,
+                        tint = TextMuted,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+
+                // Hang Up / Dismiss White Circular Button
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(CircleShape)
+                        .background(PureWhite)
+                        .clickable { onClose(activeSessionId) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "End Call",
+                        tint = PureBlack,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+        }
+
+        // Model Select Sheet
+        if (showModelSheet) {
+            ModelSelectSheet(
+                selectedModel = selectedModel,
+                onModelSelected = {
+                    voiceViewModel.setModel(it)
+                    showModelSheet = false
+                },
+                onDismiss = { showModelSheet = false }
+            )
+        }
+    }
+}
