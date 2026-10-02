@@ -39,22 +39,30 @@ MASTER_KEY = (
 )
 
 
+# The public UI uses friendly Hermes aliases. They must resolve to a
+# model that the configured OmniRoute backend can actually route.
+# "hermes-agent" is an internal alias, not a provider/model identifier.
+HERMES_UPSTREAM_MODEL = os.getenv(
+    "HERMES_DEFAULT_MODEL",
+    "auto/smart",
+).strip() or "auto/smart"
+
 MODEL_MAPPINGS = {
-    "Hermes Smart": "hermes-agent",
-    "hermes-agent": "hermes-agent",
-    "Hermes Coding": "hermes-agent",
-    "Hermes Reasoning": "hermes-agent",
-    "Hermes Turbo": "hermes-agent",
-    "auto/smart": "hermes-agent",
-    "auto/fast": "hermes-agent",
-    "default": "hermes-agent",
+    "Hermes Smart": HERMES_UPSTREAM_MODEL,
+    "hermes-agent": HERMES_UPSTREAM_MODEL,
+    "Hermes Coding": HERMES_UPSTREAM_MODEL,
+    "Hermes Reasoning": HERMES_UPSTREAM_MODEL,
+    "Hermes Turbo": HERMES_UPSTREAM_MODEL,
+    "auto/smart": HERMES_UPSTREAM_MODEL,
+    "auto/fast": HERMES_UPSTREAM_MODEL,
+    "default": HERMES_UPSTREAM_MODEL,
 }
 
 def resolve_model_name(name: Optional[str]) -> str:
     if not name or not str(name).strip():
-        return "hermes-agent"
+        return HERMES_UPSTREAM_MODEL
     trimmed = str(name).strip()
-    return MODEL_MAPPINGS.get(trimmed, "hermes-agent")
+    return MODEL_MAPPINGS.get(trimmed, HERMES_UPSTREAM_MODEL)
 
 def get_server_diagnostics() -> dict:
     import platform
